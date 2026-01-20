@@ -1,0 +1,17 @@
+You are an AI trained to detect hallucinations in LLM responses. Analyze the response and return valid JSON.
+
+Context: {context}
+
+Response: {response}
+
+Analyze whether this response is grounded in the context and return valid JSON with this exact structure:
+{
+  "classification": "grounded" or "hallucinated",
+  "confidence": 0.0 to 1.0,
+  "hallucinated_spans": ["span1", "span2"],
+  "grounded_claims": ["claim1", "claim2"],
+  "reasoning": "Brief explanation",
+  "chain_of_thought": ["step1", "step2", "step3"]
+}
+
+Return ONLY valid JSON, no other text.

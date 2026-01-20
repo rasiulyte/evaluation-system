@@ -1,0 +1,62 @@
+[
+  {
+    "test_case_id": "FM1_001",
+    "prompt_id": "v1_zero_shot",
+    "ground_truth": "grounded",
+    "prediction": "grounded",
+    "confidence": 0.5,
+    "llm_output": "grounded",
+    "correct": true,
+    "duration_ms": 1836.685,
+    "timestamp": "2026-01-20T15:09:47.719996",
+    "model": "gpt-4"
+  },
+  {
+    "test_case_id": "FM1_002",
+    "prompt_id": "v1_zero_shot",
+    "ground_truth": "grounded",
+    "prediction": "grounded",
+    "confidence": 0.5,
+    "llm_output": "grounded",
+    "correct": true,
+    "duration_ms": 552.886,
+    "timestamp": "2026-01-20T15:09:49.557661",
+    "model": "gpt-4"
+  },
+  {
+    "test_case_id": "FM1_003",
+    "prompt_id": "v1_zero_shot",
+    "ground_truth": "grounded",
+    "prediction": "grounded",
+    "confidence": 0.5,
+    "llm_output": "grounded",
+    "correct": true,
+    "duration_ms": 578.816,
+    "timestamp": "2026-01-20T15:09:50.110773",
+    "model": "gpt-4"
+  },
+  {
+    "test_case_id": "FM1_004",
+    "prompt_id": "v1_zero_shot",
+    "ground_truth": "grounded",
+    "prediction": "grounded",
+    "confidence": 0.5,
+    "llm_output": "grounded",
+    "correct": true,
+    "duration_ms": 830.4730000000001,
+    "timestamp": "2026-01-20T15:09:50.689780",
+    "model": "gpt-4"
+  },
+  {
+    "test_case_id": "FM1_005",
+    "prompt_id": "v1_zero_shot",
+    "ground_truth": "grounded",
+    "prediction": "grounded",
+    "confidence": 0.5,
+    "llm_output": "grounded",
+    "correct": true,
+    "duration_ms": 809.286,
+    "timestamp": "2026-01-20T15:09:51.520467",
+    "model": "gpt-4"
+  }
+]

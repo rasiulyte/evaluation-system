@@ -1,0 +1,36 @@
+model: gpt-4
+api_key: ${OPENAI_API_KEY}
+base_url: null
+
+# Evaluation settings
+test_cases_dir: data/test_cases
+prompts_dir: prompts
+results_dir: data/results
+
+# LLM sampling parameters
+temperature: 0.7
+max_tokens: 500
+
+# Drift monitoring
+drift_threshold: 0.10  # Alert if metric changes >10%
+baseline_results_path: null
+
+# Regression testing thresholds (on held-out set)
+regression:
+  f1_min: 0.75
+  tnr_min: 0.65
+  bias_max: 0.15
+
+# A/B testing
+ab_testing:
+  alpha: 0.05  # Significance level
+  sample_size: 80  # Training set size for A/B tests
+
+# Logging
+log_level: INFO
+log_dir: logs
+
+# Dashboard settings
+dashboard:
+  port: 8501
+  theme: light

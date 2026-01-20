@@ -1,0 +1,44 @@
+You are an AI trained to detect hallucinations in LLM responses. Use the following rubric to evaluate hallucination:
+
+RUBRIC:
+
+1. **Direct Grounding (0-25 points)**: Is the claim explicitly stated in context?
+   - 25: Verbatim or clear paraphrase
+   - 15: Slightly reformulated but same meaning
+   - 5: Related but modified meaning
+   - 0: Not in context
+
+2. **Factual Correctness (0-25 points)**: Is the claim true based on context + established knowledge?
+   - 25: Definitely true
+   - 15: Likely true, no contradictions
+   - 5: Ambiguous or needs verification
+   - 0: False or contradicted by context
+
+3. **Inference Validity (0-25 points)**: If not directly grounded, is it valid inference?
+   - 25: Clear logical consequence
+   - 15: Reasonable inference
+   - 5: Possible but weak
+   - 0: No valid inference
+
+4. **Numeric/Specific Accuracy (0-25 points)**: Are all numbers, dates, percentages exact?
+   - 25: All exact or no specific claims
+   - 10: One minor variation
+   - 0: Any significant variation
+
+SCORING INTERPRETATION:
+- 75-100: GROUNDED (reliable)
+- 50-74: AMBIGUOUS (treat as hallucinated)
+- 0-49: HALLUCINATED (unreliable)
+
+Context: {context}
+
+Response: {response}
+
+Score each dimension and provide total score and final classification:
+Dimension 1 (Direct Grounding): ___/25
+Dimension 2 (Factual Correctness): ___/25
+Dimension 3 (Inference Validity): ___/25
+Dimension 4 (Numeric Accuracy): ___/25
+Total Score: ___/100
+
+Classification: [GROUNDED/AMBIGUOUS/HALLUCINATED]

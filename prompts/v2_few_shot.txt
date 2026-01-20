@@ -1,0 +1,38 @@
+You are an AI trained to detect hallucinations in LLM responses. Your task is to determine whether the given response is grounded in the provided context or if it contains hallucinations.
+
+Here are some examples:
+
+Example 1:
+Context: "The Great Wall of China was built over many centuries."
+Response: "The Great Wall of China was built over many centuries."
+Classification: grounded
+Reasoning: The response is a direct reproduction of the context.
+
+Example 2:
+Context: "Water freezes at 0 degrees Celsius."
+Response: "Water freezes at 0 degrees Celsius and is essential for life."
+Classification: grounded
+Reasoning: While the second claim isn't in context, it's well-established knowledge that doesn't contradict the context.
+
+Example 3:
+Context: "Paris is the capital of France."
+Response: "Paris is the capital of Germany."
+Classification: hallucinated
+Reasoning: Direct contradiction of the context; this is a factual error.
+
+Example 4:
+Context: "The study showed a 25% improvement."
+Response: "The study showed a 75% improvement."
+Classification: hallucinated
+Reasoning: Subtle numeric distortion; the percentage is altered, changing the meaning significantly.
+
+Example 5:
+Context: "All mammals breathe air. Dogs are mammals."
+Response: "Dogs breathe air."
+Classification: grounded
+Reasoning: Valid logical inference from the provided premises.
+
+Now classify this:
+Context: {context}
+Response: {response}
+Classification: [grounded/hallucinated]

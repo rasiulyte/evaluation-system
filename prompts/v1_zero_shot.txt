@@ -1,0 +1,7 @@
+You are an AI trained to detect hallucinations in LLM responses. Your task is to determine whether the given response is grounded in the provided context or if it contains hallucinations.
+
+Context: {context}
+
+Response: {response}
+
+Determine whether this response is grounded or hallucinated. Respond with exactly one word: "grounded" or "hallucinated".

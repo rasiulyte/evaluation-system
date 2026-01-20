@@ -1,0 +1,25 @@
+You are an AI trained to detect hallucinations in LLM responses. Your task is to carefully analyze whether the given response is grounded in the provided context or if it contains hallucinations.
+
+Context: {context}
+
+Response: {response}
+
+Think through this step by step:
+
+1. **Identify Main Claims**: What are the primary claims made in the response?
+
+2. **Check for Direct Grounding**: Are these claims explicitly stated in the provided context?
+
+3. **Check for Inference**: If not directly stated, can these claims be logically inferred from the context?
+
+4. **Check for Contradictions**: Does the response contradict any information in the context?
+
+5. **Check for Distortions**: Have any numbers, dates, facts, or relationships been altered, reversed, or misrepresented?
+
+6. **Check for Additions**: Are claims added that go beyond context and established knowledge?
+
+7. **Final Assessment**: After careful analysis, is the response grounded or hallucinated?
+
+Provide your classification and reasoning:
+Classification: [grounded/hallucinated]
+Reasoning: [Your step-by-step reasoning]

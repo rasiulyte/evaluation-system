@@ -1,0 +1,110 @@
+{
+  "prompts": [
+    {
+      "id": "v1_zero_shot",
+      "file": "v1_zero_shot.txt",
+      "created": "2026-01-20",
+      "description": "Baseline zero-shot prompt with minimal instructions",
+      "hypothesis": "Establish baseline performance without guidance; measure LLM's intrinsic ability",
+      "status": "active",
+      "results": {
+        "accuracy": null,
+        "f1": null,
+        "precision": null,
+        "recall": null,
+        "tnr": null,
+        "bias": null,
+        "kappa": null,
+        "variance": null
+      }
+    },
+    {
+      "id": "v2_few_shot",
+      "file": "v2_few_shot.txt",
+      "created": "2026-01-20",
+      "description": "Few-shot prompt with 5 labeled examples including boundary cases",
+      "hypothesis": "Examples teach task structure and ambiguity boundaries, improving consistency",
+      "status": "active",
+      "results": {
+        "accuracy": null,
+        "f1": null,
+        "precision": null,
+        "recall": null,
+        "tnr": null,
+        "bias": null,
+        "kappa": null,
+        "variance": null
+      }
+    },
+    {
+      "id": "v3_chain_of_thought",
+      "file": "v3_chain_of_thought.txt",
+      "created": "2026-01-20",
+      "description": "Chain-of-thought prompt requiring step-by-step reasoning",
+      "hypothesis": "Explicit reasoning steps improve rigor and catch hidden assumptions",
+      "status": "active",
+      "results": {
+        "accuracy": null,
+        "f1": null,
+        "precision": null,
+        "recall": null,
+        "tnr": null,
+        "bias": null,
+        "kappa": null,
+        "variance": null
+      }
+    },
+    {
+      "id": "v4_rubric_based",
+      "file": "v4_rubric_based.txt",
+      "created": "2026-01-20",
+      "description": "Rubric-based evaluation with explicit scoring criteria",
+      "hypothesis": "Clear rubric reduces ambiguity and aligns LLM with human judges",
+      "status": "active",
+      "results": {
+        "accuracy": null,
+        "f1": null,
+        "precision": null,
+        "recall": null,
+        "tnr": null,
+        "bias": null,
+        "kappa": null,
+        "variance": null
+      }
+    },
+    {
+      "id": "v5_structured_output",
+      "file": "v5_structured_output.txt",
+      "created": "2026-01-20",
+      "description": "Structured JSON output format for deterministic parsing",
+      "hypothesis": "Structured output enables easier parsing, confidence scoring, and span-level analysis",
+      "status": "active",
+      "results": {
+        "accuracy": null,
+        "f1": null,
+        "precision": null,
+        "recall": null,
+        "tnr": null,
+        "bias": null,
+        "kappa": null,
+        "variance": null
+      }
+    }
+  ],
+  "current_production": "v1_zero_shot",
+  "ab_tests": [
+    {
+      "test_id": "ab_test_001",
+      "prompt_a": "v1_zero_shot",
+      "prompt_b": "v2_few_shot",
+      "status": "pending",
+      "created": "2026-01-20",
+      "completed": null,
+      "winner": null,
+      "sample_size": null,
+      "metrics": null
+    }
+  ],
+  "version": "1.0",
+  "last_updated": "2026-01-20"
+}
