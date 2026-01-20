@@ -1,6 +1,6 @@
 # Hallucination Detection Evaluation System
 
-A production-ready LLM evaluation system for detecting hallucinations in AI-generated content. This project demonstrates  evaluation methodology, prompt engineering, and AI system monitoring.
+A production-ready simplified LLM evaluation system for detecting hallucinations in AI-generated content. This project demonstrates  evaluation methodology, prompt engineering, and AI system monitoring.
 
 ## Project Goals
 
