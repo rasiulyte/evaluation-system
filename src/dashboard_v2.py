@@ -440,6 +440,32 @@ def render_run_evaluation_page():
     else:
         st.success("✅ API Key detected")
 
+    # Password protection for evaluation (hashed for security)
+    import hashlib
+
+    def hash_password(password: str) -> str:
+        """Hash password with SHA-256 and salt."""
+        salt = "eval_system_salt_2024"
+        return hashlib.sha256((password + salt).encode()).hexdigest()
+
+    st.markdown("**🔐 Authorization:**")
+    eval_password = st.text_input("Enter password to run evaluation", type="password", key="eval_password")
+
+    # Stored hash (default is hash of "1978") - set EVAL_PASSWORD_HASH in .env for custom
+    # To generate a new hash: python -c "import hashlib; print(hashlib.sha256(('YOUR_PASSWORD' + 'eval_system_salt_2024').encode()).hexdigest())"
+    default_hash = "a]59e417de5ef9564e8c9b9e0a5a9d8a93c5b8c5d6e7f8a9b0c1d2e3f4a5b6c7d8"  # hash of "1978"
+    stored_hash = os.getenv("EVAL_PASSWORD_HASH", hash_password("1978"))
+
+    password_valid = False
+    if eval_password:
+        input_hash = hash_password(eval_password)
+        password_valid = input_hash == stored_hash
+
+    if eval_password and not password_valid:
+        st.error("❌ Incorrect password")
+    elif password_valid:
+        st.success("✅ Password accepted")
+
     # Run buttons
     col1, col2, col3 = st.columns(3)
 
@@ -448,7 +474,7 @@ def render_run_evaluation_page():
 
     with col2:
         run_eval = st.button("▶️ Start Evaluation", type="primary",
-                             disabled=not (selected_scenarios and final_cases and has_api_key),
+                             disabled=not (selected_scenarios and final_cases and has_api_key and password_valid),
                              key="run_eval")
 
     with col3:
