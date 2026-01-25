@@ -66,6 +66,21 @@ class Database:
                     status TEXT
                 )
             """)
+            c.execute("""
+                CREATE TABLE IF NOT EXISTS test_results (
+                    id SERIAL PRIMARY KEY,
+                    run_id TEXT,
+                    scenario TEXT,
+                    test_case_id TEXT,
+                    prompt_id TEXT,
+                    ground_truth TEXT,
+                    prediction TEXT,
+                    confidence REAL,
+                    correct BOOLEAN,
+                    llm_output TEXT,
+                    timestamp TEXT
+                )
+            """)
             try:
                 c.execute("CREATE INDEX idx_metrics_scenario ON metrics(scenario)")
             except:
@@ -99,8 +114,23 @@ class Database:
                     unit TEXT,
                     status TEXT
                 );
+                CREATE TABLE IF NOT EXISTS test_results (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    run_id TEXT,
+                    scenario TEXT,
+                    test_case_id TEXT,
+                    prompt_id TEXT,
+                    ground_truth TEXT,
+                    prediction TEXT,
+                    confidence REAL,
+                    correct BOOLEAN,
+                    llm_output TEXT,
+                    timestamp TEXT
+                );
                 CREATE INDEX IF NOT EXISTS idx_metrics_scenario ON metrics(scenario);
                 CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON metrics(timestamp);
+                CREATE INDEX IF NOT EXISTS idx_test_results_run ON test_results(run_id);
+                CREATE INDEX IF NOT EXISTS idx_test_results_scenario ON test_results(scenario);
             """)
         
         conn.commit()
@@ -184,6 +214,59 @@ class Database:
         c = conn.cursor()
         c.execute("SELECT DISTINCT run_id FROM metrics ORDER BY run_id DESC")
         results = [row[0] for row in c.fetchall()]
+        conn.close()
+        return results
+
+    def save_test_result(self, run_id, scenario, test_case_id, prompt_id, ground_truth,
+                         prediction, confidence, correct, llm_output, timestamp):
+        """Save a single test result."""
+        conn = self._get_connection()
+        c = conn.cursor()
+
+        if self.use_postgres:
+            c.execute("""
+                INSERT INTO test_results (run_id, scenario, test_case_id, prompt_id, ground_truth,
+                    prediction, confidence, correct, llm_output, timestamp)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (run_id, scenario, test_case_id, prompt_id, ground_truth,
+                  prediction, confidence, correct, llm_output, timestamp))
+        else:
+            c.execute("""
+                INSERT INTO test_results (run_id, scenario, test_case_id, prompt_id, ground_truth,
+                    prediction, confidence, correct, llm_output, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (run_id, scenario, test_case_id, prompt_id, ground_truth,
+                  prediction, confidence, correct, llm_output, timestamp))
+
+        conn.commit()
+        conn.close()
+
+    def get_test_results(self, run_id=None, scenario=None):
+        """Get test results, optionally filtered by run_id and/or scenario."""
+        conn = self._get_connection()
+
+        query = "SELECT * FROM test_results WHERE 1=1"
+        params = []
+
+        if run_id:
+            query += " AND run_id = %s" if self.use_postgres else " AND run_id = ?"
+            params.append(run_id)
+        if scenario:
+            query += " AND scenario = %s" if self.use_postgres else " AND scenario = ?"
+            params.append(scenario)
+
+        query += " ORDER BY timestamp"
+
+        if self.use_postgres:
+            c = conn.cursor(cursor_factory=RealDictCursor)
+            c.execute(query, params)
+            results = [dict(row) for row in c.fetchall()]
+        else:
+            conn.row_factory = sqlite3.Row
+            c = conn.cursor()
+            c.execute(query, params)
+            results = [dict(row) for row in c.fetchall()]
+
         conn.close()
         return results
 

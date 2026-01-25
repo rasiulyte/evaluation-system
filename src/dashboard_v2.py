@@ -982,41 +982,14 @@ def main():
         # Load test case definitions for detail view
         test_case_defs = load_test_case_definitions()
 
-        # Map scenarios to their prompt versions (from settings.yaml)
-        SCENARIO_PROMPTS = {
-            "hallucination_detection": "v1_zero_shot",
-            "factual_accuracy": "v2_few_shot",
-            "reasoning_quality": "v3_chain_of_thought",
-            "instruction_following": "v4_rubric_based",
-            "safety_compliance": "v5_structured_output",
-            "consistency": "v1_zero_shot",
-        }
-
-        # Try to load detailed test case results for the selected scenario/run
-        result_files = sorted(glob.glob("data/results/*.json") + glob.glob("data/daily_runs/*.json"), reverse=True)
-        test_cases = []
-        for f in result_files:
-            try:
-                with open(f, "r") as fh:
-                    data = json.load(fh)
-                    # If file is a list of dicts (test cases)
-                    if isinstance(data, list) and all(isinstance(x, dict) for x in data):
-                        test_cases.extend(data)
-                    # If file is a dict with test cases
-                    elif isinstance(data, dict) and "test_cases" in data:
-                        test_cases.extend(data["test_cases"])
-            except Exception:
-                pass
+        # Load test case results from database
+        try:
+            test_cases = db.get_test_results(scenario=scenario)
+        except Exception:
+            test_cases = []
 
         if test_cases:
             df_cases = pd.DataFrame(test_cases)
-
-            # Filter by scenario - match prompt_id or scenario field
-            expected_prompt = SCENARIO_PROMPTS.get(scenario)
-            if "scenario" in df_cases.columns:
-                df_cases = df_cases[df_cases["scenario"] == scenario]
-            elif "prompt_id" in df_cases.columns and expected_prompt:
-                df_cases = df_cases[df_cases["prompt_id"] == expected_prompt]
 
             # Create results lookup by test_case_id
             filtered_cases = df_cases.to_dict('records')
