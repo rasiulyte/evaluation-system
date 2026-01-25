@@ -1,4 +1,3 @@
-import sqlite3
 import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
@@ -6,21 +5,21 @@ import json
 import glob
 from pathlib import Path
 
-DB_PATH = "data/metrics.db"
+# Import database abstraction (supports SQLite and PostgreSQL)
+import sys
+sys.path.insert(0, "src")
+from database import db
+
 
 def load_metrics() -> pd.DataFrame:
-    """Load metrics from SQLite database."""
-    if not Path(DB_PATH).exists():
-        return pd.DataFrame()
-
-    conn = sqlite3.connect(DB_PATH)
+    """Load metrics from database."""
     try:
-        df = pd.read_sql_query("SELECT * FROM metrics ORDER BY timestamp", conn)
-        return df
+        metrics = db.get_all_metrics()
+        if metrics:
+            return pd.DataFrame(metrics)
+        return pd.DataFrame()
     except Exception:
         return pd.DataFrame()
-    finally:
-        conn.close()
 
 
 def load_test_case_definitions() -> dict:
@@ -40,70 +39,57 @@ def load_test_case_definitions() -> dict:
 
 
 def load_daily_runs() -> pd.DataFrame:
-    """Load daily run history from database."""
-    if not Path(DB_PATH).exists():
-        return pd.DataFrame()
-
-    conn = sqlite3.connect(DB_PATH)
+    """Load daily run history from database (derived from metrics)."""
     try:
-        df = pd.read_sql_query("""
-            SELECT run_id, run_date, timestamp, scenarios_run, scenarios_passed,
-                   scenarios_failed, overall_status, alerts, hillclimb_suggestions
-            FROM daily_runs
-            ORDER BY timestamp DESC
-        """, conn)
-        return df
+        metrics = db.get_all_metrics()
+        if not metrics:
+            return pd.DataFrame()
+        # Derive run info from metrics
+        df = pd.DataFrame(metrics)
+        runs = df.groupby('run_id').agg({
+            'timestamp': 'first',
+            'scenario': 'nunique'
+        }).reset_index()
+        runs.columns = ['run_id', 'timestamp', 'scenarios_run']
+        runs['run_date'] = runs['timestamp'].str[:10]
+        return runs.sort_values('timestamp', ascending=False)
     except Exception:
         return pd.DataFrame()
-    finally:
-        conn.close()
 
 
 def get_metrics_comparison(run_id_1: str, run_id_2: str) -> pd.DataFrame:
     """Compare metrics between two runs."""
-    if not Path(DB_PATH).exists():
-        return pd.DataFrame()
-
-    conn = sqlite3.connect(DB_PATH)
     try:
-        df = pd.read_sql_query("""
-            SELECT
-                m1.scenario,
-                m1.metric_name,
-                m1.metric_value as run1_value,
-                m2.metric_value as run2_value,
-                (m2.metric_value - m1.metric_value) as delta,
-                CASE
-                    WHEN m1.metric_value > 0 THEN ((m2.metric_value - m1.metric_value) / m1.metric_value * 100)
-                    ELSE 0
-                END as delta_pct
-            FROM metrics m1
-            JOIN metrics m2 ON m1.scenario = m2.scenario AND m1.metric_name = m2.metric_name
-            WHERE m1.run_id = ? AND m2.run_id = ?
-        """, conn, params=[run_id_1, run_id_2])
-        return df
+        # Use database abstraction - returns list of dicts
+        # For now, load all metrics and filter in pandas
+        metrics = db.get_all_metrics()
+        if not metrics:
+            return pd.DataFrame()
+
+        df = pd.DataFrame(metrics)
+        m1 = df[df['run_id'] == run_id_1][['scenario', 'metric_name', 'metric_value']].copy()
+        m2 = df[df['run_id'] == run_id_2][['scenario', 'metric_name', 'metric_value']].copy()
+
+        merged = m1.merge(m2, on=['scenario', 'metric_name'], suffixes=('_1', '_2'))
+        merged['run1_value'] = merged['metric_value_1']
+        merged['run2_value'] = merged['metric_value_2']
+        merged['delta'] = merged['run2_value'] - merged['run1_value']
+        merged['delta_pct'] = merged.apply(
+            lambda r: ((r['run2_value'] - r['run1_value']) / r['run1_value'] * 100) if r['run1_value'] > 0 else 0,
+            axis=1
+        )
+        return merged[['scenario', 'metric_name', 'run1_value', 'run2_value', 'delta', 'delta_pct']]
     except Exception as e:
         print(f"Comparison error: {e}")
         return pd.DataFrame()
-    finally:
-        conn.close()
 
 
 def get_runs_with_metrics() -> list:
     """Get list of run_ids that have metrics data."""
-    if not Path(DB_PATH).exists():
-        return []
-
-    conn = sqlite3.connect(DB_PATH)
     try:
-        df = pd.read_sql_query("""
-            SELECT DISTINCT run_id FROM metrics ORDER BY run_id DESC
-        """, conn)
-        return df["run_id"].tolist()
+        return db.get_run_ids()
     except Exception:
         return []
-    finally:
-        conn.close()
 
 
 def render_test_case_detail(case_id: str, test_case_defs: dict, result_data: dict = None):
