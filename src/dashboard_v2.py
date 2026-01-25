@@ -884,6 +884,17 @@ def main():
         st.sidebar.title("Navigation")
         page = st.sidebar.radio("View", ["🚀 Run Evaluation", "📈 Current Metrics", "📅 Daily Runs", "🔄 Compare Runs"])
 
+        # Debug info
+        with st.sidebar.expander("🔧 Debug Info"):
+            try:
+                debug = db.debug_info()
+                st.write(f"Backend: {debug.get('backend')}")
+                st.write(f"Metrics: {debug.get('metrics_count', debug.get('metrics_error', 'N/A'))}")
+                st.write(f"Test Results: {debug.get('test_results_count', debug.get('test_results_error', 'N/A'))}")
+                st.write(f"Daily Runs: {debug.get('daily_runs_count', debug.get('daily_runs_error', 'N/A'))}")
+            except Exception as e:
+                st.error(f"Debug error: {e}")
+
         # Run Evaluation page works without data
         if page == "🚀 Run Evaluation":
             render_run_evaluation_page()

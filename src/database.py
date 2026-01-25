@@ -270,6 +270,41 @@ class Database:
         conn.close()
         return results
 
+    def get_test_results_count(self):
+        """Get count of test results for debugging."""
+        conn = self._get_connection()
+        c = conn.cursor()
+        try:
+            c.execute("SELECT COUNT(*) FROM test_results")
+            count = c.fetchone()[0]
+        except Exception as e:
+            count = f"Error: {e}"
+        conn.close()
+        return count
+
+    def debug_info(self):
+        """Get debug information about database state."""
+        conn = self._get_connection()
+        c = conn.cursor()
+        info = {"backend": "PostgreSQL" if self.use_postgres else "SQLite"}
+        try:
+            c.execute("SELECT COUNT(*) FROM test_results")
+            info["test_results_count"] = c.fetchone()[0]
+        except Exception as e:
+            info["test_results_error"] = str(e)
+        try:
+            c.execute("SELECT COUNT(*) FROM metrics")
+            info["metrics_count"] = c.fetchone()[0]
+        except Exception as e:
+            info["metrics_error"] = str(e)
+        try:
+            c.execute("SELECT COUNT(*) FROM daily_runs")
+            info["daily_runs_count"] = c.fetchone()[0]
+        except Exception as e:
+            info["daily_runs_error"] = str(e)
+        conn.close()
+        return info
+
 
 # Global database instance
 db = Database()
