@@ -323,16 +323,16 @@ class EvaluationOrchestrator:
             if status == HealthStatus.CRITICAL:
                 hillclimb_suggestions.append(f"Improve {scenario}: focus on {', '.join(failed_metrics)}")
 
-            # Save metrics to DB
+            # Save metrics to DB (convert numpy types to Python floats)
             for metric in metrics.values():
                 db.save_metric(
                     run_id=run_id,
                     scenario=scenario,
                     timestamp=timestamp,
                     metric_name=metric.name,
-                    metric_value=metric.value,
-                    threshold_min=metric.threshold_min,
-                    threshold_max=metric.threshold_max,
+                    metric_value=float(metric.value),
+                    threshold_min=float(metric.threshold_min) if metric.threshold_min is not None else None,
+                    threshold_max=float(metric.threshold_max) if metric.threshold_max is not None else None,
                     unit=metric.unit,
                     status=metric.status.value
                 )
