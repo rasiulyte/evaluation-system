@@ -23,6 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from evaluator import Evaluator
 from metrics import MetricsCalculator
+from database import db
 
 class EvalScenario(Enum):
     HALLUCINATION_DETECTION = "hallucination_detection"
@@ -184,7 +185,6 @@ class EvaluationOrchestrator:
     """Main orchestrator for daily evaluation runs"""
     def __init__(self, config_path: str = "config/settings.yaml"):
         self.config = self._load_config(config_path)
-        self.db = MetricsDatabase()
     def _load_config(self, config_path):
         with open(config_path, "r") as f:
             return yaml.safe_load(f)
@@ -308,7 +308,18 @@ class EvaluationOrchestrator:
                 hillclimb_suggestions.append(f"Improve {scenario}: focus on {', '.join(failed_metrics)}")
 
             # Save metrics to DB
-            self.db.save_metrics(run_id, scenario, timestamp, metrics)
+            for metric in metrics.values():
+                db.save_metric(
+                    run_id=run_id,
+                    scenario=scenario,
+                    timestamp=timestamp,
+                    metric_name=metric.name,
+                    metric_value=metric.value,
+                    threshold_min=metric.threshold_min,
+                    threshold_max=metric.threshold_max,
+                    unit=metric.unit,
+                    status=metric.status.value
+                )
 
             scenario_results.append(ScenarioResult(
                 scenario=scenario,
@@ -344,7 +355,17 @@ class EvaluationOrchestrator:
             hillclimb_suggestions=hillclimb_suggestions
         )
 
-        self.db.save_daily_run(summary)
+        db.save_daily_run(
+            run_id=summary.run_id,
+            run_date=summary.run_date,
+            timestamp=summary.timestamp,
+            scenarios_run=summary.scenarios_run,
+            scenarios_passed=summary.scenarios_passed,
+            scenarios_failed=summary.scenarios_failed,
+            overall_status=summary.overall_status.value,
+            alerts=summary.alerts,
+            hillclimb_suggestions=summary.hillclimb_suggestions
+        )
 
         # Export to JSON
         out_dir = Path("data/daily_runs")
