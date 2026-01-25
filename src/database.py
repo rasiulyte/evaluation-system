@@ -217,11 +217,54 @@ class Database:
         conn.close()
         return results
 
+    def _ensure_test_results_table(self, conn, c):
+        """Ensure test_results table exists."""
+        if self.use_postgres:
+            c.execute("""
+                CREATE TABLE IF NOT EXISTS test_results (
+                    id SERIAL PRIMARY KEY,
+                    run_id TEXT,
+                    scenario TEXT,
+                    test_case_id TEXT,
+                    prompt_id TEXT,
+                    ground_truth TEXT,
+                    prediction TEXT,
+                    confidence REAL,
+                    correct BOOLEAN,
+                    llm_output TEXT,
+                    timestamp TEXT
+                )
+            """)
+            conn.commit()
+        else:
+            c.execute("""
+                CREATE TABLE IF NOT EXISTS test_results (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    run_id TEXT,
+                    scenario TEXT,
+                    test_case_id TEXT,
+                    prompt_id TEXT,
+                    ground_truth TEXT,
+                    prediction TEXT,
+                    confidence REAL,
+                    correct BOOLEAN,
+                    llm_output TEXT,
+                    timestamp TEXT
+                )
+            """)
+            conn.commit()
+
     def save_test_result(self, run_id, scenario, test_case_id, prompt_id, ground_truth,
                          prediction, confidence, correct, llm_output, timestamp):
         """Save a single test result."""
         conn = self._get_connection()
         c = conn.cursor()
+
+        # Ensure table exists (in case it wasn't created during init)
+        try:
+            self._ensure_test_results_table(conn, c)
+        except Exception:
+            pass  # Table might already exist
 
         if self.use_postgres:
             c.execute("""
