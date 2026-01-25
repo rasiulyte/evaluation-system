@@ -159,6 +159,11 @@ class Evaluator:
             return {
                 "test_case_id": test_case_id,
                 "prompt_id": prompt_id,
+                "ground_truth": test_case.get("label", ""),
+                "prediction": "",
+                "confidence": 0.0,
+                "llm_output": "",
+                "correct": False,
                 "error": str(e),
                 "timestamp": datetime.now().isoformat()
             }

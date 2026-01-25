@@ -255,19 +255,22 @@ class EvaluationOrchestrator:
                 # Add scenario info to results and save to database
                 for r in results:
                     r['scenario'] = scenario
-                    # Save test result to database
-                    db.save_test_result(
-                        run_id=run_id,
-                        scenario=scenario,
-                        test_case_id=r.get('test_case_id', ''),
-                        prompt_id=r.get('prompt_id', ''),
-                        ground_truth=r.get('ground_truth', ''),
-                        prediction=r.get('prediction', ''),
-                        confidence=r.get('confidence', 0.0),
-                        correct=r.get('correct', False),
-                        llm_output=r.get('llm_output', ''),
-                        timestamp=r.get('timestamp', timestamp)
-                    )
+                    # Only save results that have actual predictions (skip errors)
+                    if 'prediction' in r and r.get('prediction'):
+                        db.save_test_result(
+                            run_id=run_id,
+                            scenario=scenario,
+                            test_case_id=r.get('test_case_id', ''),
+                            prompt_id=r.get('prompt_id', ''),
+                            ground_truth=r.get('ground_truth', ''),
+                            prediction=r.get('prediction', ''),
+                            confidence=r.get('confidence', 0.0),
+                            correct=r.get('correct', False),
+                            llm_output=r.get('llm_output', ''),
+                            timestamp=r.get('timestamp', timestamp)
+                        )
+                    elif 'error' in r:
+                        print(f"  Error for {r.get('test_case_id')}: {r.get('error')}")
                 all_test_case_results.extend(results)
 
                 # Calculate metrics
