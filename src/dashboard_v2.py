@@ -889,6 +889,10 @@ def main():
             try:
                 debug = db.debug_info()
                 st.write(f"Backend: {debug.get('backend')}")
+                if debug.get('pg_host'):
+                    st.write(f"Host: {debug.get('pg_host')}")
+                    st.write(f"User: {debug.get('pg_user')}")
+                    st.write(f"Port: {debug.get('pg_port')}")
                 if debug.get('pg_error'):
                     st.error(f"PG Error: {debug.get('pg_error')}")
                 st.write(f"Metrics: {debug.get('metrics_count', debug.get('metrics_error', 'N/A'))}")

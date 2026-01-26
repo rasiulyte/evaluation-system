@@ -4,8 +4,10 @@ Database abstraction layer supporting SQLite (local) and PostgreSQL (Supabase/cl
 import os
 import json
 import sqlite3
+import re
 from typing import Dict, Optional, List
 from dotenv import load_dotenv
+from urllib.parse import urlparse, unquote
 
 load_dotenv()
 
@@ -13,11 +15,24 @@ load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
 USE_POSTGRES = DATABASE_URL is not None
 POSTGRES_ERROR = None
+PG_PARAMS = None
 
 if USE_POSTGRES:
     try:
         import psycopg2
         from psycopg2.extras import RealDictCursor
+
+        # Parse DATABASE_URL into components
+        parsed = urlparse(DATABASE_URL)
+        PG_PARAMS = {
+            'host': parsed.hostname,
+            'port': parsed.port or 5432,
+            'database': parsed.path.lstrip('/') or 'postgres',
+            'user': unquote(parsed.username) if parsed.username else 'postgres',
+            'password': unquote(parsed.password) if parsed.password else '',
+            'sslmode': 'require',
+            'connect_timeout': 10
+        }
     except ImportError:
         USE_POSTGRES = False
         POSTGRES_ERROR = "psycopg2 not installed"
@@ -29,15 +44,17 @@ class Database:
     def __init__(self):
         self.use_postgres = USE_POSTGRES
         self.connection_error = None
+        self.pg_params = PG_PARAMS
 
         # Test PostgreSQL connection, fall back to SQLite if it fails
         if self.use_postgres:
             try:
-                conn = psycopg2.connect(DATABASE_URL, sslmode='require', connect_timeout=10)
+                conn = psycopg2.connect(**PG_PARAMS)
                 conn.close()
             except Exception as e:
                 self.connection_error = str(e)
                 print(f"PostgreSQL connection failed: {e}")
+                print(f"Connection params: host={PG_PARAMS.get('host')}, port={PG_PARAMS.get('port')}, user={PG_PARAMS.get('user')}")
                 print("Falling back to SQLite...")
                 self.use_postgres = False
 
@@ -45,8 +62,7 @@ class Database:
 
     def _get_connection(self):
         if self.use_postgres:
-            # Supabase requires SSL
-            return psycopg2.connect(DATABASE_URL, sslmode='require', connect_timeout=10)
+            return psycopg2.connect(**PG_PARAMS)
         else:
             os.makedirs("data", exist_ok=True)
             return sqlite3.connect("data/metrics.db")
@@ -348,6 +364,10 @@ class Database:
         conn = self._get_connection()
         c = conn.cursor()
         info = {"backend": "PostgreSQL" if self.use_postgres else "SQLite"}
+        if self.pg_params:
+            info["pg_host"] = self.pg_params.get('host', 'N/A')
+            info["pg_user"] = self.pg_params.get('user', 'N/A')
+            info["pg_port"] = self.pg_params.get('port', 'N/A')
         if self.connection_error:
             info["pg_error"] = self.connection_error
         try:
