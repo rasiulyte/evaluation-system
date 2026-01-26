@@ -1,6 +1,22 @@
-# Hallucination Detection Evaluation System
+# LLM-as-Judge: Hallucination Detection System
 
-A production-ready simplified LLM evaluation system for detecting hallucinations in AI-generated content. This project demonstrates  evaluation methodology, prompt engineering, and AI system monitoring.
+An **LLM-as-Judge** (autograder) system for detecting hallucinations in AI-generated content. This project demonstrates how to use one LLM to evaluate the outputs of another LLM.
+
+## What is LLM-as-Judge?
+
+**LLM-as-Judge** is a technique where one LLM evaluates the output of another LLM. Instead of humans manually reviewing every AI response, we use a "judge" LLM to automatically classify responses as correct or incorrect.
+
+In this system:
+- **Judge LLM**: GPT-4o-mini evaluates responses for hallucinations
+- **Task**: Given a context + response pair, classify as "grounded" or "hallucinated"
+- **Ground Truth**: 120 hand-labeled test cases across 7 failure modes
+- **Metrics**: F1, Precision, Recall, Correlation, Calibration, and more
+
+**Why use LLM-as-Judge?**
+- **Scale**: Evaluate thousands of responses automatically
+- **Speed**: Get results in seconds, not days
+- **Consistency**: Same criteria applied every time
+- **Cost**: Cheaper than human annotation at scale
 
 ## Project Goals
 

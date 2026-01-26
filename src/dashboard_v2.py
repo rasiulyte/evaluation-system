@@ -2541,22 +2541,50 @@ def render_home_page():
     """Getting Started page explaining the dashboard."""
 
     render_page_header(
-        "Welcome to Eval Lab",
-        "A sandbox for learning AI evaluation"
+        "Welcome to LLM-as-Judge",
+        "Learn how to use LLMs to evaluate other LLMs"
     )
 
     st.markdown(f"""
     <div class="metric-card" style="padding: 1.5rem; margin-bottom: 1.5rem;">
         <div style="font-size: 1.1rem; color: {COLORS['navy']}; margin-bottom: 1rem; font-weight: 500;">
-            What is this?
+            What is LLM-as-Judge?
         </div>
         <div style="color: {COLORS['charcoal']}; line-height: 1.7;">
-            Eval Lab is an interactive environment for learning how to evaluate AI systems,
-            specifically focused on <strong>hallucination detection</strong>. Explore real evaluation results,
-            understand metrics, and build intuition for what makes an AI system reliable.
+            <strong>LLM-as-Judge</strong> (also called "autograder") is a technique where one LLM evaluates
+            the output of another LLM. Instead of humans manually reviewing every AI response,
+            we use a "judge" LLM to automatically classify responses as correct or incorrect.
         </div>
     </div>
     """, unsafe_allow_html=True)
+
+    # Use case explanation
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown(f"""
+        <div class="metric-card" style="height: 100%;">
+            <div style="font-weight: 500; color: {COLORS['teal']}; margin-bottom: 0.5rem;">In This System</div>
+            <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
+                We use <strong>GPT-4o-mini</strong> as the judge to detect <strong>hallucinations</strong> —
+                cases where an AI makes up information or contradicts the source material.
+                The judge reads a context + response pair and decides: is this grounded or hallucinated?
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown(f"""
+        <div class="metric-card" style="height: 100%;">
+            <div style="font-weight: 500; color: {COLORS['teal']}; margin-bottom: 0.5rem;">Why Use LLM-as-Judge?</div>
+            <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
+                <strong>Scale:</strong> Evaluate thousands of responses automatically<br>
+                <strong>Speed:</strong> Get results in seconds, not days<br>
+                <strong>Consistency:</strong> Same criteria applied every time<br>
+                <strong>Cost:</strong> Cheaper than human annotation at scale
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
     # Evaluation workflow (at top for visibility)
     render_section_header("How Evaluation Works")
@@ -3702,7 +3730,7 @@ def render_prompt_lab_page(df: pd.DataFrame):
 
 def main():
     st.set_page_config(
-        page_title="Eval Lab · rasar.ai",
+        page_title="LLM-as-Judge · rasar.ai",
         page_icon="◈",
         layout="wide",
         initial_sidebar_state="expanded"
@@ -3721,14 +3749,14 @@ def main():
     # Sidebar
     with st.sidebar:
         # Clickable logo that goes to Getting Started
-        if st.button("◈ Eval Lab", key="logo_btn", use_container_width=True):
+        if st.button("◈ LLM-as-Judge", key="logo_btn", use_container_width=True):
             st.session_state.current_page = "Getting Started"
             st.rerun()
 
         st.markdown(f"""
         <div style="padding: 0 0 1rem 0; margin-top: -0.5rem;">
             <div style="font-size: 0.75rem; color: {COLORS['medium_gray']};">
-                learn AI evaluation
+                hallucination detection
             </div>
             <div style="font-size: 0.7rem; margin-top: 0.25rem;">
                 <a href="https://rasar.ai" target="_blank" style="color: {COLORS['teal']};">rasar.ai</a>
