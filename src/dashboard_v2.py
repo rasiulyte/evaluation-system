@@ -2282,8 +2282,9 @@ def render_home_page():
         <div class="metric-card" style="height: 100%; margin-top: 1rem;">
             <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">4. Learn More</div>
             <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
-                Visit <strong>Understanding Metrics</strong> for detailed explanations of
-                each metric, including formulas, intuitions, and when to use them.
+                Visit <strong>Understanding Metrics</strong> for explanations. For the complete reference with
+                interpretation scales and mental models, see the
+                <a href="https://github.com/rasiulyte/evaluation-system/blob/main/docs/METRICS.md" target="_blank" style="color: {COLORS['teal']};">Metrics Guide</a> on GitHub.
             </div>
         </div>
         """, unsafe_allow_html=True)
