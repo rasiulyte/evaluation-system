@@ -30,14 +30,15 @@ In this system:
 
 ## Key Features
 
-✅ **100 hand-labeled test cases** across 7 failure modes  
-✅ **5 prompting strategies** (v1: zero-shot to v5: structured output)  
-✅ **12+ evaluation metrics** (accuracy, F1, TNR, bias, consistency, correlation)  
-✅ **A/B testing framework** with statistical significance  
-✅ **Drift monitoring** for production safety  
-✅ **Regression testing** on held-out set (never used in development)  
-✅ **Streamlit dashboard** for visualization  
-✅ **Comprehensive documentation** of design and methodology  
+- **100 hand-labeled test cases** across 7 failure modes
+- **6 prompting strategies** (v1: zero-shot to v6: calibrated confidence)
+- **12+ evaluation metrics** (accuracy, F1, TNR, bias, consistency, correlation)
+- **A/B testing framework** with statistical significance
+- **Drift monitoring** for production safety
+- **Regression testing** on held-out set (never used in development)
+- **Streamlit dashboard** with slice analysis and learning guides
+- **Daily orchestrator** for automated evaluation runs
+- **Database backend** (SQLite/PostgreSQL) for metrics history  
 
 ## Project Structure
 
@@ -47,26 +48,32 @@ evaluation-system/
 │   ├── DESIGN.md                 # Architecture & methodology
 │   ├── METRICS.md                # All metrics with interpretation
 │   ├── FAILURE_MODES.md          # 7 failure modes explained
-│   └── PROMPTING_STRATEGIES.md   # 5 strategies compared
+│   ├── PROMPTING_STRATEGIES.md   # 6 strategies compared
+│   └── USER_GUIDE.md             # Comprehensive user guide
 ├── data/
 │   ├── test_cases/
 │   │   ├── ground_truth.json     # 80 training cases
 │   │   └── regression.json       # 20 held-out cases
-│   └── results/                  # Timestamped evaluation runs
+│   ├── results/                  # Timestamped evaluation runs
+│   ├── daily_runs/               # Orchestrator-generated results
+│   └── metrics.db                # SQLite metrics database
 ├── prompts/
 │   ├── v1_zero_shot.txt          # Baseline
 │   ├── v2_few_shot.txt           # With examples
 │   ├── v3_chain_of_thought.txt   # Step-by-step reasoning
 │   ├── v4_rubric_based.txt       # Explicit criteria
 │   ├── v5_structured_output.txt  # JSON format
+│   ├── v6_calibrated_confidence.txt  # Calibrated confidence (recommended)
 │   └── prompt_registry.json      # Version tracking
 ├── src/
 │   ├── metrics.py                # All metric calculations
 │   ├── evaluator.py              # LLM evaluation engine
+│   ├── database.py               # Database abstraction (SQLite/PostgreSQL)
+│   ├── orchestrator.py           # Daily evaluation runner
 │   ├── ab_testing.py             # A/B test framework
 │   ├── monitoring.py             # Drift detection
 │   ├── regression.py             # Regression testing
-│   └── dashboard.py              # Streamlit visualization
+│   └── dashboard_v2.py           # Streamlit dashboard (primary)
 ├── tests/
 │   └── test_metrics.py           # Unit tests
 ├── config/
@@ -147,28 +154,18 @@ evaluator.save_results(results, run_name="v1_baseline")
 
 ```bash
 # Using Python module (recommended)
-python -m streamlit run src/dashboard.py
-
-# Or with full Python path
-C:\Users\rasar\AppData\Local\Python\pythoncore-3.14-64\python.exe -m streamlit run src/dashboard.py
+python -m streamlit run src/dashboard_v2.py
 ```
 
 Navigate to `http://localhost:8501`
 
-### Optional: Set Up PowerShell Aliases (Recommended)
-
-To make commands shorter and easier to remember:
-
-```powershell
-# Run this in PowerShell (in the project directory):
-. .\profile.ps1
-
-# Now you can use:
-python -m streamlit run src/dashboard.py  # Shorter: just "python"
-Start-Dashboard                            # Dashboard shortcut
-Run-Tests                                  # Test shortcut
-Evaluate-Baseline                          # Evaluation helper
-```
+The dashboard includes:
+- **Getting Started**: Workflow explanation and quick start
+- **Failure Modes**: Detailed explanations of FM1-FM7
+- **Metrics Overview**: Current performance metrics
+- **Slice Analysis**: Performance breakdown by failure mode, difficulty, label
+- **Trends**: Historical metrics over time
+- **Run Evaluation**: Execute new evaluation runs
 
 ## Evaluation Workflow
 
@@ -179,6 +176,7 @@ Evaluate-Baseline                          # Evaluation helper
 3. **Chain-of-thought** (v3): Add reasoning if few-shot insufficient
 4. **Rubric-based** (v4): Explicit criteria
 5. **Structured Output** (v5): JSON parsing
+6. **Calibrated Confidence** (v6): Best correlation metrics (recommended for production)
 
 ### Phase 2: A/B Testing
 
@@ -286,6 +284,9 @@ See [docs/FAILURE_MODES.md](docs/FAILURE_MODES.md) for detailed analysis.
 | V3: Chain-of-thought | 1.8x | 0.75 | Complex reasoning |
 | V4: Rubric-based | 1.6x | 0.75 | Domain-specific |
 | V5: Structured | 2.0x | 0.80 | Production systems |
+| V6: Calibrated confidence | 1.5x | 0.78 | Best correlation metrics |
+
+**Recommended**: V6 for production use - provides best calibration and correlation metrics.
 
 See [docs/PROMPTING_STRATEGIES.md](docs/PROMPTING_STRATEGIES.md) for pros/cons.
 
@@ -305,9 +306,11 @@ See [docs/PROMPTING_STRATEGIES.md](docs/PROMPTING_STRATEGIES.md) for pros/cons.
 ## Documentation
 
 - [DESIGN.md](docs/DESIGN.md) - Complete evaluation methodology
-- [METRICS.md](docs/METRICS.md) - Every metric explained
-- [FAILURE_MODES.md](docs/FAILURE_MODES.md) - Test case catalog
-- [PROMPTING_STRATEGIES.md](docs/PROMPTING_STRATEGIES.md) - Strategy comparison
+- [METRICS.md](docs/METRICS.md) - Every metric explained with interpretation scales
+- [FAILURE_MODES.md](docs/FAILURE_MODES.md) - 7 failure modes catalog
+- [PROMPTING_STRATEGIES.md](docs/PROMPTING_STRATEGIES.md) - 6 strategies compared
+- [SLICE_ANALYSIS.md](docs/SLICE_ANALYSIS.md) - Performance breakdown by data slices
+- [USER_GUIDE.md](docs/USER_GUIDE.md) - Comprehensive user guide and tutorials
 
 ## Running Tests
 

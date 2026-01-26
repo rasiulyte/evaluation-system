@@ -280,17 +280,69 @@ Respond with ONLY valid JSON, no other text.
 
 ---
 
+## V6: Calibrated Confidence
+
+**Description**: Structured JSON output with explicit confidence calibration guidelines.
+
+**Hypothesis**: Explicit confidence-to-probability mapping improves correlation metrics (Spearman, Pearson, Kendall's Tau) by teaching the model what confidence values mean.
+
+**When to Use**:
+- When correlation metrics (Spearman) are critical
+- When confidence scores need to be well-calibrated
+- For production systems requiring reliable uncertainty quantification
+
+**Pros**:
+- Dramatically improves correlation metrics (Spearman improved from ~0.26 to ~0.84 in testing)
+- Better calibrated confidence scores
+- Simple, concise prompt
+- JSON output for easy parsing
+
+**Cons**:
+- Requires model to understand calibration guidelines
+- May not improve classification metrics (F1, accuracy)
+- Less explainability than rubric-based
+
+**Example Prompt Structure**:
+```
+You are an AI trained to detect hallucinations in LLM responses.
+
+Context: {context}
+
+Response to analyze: {response}
+
+Analyze whether this response is grounded in the provided context or contains hallucinations.
+
+IMPORTANT - Confidence Calibration Guidelines:
+- confidence 0.95-1.0: Response directly quotes or paraphrases the context with no additions
+- confidence 0.80-0.94: Response is clearly supported by context with minor inference
+- confidence 0.60-0.79: Response requires moderate inference from context
+- confidence 0.40-0.59: Uncertain - evidence is ambiguous
+- confidence 0.20-0.39: Response likely adds information not in context
+- confidence 0.00-0.19: Response clearly contradicts or fabricates beyond context
+
+Respond with ONLY valid JSON:
+{"classification": "grounded", "confidence": 0.85, "reasoning": "Brief explanation"}
+```
+
+**Expected Performance**:
+- F1: Similar to V5 (~0.75-0.80)
+- Spearman correlation: 0.80+ (significant improvement)
+- Best for calibration-critical applications
+
+---
+
 ## Comparative Summary
 
-| Dimension | V1 | V2 | V3 | V4 | V5 |
-|-----------|----|----|----|----|-----|
-| Expected F1 | 0.55 | 0.70 | 0.75 | 0.75 | 0.80 |
-| Token Cost | 1x | 1.3x | 1.8x | 1.6x | 2.0x |
-| Format Consistency | Low | Medium | High | High | Very High |
-| Explainability | Low | Medium | High | Very High | High |
-| Speed | Fastest | Fast | Medium | Medium | Slow |
-| Production Ready | No | Partial | Yes | Yes | Yes |
-| Best For | Baseline | Quick eval | Complex cases | Domain-specific | Production |
+| Dimension | V1 | V2 | V3 | V4 | V5 | V6 |
+|-----------|----|----|----|----|-----|-----|
+| Expected F1 | 0.55 | 0.70 | 0.75 | 0.75 | 0.80 | 0.78 |
+| Token Cost | 1x | 1.3x | 1.8x | 1.6x | 2.0x | 1.5x |
+| Format Consistency | Low | Medium | High | High | Very High | Very High |
+| Explainability | Low | Medium | High | Very High | High | Medium |
+| Correlation (Spearman) | N/A | N/A | N/A | N/A | ~0.50 | ~0.84 |
+| Speed | Fastest | Fast | Medium | Medium | Slow | Fast |
+| Production Ready | No | Partial | Yes | Yes | Yes | Yes |
+| Best For | Baseline | Quick eval | Complex cases | Domain-specific | Production | Calibration |
 
 ---
 
@@ -300,7 +352,8 @@ Respond with ONLY valid JSON, no other text.
 2. **If F1 < 0.65**: Move to V2 (add examples)
 3. **If F1 < 0.75**: Move to V3 (add reasoning) or V4 (add rubric)
 4. **If still < 0.75**: Revisit test cases (may be flawed)
-5. **For Production**: Use V5 with confidence threshold tuning on regression set
+5. **For Production**: Use V5 or V6 with confidence threshold tuning on regression set
+6. **If correlation metrics matter**: Use V6 (calibrated confidence) for best Spearman/Pearson scores
 
 ---
 

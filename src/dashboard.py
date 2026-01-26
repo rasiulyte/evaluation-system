@@ -1,4 +1,13 @@
 """
+DEPRECATED: This is the legacy dashboard. Use dashboard_v2.py instead.
+
+To run the current dashboard:
+    python -m streamlit run src/dashboard_v2.py
+
+This file is kept for reference only.
+
+---
+Original description:
 Dashboard: Streamlit dashboard for visualization and monitoring.
 
 Displays:

@@ -1,3 +1,13 @@
+"""
+DEPRECATED: This is a minimal evaluation runner UI.
+Use dashboard_v2.py instead, which includes evaluation functionality.
+
+To run the current dashboard:
+    python -m streamlit run src/dashboard_v2.py
+
+This file is kept for reference only.
+"""
+
 import streamlit as st
 from src.evaluator import Evaluator
 from src.metrics import MetricsCalculator
@@ -5,7 +15,8 @@ import os
 import datetime
 
 # --- UI ---
-st.title("LLM Hallucination Evaluation Runner")
+st.warning("This UI is deprecated. Please use dashboard_v2.py instead.")
+st.title("LLM Hallucination Evaluation Runner (Legacy)")
 
 # Discover available prompts from the prompts/ folder
 def get_prompt_choices():

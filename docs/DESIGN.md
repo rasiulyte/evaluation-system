@@ -80,13 +80,14 @@ See [METRICS.md](METRICS.md) for comprehensive metric definitions and interpreta
 
 ## Prompting Strategies
 
-Five progressively sophisticated approaches:
+Six progressively sophisticated approaches:
 
-1. **Zero-shot**: Minimal context, baseline performance
-2. **Few-shot**: 3-5 labeled examples including edge cases
-3. **Chain-of-Thought**: Step-by-step reasoning required
-4. **Rubric-based**: Explicit evaluation criteria provided
-5. **Structured Output**: JSON format for easier parsing
+1. **Zero-shot (V1)**: Minimal context, baseline performance
+2. **Few-shot (V2)**: 3-5 labeled examples including edge cases
+3. **Chain-of-Thought (V3)**: Step-by-step reasoning required
+4. **Rubric-based (V4)**: Explicit evaluation criteria provided
+5. **Structured Output (V5)**: JSON format for easier parsing
+6. **Calibrated Confidence (V6)**: Explicit confidence calibration for better correlation metrics
 
 See [PROMPTING_STRATEGIES.md](PROMPTING_STRATEGIES.md) for details.
 
@@ -95,21 +96,21 @@ See [PROMPTING_STRATEGIES.md](PROMPTING_STRATEGIES.md) for details.
 ```
 Test Cases (ground truth)
     ↓
-Prompt Registry (versions to evaluate)
+Prompt Registry (v1-v6)
+    ↓
+Orchestrator (daily evaluation runner)
     ↓
 Evaluator (calls LLM with prompt on each test case)
     ↓
 Results (predictions + metadata)
     ↓
-Metrics (accuracy, F1, TNR, consistency, etc.)
+Database (SQLite/PostgreSQL)
     ↓
-A/B Testing (compare prompts, select best)
++---+---+---+---+
+|   |   |   |   |
+Metrics  A/B Testing  Regression  Monitoring
     ↓
-Regression Testing (validate on held-out set)
-    ↓
-Monitoring (drift detection on production metrics)
-    ↓
-Dashboard (visualization + alerts)
+Dashboard (visualization + slice analysis + alerts)
 ```
 
 ## Known Limitations

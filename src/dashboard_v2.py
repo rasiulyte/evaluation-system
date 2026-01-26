@@ -501,36 +501,36 @@ def apply_brand_css():
         color: {COLORS['teal']} !important;
     }}
 
-    /* ===== SIDEBAR NAVIGATION ===== */
+    /* ===== SIDEBAR NAVIGATION - Link Style with Teal Circle Indicator ===== */
 
-    /* Navigation buttons - styled as text links */
-    [data-testid="stSidebar"] .stButton:not(:first-of-type) {{
-        margin: 0 !important;
-        padding: 0 !important;
-    }}
-
+    /* Navigation buttons as links - default (inactive) state */
     [data-testid="stSidebar"] .stButton:not(:first-of-type) > button {{
-        background-color: transparent !important;
-        color: {COLORS['teal']} !important;
+        background: transparent !important;
         border: none !important;
-        border-radius: 0 !important;
-        padding: 0.25rem 0 0.25rem 0.5rem !important;
-        margin: 0 !important;
-        min-height: 0 !important;
-        height: auto !important;
-        font-size: 0.85rem !important;
+        color: {COLORS['charcoal']} !important;
+        font-size: 0.9rem !important;
         font-weight: 400 !important;
+        padding: 4px 8px !important;
+        margin: 0 !important;
         text-align: left !important;
         justify-content: flex-start !important;
-        transition: all 0.1s ease !important;
+        min-height: 0 !important;
+        height: auto !important;
         cursor: pointer !important;
-        text-decoration: none !important;
+    }}
+
+    /* Active page (primary button) - teal colored */
+    [data-testid="stSidebar"] .stButton:not(:first-of-type) > button[kind="primary"],
+    [data-testid="stSidebar"] .stButton:not(:first-of-type) > button[data-testid="stBaseButton-primary"] {{
+        background: transparent !important;
+        border: none !important;
+        color: {COLORS['teal']} !important;
+        font-weight: 500 !important;
     }}
 
     [data-testid="stSidebar"] .stButton:not(:first-of-type) > button:hover {{
-        background-color: transparent !important;
-        color: {COLORS['navy']} !important;
-        text-decoration: underline !important;
+        background: transparent !important;
+        color: {COLORS['teal']} !important;
     }}
 
     [data-testid="stSidebar"] .stButton:not(:first-of-type) > button:focus {{
@@ -541,6 +541,26 @@ def apply_brand_css():
     [data-testid="stSidebar"] .stButton:not(:first-of-type) > button p {{
         margin: 0 !important;
         line-height: 1.4 !important;
+    }}
+
+    /* Section headers */
+    .nav-section-header {{
+        font-size: 0.7rem !important;
+        font-weight: 600 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+        color: {COLORS['medium_gray']} !important;
+        margin: 16px 0 6px 0 !important;
+        padding: 0 !important;
+    }}
+
+    /* Bottom metadata area */
+    .nav-metadata {{
+        border-top: 1px solid #e5e7eb !important;
+        padding-top: 16px !important;
+        margin-top: 24px !important;
+        font-size: 13px !important;
+        color: #6b7280 !important;
     }}
 
     /* ===== DATAFRAMES ===== */
@@ -4127,19 +4147,21 @@ def main():
 
         st.markdown("---")
 
-        # Grouped Navigation
-        # Define page groups
+        # Grouped Navigation with colorful icons
         nav_groups = {
             "LEARN": {
-                "icon": "📚",
+                "icon": "◇",
+                "color": "#8b5cf6",  # Purple
                 "pages": ["Getting Started", "Failure Modes", "Prompt Lab", "Understanding Metrics"]
             },
             "ANALYZE": {
-                "icon": "📊",
+                "icon": "◈",
+                "color": "#f59e0b",  # Amber
                 "pages": ["Metrics Overview", "Slice Analysis", "Trends", "Compare Runs", "Run History", "Test Cases"]
             },
             "RUN": {
-                "icon": "▶️",
+                "icon": "▷",
+                "color": "#10b981",  # Green
                 "pages": ["Run Evaluation"]
             }
         }
@@ -4149,40 +4171,45 @@ def main():
         for group_data in nav_groups.values():
             all_pages.extend(group_data["pages"])
 
-        # Render grouped navigation
+        # Render grouped navigation with colored icons and teal circles
         for group_name, group_data in nav_groups.items():
-            st.markdown(f"""
-            <div style="font-size: 0.7rem; font-weight: 600; color: {COLORS['medium_gray']};
-                        letter-spacing: 0.05rem; margin: 0.75rem 0 0.4rem 0;">
-                {group_data['icon']} {group_name}
+            icon = group_data["icon"]
+            color = group_data["color"]
+            st.markdown(f'''
+            <div class="nav-section-header">
+                <span style="color: {color}; font-size: 0.9rem; margin-right: 4px;">{icon}</span>{group_name}
             </div>
-            """, unsafe_allow_html=True)
+            ''', unsafe_allow_html=True)
 
             for page_name in group_data["pages"]:
-                # Add visual indicator for active page
                 is_active = st.session_state.current_page == page_name
-                display_name = f"● {page_name}" if is_active else page_name
+                indicator = "●" if is_active else "○"
 
-                # Create clickable page link
+                # Use primary type for active to enable CSS styling
+                btn_type = "primary" if is_active else "secondary"
                 if st.button(
-                    display_name,
+                    f"{indicator} {page_name}",
                     key=f"nav_{page_name}",
                     use_container_width=True,
+                    type=btn_type,
                 ):
                     st.session_state.current_page = page_name
                     st.rerun()
 
         page = st.session_state.current_page
 
-        st.markdown("---")
+        # Bottom metadata area
+        st.markdown('<div class="nav-metadata">', unsafe_allow_html=True)
 
-        # Quick stats
         if not df.empty:
             total_runs = df["run_id"].nunique()
-            st.caption(f"**{total_runs}** evaluation runs")
-
             latest_run = df.sort_values("timestamp", ascending=False).iloc[0]
-            st.caption(f"Latest: {latest_run['timestamp'][:10]}")
+            st.markdown(f"""
+            <div style="font-size: 13px; color: #6b7280; line-height: 1.6;">
+                <div><strong>{total_runs}</strong> evaluation runs</div>
+                <div style="margin-top: 4px;">Latest: {latest_run['timestamp'][:10]}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
         # Database info (collapsed)
         with st.expander("System", expanded=False):
@@ -4193,6 +4220,8 @@ def main():
                 st.caption(f"Test Results: {debug.get('test_results_count', 0)}")
             except Exception as e:
                 st.caption(f"Error: {e}")
+
+        st.markdown('</div>', unsafe_allow_html=True)
 
     # Route to pages
     if page == "Getting Started":

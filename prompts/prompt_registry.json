@@ -89,9 +89,29 @@
         "kappa": null,
         "variance": null
       }
+    },
+    {
+      "id": "v6_calibrated_confidence",
+      "file": "v6_calibrated_confidence.txt",
+      "created": "2026-01-26",
+      "description": "Calibrated confidence scoring with explicit guidelines for confidence values",
+      "hypothesis": "Explicit confidence calibration guidelines improve correlation metrics (Spearman, Pearson) by teaching the model to map confidence to correctness probability",
+      "status": "active",
+      "results": {
+        "accuracy": null,
+        "f1": null,
+        "precision": null,
+        "recall": null,
+        "tnr": null,
+        "bias": null,
+        "kappa": null,
+        "variance": null,
+        "spearman": null,
+        "pearson": null
+      }
     }
   ],
-  "current_production": "v1_zero_shot",
+  "current_production": "v6_calibrated_confidence",
   "ab_tests": [
     {
       "test_id": "ab_test_001",
@@ -105,6 +125,6 @@
       "metrics": null
     }
   ],
-  "version": "1.0",
-  "last_updated": "2026-01-20"
+  "version": "1.1",
+  "last_updated": "2026-01-26"
 }

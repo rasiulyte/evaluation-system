@@ -514,13 +514,15 @@ The system tests against 7 types of hallucination failure modes:
 
 | Code | Failure Mode | Description | Example |
 |------|--------------|-------------|---------|
-| FM1 | Fabricated Facts | Inventing statistics or facts | "Studies show 73% of..." (no such study) |
-| FM2 | Entity Confusion | Mixing up names, dates, places | Attributing a quote to wrong person |
-| FM3 | Temporal Errors | Wrong dates or time sequences | "Founded in 1985" when it was 1995 |
-| FM4 | Causal Hallucination | Inventing cause-effect relationships | "This caused that" without evidence |
-| FM5 | Overconfidence | Stating uncertainty as certainty | "Definitely" when context says "possibly" |
-| FM6 | Context Ignorance | Contradicting provided context | Saying opposite of what context states |
-| FM7 | False Attribution | Misattributing sources or quotes | "According to X..." when X never said it |
+| FM1 | Factual Addition | True facts not present in context | Adding "built in 1889" when context only says "in Paris" |
+| FM2 | Fabrication | Completely false claims | "Python was invented in 1923 by Thomas Watson" |
+| FM3 | Subtle Distortion | Small changes to facts | Changing "20% of users" to "80% of users" |
+| FM4 | Valid Inference | Logical conclusions from context | "Dogs breathe air" from "All mammals breathe air. Dogs are mammals." |
+| FM5 | Verbatim Grounded | Direct quotes or close paraphrases | Repeating exactly what context states |
+| FM6 | Fluent Hallucination | Well-written but factually false | Confident, eloquent statements that are wrong |
+| FM7 | Partial Grounding | Mix of grounded and hallucinated claims | First sentence true, second sentence false |
+
+See [FAILURE_MODES.md](FAILURE_MODES.md) for detailed analysis and test strategies.
 
 ---
 
