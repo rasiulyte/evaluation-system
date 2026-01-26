@@ -1,301 +1,513 @@
+"""
+LLM Evaluation Dashboard - rasar.ai
+A thoughtful, minimal dashboard for AI evaluation metrics.
+
+Design Philosophy: Intellectual, understated, quietly confident.
+Technical depth without pretension. Quality over flash.
+"""
+
 import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
+import plotly.express as px
 import json
-import glob
 from pathlib import Path
 
-# Import database abstraction (supports SQLite and PostgreSQL)
+# Import database abstraction
 import sys
 sys.path.insert(0, "src")
 from database import db
 
 
 # ============================================
-# CUSTOM STYLING - Modern Dark Theme
+# BRAND COLORS - rasar.ai palette
 # ============================================
 
-def apply_custom_css():
-    """Apply custom CSS for a modern, professional look."""
-    st.markdown("""
+COLORS = {
+    # Primary
+    "navy": "#2c3e50",           # Main text, headers
+    "charcoal": "#4a4a4a",       # Body text
+    "white": "#f8f9fa",          # Background
+
+    # Accent
+    "teal": "#5a9a9c",           # Links, highlights
+    "amber": "#c89f6f",          # CTAs, attention
+
+    # Neutrals
+    "light_gray": "#e8e8e8",     # Borders, dividers
+    "medium_gray": "#8c8c8c",    # Secondary text
+
+    # Status (muted versions)
+    "good": "#5a9a9c",           # Teal - meets threshold
+    "warning": "#c89f6f",        # Amber - needs attention
+    "poor": "#a65d57",           # Muted red - below threshold
+}
+
+
+# ============================================
+# CUSTOM CSS - Minimal, Clean, Professional
+# ============================================
+
+def apply_brand_css():
+    """Apply rasar.ai brand styling - intellectual, understated, confident."""
+    st.markdown(f"""
     <style>
-    /* Main color palette - Modern dark theme with accent colors */
-    :root {
-        --primary-color: #6366f1;      /* Indigo accent */
-        --secondary-color: #8b5cf6;    /* Purple accent */
-        --success-color: #10b981;      /* Green */
-        --warning-color: #f59e0b;      /* Amber */
-        --error-color: #ef4444;        /* Red */
-        --background-dark: #0f172a;    /* Dark blue-gray */
-        --card-bg: #1e293b;            /* Slightly lighter */
-        --text-primary: #f1f5f9;       /* Light text */
-        --text-secondary: #94a3b8;     /* Muted text */
-    }
+    /* ===== GLOBAL RESET & BASE ===== */
 
     /* Hide Streamlit branding */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
+    #MainMenu {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
+    header {{visibility: hidden;}}
 
-    /* Custom header styling */
-    .main-header {
-        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-        padding: 1.5rem 2rem;
-        border-radius: 12px;
-        margin-bottom: 2rem;
-        color: white;
-    }
+    /* Base typography */
+    html, body, [class*="css"] {{
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        color: {COLORS['charcoal']};
+    }}
 
-    .main-header h1 {
-        margin: 0;
-        font-size: 1.8rem;
-        font-weight: 600;
-    }
+    /* Main container - generous white space */
+    .main .block-container {{
+        padding: 2rem 3rem 3rem 3rem;
+        max-width: 1200px;
+        background-color: {COLORS['white']};
+    }}
 
-    .main-header p {
-        margin: 0.5rem 0 0 0;
-        opacity: 0.9;
-        font-size: 0.95rem;
-    }
+    /* ===== SIDEBAR ===== */
 
-    /* Metric cards */
-    .metric-card {
-        background: linear-gradient(145deg, #1e293b, #334155);
-        border-radius: 12px;
-        padding: 1.5rem;
-        border: 1px solid #334155;
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
+    [data-testid="stSidebar"] {{
+        background-color: {COLORS['white']};
+        border-right: 1px solid {COLORS['light_gray']};
+    }}
 
-    .metric-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(99, 102, 241, 0.15);
-    }
+    [data-testid="stSidebar"] [data-testid="stMarkdown"] {{
+        color: {COLORS['charcoal']};
+    }}
 
-    /* Status badges */
-    .status-healthy {
-        background: linear-gradient(135deg, #10b981, #059669);
-        color: white;
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        font-size: 0.8rem;
+    /* ===== TYPOGRAPHY ===== */
+
+    h1, h2, h3 {{
+        color: {COLORS['navy']} !important;
         font-weight: 500;
-    }
+        letter-spacing: -0.02em;
+    }}
 
-    .status-warning {
-        background: linear-gradient(135deg, #f59e0b, #d97706);
-        color: white;
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: 500;
-    }
+    h1 {{
+        font-size: 1.75rem !important;
+        margin-bottom: 0.5rem !important;
+    }}
 
-    .status-critical {
-        background: linear-gradient(135deg, #ef4444, #dc2626);
-        color: white;
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: 500;
-    }
+    h2 {{
+        font-size: 1.25rem !important;
+        margin-top: 2rem !important;
+        margin-bottom: 1rem !important;
+    }}
 
-    /* Sidebar styling */
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
-    }
+    h3 {{
+        font-size: 1rem !important;
+        color: {COLORS['charcoal']} !important;
+    }}
 
-    [data-testid="stSidebar"] .stRadio > label {
-        color: #f1f5f9;
-    }
+    p, li {{
+        color: {COLORS['charcoal']};
+        line-height: 1.6;
+    }}
 
-    /* Navigation pills */
-    .nav-link {
-        display: block;
-        padding: 0.75rem 1rem;
-        margin: 0.25rem 0;
+    /* ===== METRIC CARDS ===== */
+
+    .metric-card {{
+        background: white;
+        border: 1px solid {COLORS['light_gray']};
         border-radius: 8px;
-        color: #94a3b8;
-        text-decoration: none;
-        transition: all 0.2s;
-    }
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        transition: box-shadow 0.2s ease;
+    }}
 
-    .nav-link:hover {
-        background: rgba(99, 102, 241, 0.1);
-        color: #f1f5f9;
-    }
+    .metric-card:hover {{
+        box-shadow: 0 2px 8px rgba(44, 62, 80, 0.08);
+    }}
 
-    .nav-link.active {
-        background: linear-gradient(135deg, #6366f1, #8b5cf6);
-        color: white;
-    }
+    .metric-label {{
+        font-size: 0.8rem;
+        color: {COLORS['medium_gray']};
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
+    }}
 
-    /* Expander styling */
-    .streamlit-expanderHeader {
+    .metric-value {{
+        font-size: 2rem;
+        font-weight: 600;
+        color: {COLORS['navy']};
+        font-family: 'JetBrains Mono', 'SF Mono', monospace;
+        margin-bottom: 0.5rem;
+    }}
+
+    .metric-interpretation {{
+        font-size: 0.875rem;
+        color: {COLORS['charcoal']};
+        line-height: 1.5;
+    }}
+
+    .metric-context {{
+        font-size: 0.8rem;
+        color: {COLORS['medium_gray']};
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid {COLORS['light_gray']};
+    }}
+
+    /* Status indicators - subtle, not flashy */
+    .status-good {{
+        border-left: 3px solid {COLORS['good']};
+    }}
+
+    .status-warning {{
+        border-left: 3px solid {COLORS['amber']};
+    }}
+
+    .status-poor {{
+        border-left: 3px solid {COLORS['poor']};
+    }}
+
+    /* Status badge - minimal */
+    .status-badge {{
+        display: inline-block;
+        font-size: 0.7rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 3px;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
         font-weight: 500;
-        color: #f1f5f9;
-    }
+    }}
 
-    /* Button styling */
-    .stButton > button {
-        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    .badge-good {{
+        background: rgba(90, 154, 156, 0.1);
+        color: {COLORS['good']};
+    }}
+
+    .badge-warning {{
+        background: rgba(200, 159, 111, 0.15);
+        color: {COLORS['amber']};
+    }}
+
+    .badge-poor {{
+        background: rgba(166, 93, 87, 0.1);
+        color: {COLORS['poor']};
+    }}
+
+    /* ===== SECTION HEADERS ===== */
+
+    .section-header {{
+        color: {COLORS['navy']};
+        font-size: 1.1rem;
+        font-weight: 500;
+        margin: 2.5rem 0 1.25rem 0;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid {COLORS['light_gray']};
+    }}
+
+    .section-subtitle {{
+        font-size: 0.875rem;
+        color: {COLORS['medium_gray']};
+        margin-top: -0.75rem;
+        margin-bottom: 1.5rem;
+    }}
+
+    /* ===== PAGE HEADER ===== */
+
+    .page-header {{
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid {COLORS['light_gray']};
+    }}
+
+    .page-title {{
+        font-size: 1.5rem;
+        font-weight: 500;
+        color: {COLORS['navy']};
+        margin: 0;
+    }}
+
+    .page-subtitle {{
+        font-size: 0.9rem;
+        color: {COLORS['medium_gray']};
+        margin-top: 0.5rem;
+    }}
+
+    /* ===== BUTTONS ===== */
+
+    .stButton > button {{
+        background-color: {COLORS['navy']};
         color: white;
         border: none;
-        border-radius: 8px;
-        padding: 0.5rem 1.5rem;
+        border-radius: 6px;
+        padding: 0.5rem 1.25rem;
         font-weight: 500;
-        transition: all 0.2s;
-    }
+        transition: background-color 0.2s ease;
+    }}
 
-    .stButton > button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
-    }
+    .stButton > button:hover {{
+        background-color: #3d5266;
+    }}
 
-    /* Primary button variant */
-    .stButton > button[kind="primary"] {
-        background: linear-gradient(135deg, #10b981, #059669);
-    }
+    /* Secondary button style */
+    .stButton > button[kind="secondary"] {{
+        background-color: white;
+        color: {COLORS['navy']};
+        border: 1px solid {COLORS['light_gray']};
+    }}
 
-    /* Data tables */
-    .stDataFrame {
+    /* ===== DATAFRAMES ===== */
+
+    .stDataFrame {{
+        border: 1px solid {COLORS['light_gray']};
         border-radius: 8px;
-        overflow: hidden;
-    }
+    }}
 
-    /* Info/warning/error boxes */
-    .stAlert {
-        border-radius: 8px;
-        border-left-width: 4px;
-    }
+    /* ===== EXPANDERS ===== */
 
-    /* Section headers */
-    .section-header {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        margin: 2rem 0 1rem 0;
-        padding-bottom: 0.5rem;
-        border-bottom: 2px solid #334155;
-    }
+    .streamlit-expanderHeader {{
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: {COLORS['charcoal']};
+        background-color: transparent;
+    }}
 
-    .section-header h2 {
-        margin: 0;
-        font-size: 1.3rem;
-        font-weight: 600;
-        color: #f1f5f9;
-    }
+    /* ===== DIVIDERS ===== */
 
-    /* Quick stats row */
-    .stats-row {
-        display: flex;
-        gap: 1rem;
-        margin: 1rem 0;
-    }
+    hr {{
+        border: none;
+        border-top: 1px solid {COLORS['light_gray']};
+        margin: 2rem 0;
+    }}
 
-    .stat-item {
-        flex: 1;
-        background: #1e293b;
-        border-radius: 10px;
-        padding: 1rem;
-        text-align: center;
-        border: 1px solid #334155;
-    }
+    /* ===== ALERTS - Understated ===== */
 
-    .stat-value {
-        font-size: 2rem;
-        font-weight: 700;
-        color: #6366f1;
-    }
+    .stAlert {{
+        border-radius: 6px;
+        border-left-width: 3px;
+    }}
 
-    .stat-label {
-        font-size: 0.85rem;
-        color: #94a3b8;
-        margin-top: 0.25rem;
-    }
+    /* ===== TABS ===== */
 
-    /* Plotly chart container */
-    .js-plotly-plot {
-        border-radius: 12px;
-    }
+    .stTabs [data-baseweb="tab-list"] {{
+        gap: 2rem;
+        border-bottom: 1px solid {COLORS['light_gray']};
+    }}
 
-    /* Footer branding */
-    .footer-brand {
-        text-align: center;
-        padding: 2rem;
-        margin-top: 3rem;
-        border-top: 1px solid #334155;
-        color: #64748b;
-        font-size: 0.85rem;
-    }
+    .stTabs [data-baseweb="tab"] {{
+        color: {COLORS['medium_gray']};
+        font-weight: 500;
+        padding: 0.75rem 0;
+    }}
 
-    .footer-brand a {
-        color: #6366f1;
+    .stTabs [aria-selected="true"] {{
+        color: {COLORS['navy']};
+        border-bottom-color: {COLORS['teal']};
+    }}
+
+    /* ===== SELECTBOX ===== */
+
+    .stSelectbox label {{
+        color: {COLORS['charcoal']};
+        font-size: 0.875rem;
+    }}
+
+    /* ===== LINKS ===== */
+
+    a {{
+        color: {COLORS['teal']};
         text-decoration: none;
-    }
+    }}
 
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-        .main-header {
-            padding: 1rem;
-        }
-        .main-header h1 {
-            font-size: 1.4rem;
-        }
-        .stats-row {
-            flex-direction: column;
-        }
-    }
+    a:hover {{
+        text-decoration: underline;
+    }}
+
+    /* ===== FOOTER ===== */
+
+    .footer {{
+        margin-top: 4rem;
+        padding-top: 2rem;
+        border-top: 1px solid {COLORS['light_gray']};
+        text-align: center;
+        color: {COLORS['medium_gray']};
+        font-size: 0.8rem;
+    }}
+
+    .footer a {{
+        color: {COLORS['teal']};
+    }}
+
+    /* ===== RESPONSIVE ===== */
+
+    @media (max-width: 768px) {{
+        .main .block-container {{
+            padding: 1rem 1.5rem;
+        }}
+
+        .metric-value {{
+            font-size: 1.5rem;
+        }}
+    }}
     </style>
     """, unsafe_allow_html=True)
 
 
-def render_header(title: str, subtitle: str = None):
-    """Render a styled header."""
-    subtitle_html = f"<p>{subtitle}</p>" if subtitle else ""
+# ============================================
+# COMPONENT HELPERS
+# ============================================
+
+def render_page_header(title: str, subtitle: str = None):
+    """Render a clean page header."""
+    subtitle_html = f'<p class="page-subtitle">{subtitle}</p>' if subtitle else ""
     st.markdown(f"""
-    <div class="main-header">
-        <h1>{title}</h1>
+    <div class="page-header">
+        <h1 class="page-title">{title}</h1>
         {subtitle_html}
     </div>
     """, unsafe_allow_html=True)
 
 
-def render_status_badge(status: str) -> str:
-    """Return HTML for a status badge."""
-    status_lower = status.lower()
-    if status_lower == "healthy":
-        return '<span class="status-healthy">Healthy</span>'
-    elif status_lower == "warning":
-        return '<span class="status-warning">Warning</span>'
+def render_section_header(title: str, subtitle: str = None):
+    """Render a section header with optional subtitle."""
+    st.markdown(f'<h2 class="section-header">{title}</h2>', unsafe_allow_html=True)
+    if subtitle:
+        st.markdown(f'<p class="section-subtitle">{subtitle}</p>', unsafe_allow_html=True)
+
+
+def get_status_class(value: float, thresholds: dict) -> tuple:
+    """
+    Determine status based on value and thresholds.
+    Returns (css_class, badge_class, status_text)
+    """
+    good_min = thresholds.get("good_min")
+    warning_min = thresholds.get("warning_min")
+    higher_is_better = thresholds.get("higher_is_better", True)
+
+    if higher_is_better:
+        if good_min and value >= good_min:
+            return "status-good", "badge-good", "Good"
+        elif warning_min and value >= warning_min:
+            return "status-warning", "badge-warning", "Fair"
+        else:
+            return "status-poor", "badge-poor", "Needs Attention"
     else:
-        return '<span class="status-critical">Critical</span>'
+        # For metrics where lower is better (like bias, MAE)
+        good_max = thresholds.get("good_max", 0.15)
+        warning_max = thresholds.get("warning_max", 0.25)
+        if value <= good_max:
+            return "status-good", "badge-good", "Good"
+        elif value <= warning_max:
+            return "status-warning", "badge-warning", "Fair"
+        else:
+            return "status-poor", "badge-poor", "Needs Attention"
 
 
-def render_metric_card(label: str, value: str, delta: str = None, status: str = "healthy"):
-    """Render a styled metric card."""
-    delta_html = f"<div style='color: #94a3b8; font-size: 0.85rem;'>{delta}</div>" if delta else ""
-    badge = render_status_badge(status)
+def render_metric_card(
+    name: str,
+    value: float,
+    interpretation: str,
+    context: str,
+    thresholds: dict,
+    format_str: str = ".3f"
+):
+    """
+    Render a metric card with consistent styling.
+
+    Args:
+        name: Metric display name
+        value: Numeric value
+        interpretation: What this value means
+        context: When this metric matters
+        thresholds: Dict with good_min, warning_min, higher_is_better
+        format_str: Format string for value display
+    """
+    status_class, badge_class, status_text = get_status_class(value, thresholds)
+
+    formatted_value = f"{value:{format_str}}" if isinstance(value, (int, float)) else str(value)
+
     st.markdown(f"""
-    <div class="metric-card">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="color: #94a3b8; font-size: 0.9rem;">{label}</span>
-            {badge}
+    <div class="metric-card {status_class}">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <span class="metric-label">{name}</span>
+            <span class="status-badge {badge_class}">{status_text}</span>
         </div>
-        <div style="font-size: 2.5rem; font-weight: 700; color: #f1f5f9; margin: 0.5rem 0;">{value}</div>
-        {delta_html}
+        <div class="metric-value">{formatted_value}</div>
+        <div class="metric-interpretation">{interpretation}</div>
+        <div class="metric-context">{context}</div>
     </div>
     """, unsafe_allow_html=True)
 
 
-# Plotly theme for consistent chart styling
-PLOTLY_THEME = {
-    "template": "plotly_dark",
-    "paper_bgcolor": "rgba(30, 41, 59, 0.8)",
-    "plot_bgcolor": "rgba(30, 41, 59, 0.8)",
-    "font": {"color": "#f1f5f9", "family": "Inter, system-ui, sans-serif"},
-    "colorway": ["#6366f1", "#8b5cf6", "#10b981", "#f59e0b", "#ef4444", "#06b6d4"]
-}
+def render_simple_metric(name: str, value: str, sublabel: str = None):
+    """Render a simple metric without status indicator."""
+    sublabel_html = f'<div style="font-size: 0.8rem; color: {COLORS["medium_gray"]};">{sublabel}</div>' if sublabel else ""
+    st.markdown(f"""
+    <div class="metric-card">
+        <span class="metric-label">{name}</span>
+        <div class="metric-value">{value}</div>
+        {sublabel_html}
+    </div>
+    """, unsafe_allow_html=True)
 
+
+def apply_chart_theme(fig):
+    """Apply rasar.ai brand theme to Plotly charts - clean and minimal."""
+    fig.update_layout(
+        font=dict(
+            family="Inter, -apple-system, sans-serif",
+            color=COLORS["charcoal"],
+            size=12
+        ),
+        paper_bgcolor="white",
+        plot_bgcolor="white",
+        margin=dict(t=40, b=40, l=50, r=30),
+
+        # Subtle grid
+        xaxis=dict(
+            gridcolor=COLORS["light_gray"],
+            linecolor=COLORS["light_gray"],
+            tickcolor=COLORS["medium_gray"],
+            title_font=dict(color=COLORS["charcoal"], size=11),
+            tickfont=dict(color=COLORS["medium_gray"], size=10)
+        ),
+        yaxis=dict(
+            gridcolor=COLORS["light_gray"],
+            linecolor=COLORS["light_gray"],
+            tickcolor=COLORS["medium_gray"],
+            title_font=dict(color=COLORS["charcoal"], size=11),
+            tickfont=dict(color=COLORS["medium_gray"], size=10)
+        ),
+
+        # Clean legend
+        legend=dict(
+            bgcolor="rgba(255,255,255,0.9)",
+            bordercolor=COLORS["light_gray"],
+            borderwidth=1,
+            font=dict(size=11)
+        ),
+
+        # Use brand colors
+        colorway=[COLORS["teal"], COLORS["navy"], COLORS["amber"], COLORS["medium_gray"]]
+    )
+    return fig
+
+
+def render_footer():
+    """Render the footer."""
+    st.markdown(f"""
+    <div class="footer">
+        <p>Built for thoughtful AI evaluation</p>
+        <p><a href="https://rasar.ai" target="_blank">rasar.ai</a></p>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+# ============================================
+# DATA LOADING
+# ============================================
 
 def load_metrics() -> pd.DataFrame:
     """Load metrics from database."""
@@ -308,1481 +520,752 @@ def load_metrics() -> pd.DataFrame:
         return pd.DataFrame()
 
 
-def load_test_case_definitions() -> dict:
-    """Load full test case definitions from ground_truth.json and regression.json."""
-    test_case_defs = {}
-
-    for filepath in ["data/test_cases/ground_truth.json", "data/test_cases/regression.json"]:
-        try:
-            with open(filepath, "r") as f:
-                cases = json.load(f)
-                for case in cases:
-                    test_case_defs[case.get("id", case.get("test_case_id", ""))] = case
-        except Exception:
-            pass
-
-    return test_case_defs
-
-
-def load_daily_runs() -> pd.DataFrame:
-    """Load daily run history from database (derived from metrics)."""
+def load_test_results(scenario: str = None, run_id: str = None) -> pd.DataFrame:
+    """Load test results from database."""
     try:
-        metrics = db.get_all_metrics()
-        if not metrics:
-            return pd.DataFrame()
-        # Derive run info from metrics
-        df = pd.DataFrame(metrics)
-        runs = df.groupby('run_id').agg({
-            'timestamp': 'first',
-            'scenario': 'nunique'
-        }).reset_index()
-        runs.columns = ['run_id', 'timestamp', 'scenarios_run']
-        runs['run_date'] = runs['timestamp'].str[:10]
-        return runs.sort_values('timestamp', ascending=False)
+        results = db.get_test_results(run_id=run_id, scenario=scenario)
+        if results:
+            return pd.DataFrame(results)
+        return pd.DataFrame()
     except Exception:
         return pd.DataFrame()
 
 
-def get_metrics_comparison(run_id_1: str, run_id_2: str) -> pd.DataFrame:
-    """Compare metrics between two runs."""
-    try:
-        # Use database abstraction - returns list of dicts
-        # For now, load all metrics and filter in pandas
-        metrics = db.get_all_metrics()
-        if not metrics:
-            return pd.DataFrame()
+def get_latest_metrics(df: pd.DataFrame, scenario: str = None) -> dict:
+    """Get the most recent metrics as a dictionary."""
+    if df.empty:
+        return {}
 
-        df = pd.DataFrame(metrics)
-        m1 = df[df['run_id'] == run_id_1][['scenario', 'metric_name', 'metric_value']].copy()
-        m2 = df[df['run_id'] == run_id_2][['scenario', 'metric_name', 'metric_value']].copy()
+    if scenario:
+        df = df[df["scenario"] == scenario]
 
-        merged = m1.merge(m2, on=['scenario', 'metric_name'], suffixes=('_1', '_2'))
-        merged['run1_value'] = merged['metric_value_1']
-        merged['run2_value'] = merged['metric_value_2']
-        merged['delta'] = merged['run2_value'] - merged['run1_value']
-        merged['delta_pct'] = merged.apply(
-            lambda r: ((r['run2_value'] - r['run1_value']) / r['run1_value'] * 100) if r['run1_value'] > 0 else 0,
-            axis=1
-        )
-        return merged[['scenario', 'metric_name', 'run1_value', 'run2_value', 'delta', 'delta_pct']]
-    except Exception as e:
-        print(f"Comparison error: {e}")
-        return pd.DataFrame()
+    if df.empty:
+        return {}
 
+    # Get latest run
+    latest_run = df.sort_values("timestamp", ascending=False)["run_id"].iloc[0]
+    latest_df = df[df["run_id"] == latest_run]
 
-def get_runs_with_metrics() -> list:
-    """Get list of run_ids that have metrics data."""
-    try:
-        return db.get_run_ids()
-    except Exception:
-        return []
+    metrics = {}
+    for _, row in latest_df.iterrows():
+        metrics[row["metric_name"]] = {
+            "value": row["metric_value"],
+            "status": row.get("status", "unknown"),
+            "threshold_min": row.get("threshold_min"),
+            "threshold_max": row.get("threshold_max")
+        }
+
+    return metrics
 
 
-def render_test_case_detail(case_id: str, test_case_defs: dict, result_data: dict = None):
-    """Render a detailed view of a test case in a dialog/expander."""
+# ============================================
+# METRIC DEFINITIONS
+# ============================================
 
-    case_def = test_case_defs.get(case_id, {})
-
-    if not case_def:
-        st.warning(f"No definition found for test case: {case_id}")
-        return
-
-    # Header with status
-    label = case_def.get("label", "unknown")
-    label_color = "🔴" if label == "hallucination" else "🟢"
-
-    st.markdown(f"### {label_color} Test Case: `{case_id}`")
-
-    # Basic info
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.markdown(f"**Ground Truth:** `{label}`")
-    with col2:
-        difficulty = case_def.get("difficulty", "unknown")
-        diff_icon = {"easy": "🟢", "medium": "🟡", "hard": "🔴"}.get(difficulty, "⚪")
-        st.markdown(f"**Difficulty:** {diff_icon} {difficulty}")
-    with col3:
-        failure_mode = case_def.get("failure_mode", case_id.split("_")[0] if "_" in case_id else "unknown")
-        st.markdown(f"**Failure Mode:** `{failure_mode}`")
-
-    # Context
-    st.markdown("**📄 Context (Source Material):**")
-    context = case_def.get("context", "No context available")
-    st.text_area("Context", context, height=150, disabled=True, key=f"ctx_{case_id}")
-
-    # Response being evaluated
-    st.markdown("**💬 Response Being Evaluated:**")
-    response = case_def.get("response", "No response available")
-    st.text_area("Response", response, height=100, disabled=True, key=f"resp_{case_id}")
-
-    # Hallucination span (if present)
-    if case_def.get("hallucination_span"):
-        st.markdown("**🎯 Hallucination Span:**")
-        st.error(f'"{case_def["hallucination_span"]}"')
-
-    # Reasoning
-    if case_def.get("reasoning"):
-        st.markdown("**🧠 Why This is Labeled as Such:**")
-        st.info(case_def["reasoning"])
-
-    # If we have result data, show prediction vs ground truth
-    if result_data:
-        st.markdown("---")
-        st.markdown("**📊 Evaluation Result:**")
-
-        pred = result_data.get("prediction", "unknown")
-        correct = result_data.get("correct", False)
-        confidence = result_data.get("confidence", 0)
-
-        res_col1, res_col2, res_col3 = st.columns(3)
-        with res_col1:
-            st.metric("Prediction", pred)
-        with res_col2:
-            st.metric("Correct?", "✅ Yes" if correct else "❌ No")
-        with res_col3:
-            st.metric("Confidence", f"{confidence:.2f}" if confidence else "N/A")
-
-        # LLM output if available
-        if result_data.get("llm_output"):
-            with st.expander("🤖 Full LLM Output"):
-                st.code(result_data["llm_output"], language=None)
-
-METRIC_LABELS = {
-    "f1": "F1 Score",
-    "tnr": "TNR (Specificity)",
-    "bias": "|Bias|",
-    "accuracy": "Accuracy",
-    "precision": "Precision",
-    "recall": "Recall",
-    "cohens_kappa": "Cohen's Kappa",
-    "spearman": "Spearman Correlation",
-    "pearson": "Pearson Correlation",
-    "kendalls_tau": "Kendall's Tau",
-    "mae": "Mean Absolute Error",
-    "rmse": "Root Mean Squared Error",
-}
-
-# Educational descriptions for each metric
-METRIC_EDUCATION = {
-    "f1": {
-        "formula": "2 × (Precision × Recall) / (Precision + Recall)",
-        "intuition": "Harmonic mean of precision and recall. Punishes extreme imbalances - you can't game it by optimizing only one metric.",
-        "when_to_use": "Primary metric for most evaluations. Use when both false positives and false negatives matter equally.",
-        "target": "≥ 0.75",
-        "higher_is_better": True
-    },
-    "tnr": {
-        "formula": "TN / (TN + FP)",
-        "intuition": "Of all grounded content, how much did we correctly accept? High TNR means the model rarely cries wolf.",
-        "when_to_use": "When over-flagging disrupts workflows. Customer-facing applications where false alarms annoy users.",
-        "target": "≥ 0.65",
-        "higher_is_better": True
-    },
-    "bias": {
-        "formula": "(FP - FN) / Total",
-        "intuition": "Positive = too many false positives (trigger-happy). Negative = too many false negatives (too lenient). Zero = balanced.",
-        "when_to_use": "Detecting systematic patterns in errors. Ensuring model doesn't favor one class.",
-        "target": "|bias| ≤ 0.15",
-        "higher_is_better": False  # Closer to 0 is better
-    },
-    "accuracy": {
-        "formula": "(TP + TN) / Total",
-        "intuition": "Percentage of all predictions that were correct. Simple but can be misleading with imbalanced data.",
-        "when_to_use": "Quick health check. When classes are balanced (similar hallucinations and grounded).",
-        "target": "≥ 0.75",
-        "higher_is_better": True
-    },
-    "precision": {
-        "formula": "TP / (TP + FP)",
-        "intuition": "When model says 'hallucination', how often is it correct? Think 'trust in alarms'.",
-        "when_to_use": "When false positives are costly (blocking good content). When users lose trust if warnings are often wrong.",
-        "target": "≥ 0.75",
-        "higher_is_better": True
-    },
-    "recall": {
-        "formula": "TP / (TP + FN)",
-        "intuition": "Of all actual hallucinations, how many did we catch? Think 'catch rate'.",
-        "when_to_use": "When missing positives is dangerous (medical, safety, legal). When hallucinations could cause real harm.",
-        "target": "≥ 0.75",
-        "higher_is_better": True
-    },
-    "cohens_kappa": {
-        "formula": "(observed agreement - chance agreement) / (1 - chance agreement)",
-        "intuition": "Agreement corrected for chance. Kappa=0 means no better than random guessing. Kappa=1 means perfect agreement.",
-        "when_to_use": "Comparing model consistency across runs. Measuring inter-rater reliability. Accounts for class imbalance.",
-        "target": "≥ 0.70",
-        "higher_is_better": True
-    },
-    "spearman": {
-        "formula": "Correlation of ranks",
-        "intuition": "When confidence goes up, does correctness tend to go up? Doesn't care about exact values, only order.",
-        "when_to_use": "When you have confidence scores. When relationship might not be linear. More robust to outliers than Pearson.",
-        "target": "≥ 0.70",
-        "higher_is_better": True
+METRIC_INFO = {
+    # Correlation Metrics
+    "kendalls_tau": {
+        "name": "Kendall's Tau",
+        "category": "correlation",
+        "thresholds": {"good_min": 0.6, "warning_min": 0.4, "higher_is_better": True},
+        "interpretation": lambda v: (
+            "Strong agreement between rankings" if v >= 0.6 else
+            "Moderate agreement" if v >= 0.4 else
+            "Weak agreement - model confidence poorly predicts correctness"
+        ),
+        "context": "Measures rank correlation between confidence scores and actual correctness. More robust to outliers than Pearson."
     },
     "pearson": {
-        "formula": "Covariance / (std_x × std_y)",
-        "intuition": "Linear relationship between confidence and correctness. If confidence of 0.6 means 60% correct, that's linear.",
-        "when_to_use": "When you expect a linear relationship. For well-calibrated models.",
-        "target": "≥ 0.70",
-        "higher_is_better": True
+        "name": "Pearson Correlation",
+        "category": "correlation",
+        "thresholds": {"good_min": 0.7, "warning_min": 0.5, "higher_is_better": True},
+        "interpretation": lambda v: (
+            "Strong linear relationship" if v >= 0.7 else
+            "Moderate linear relationship" if v >= 0.5 else
+            "Weak linear relationship - confidence scores not well calibrated"
+        ),
+        "context": "Measures linear correlation between confidence and correctness. Use when you expect a proportional relationship."
     },
-    "kendalls_tau": {
-        "formula": "(concordant - discordant pairs) / total pairs",
-        "intuition": "Compares every pair of predictions. If higher confidence usually means higher correctness, tau is positive.",
-        "when_to_use": "Small sample sizes (more robust than Spearman). When there are many ties. Directly interpretable.",
-        "target": "≥ 0.60 (tau values are inherently smaller)",
-        "higher_is_better": True
+    "spearman": {
+        "name": "Spearman Correlation",
+        "category": "correlation",
+        "thresholds": {"good_min": 0.7, "warning_min": 0.5, "higher_is_better": True},
+        "interpretation": lambda v: (
+            "Strong monotonic relationship" if v >= 0.7 else
+            "Moderate monotonic relationship" if v >= 0.5 else
+            "Weak relationship"
+        ),
+        "context": "Rank-based correlation. Less sensitive to outliers than Pearson."
+    },
+
+    # Agreement Metrics
+    "cohens_kappa": {
+        "name": "Cohen's Kappa",
+        "category": "agreement",
+        "thresholds": {"good_min": 0.61, "warning_min": 0.41, "higher_is_better": True},
+        "interpretation": lambda v: (
+            "Substantial agreement" if v >= 0.61 else
+            "Moderate agreement" if v >= 0.41 else
+            "Fair agreement" if v >= 0.21 else
+            "Slight agreement - little better than chance"
+        ),
+        "context": "Agreement corrected for chance. Standard interpretation: 0.81-1.0 almost perfect, 0.61-0.80 substantial, 0.41-0.60 moderate."
+    },
+
+    # Classification Metrics
+    "precision": {
+        "name": "Precision",
+        "category": "classification",
+        "thresholds": {"good_min": 0.75, "warning_min": 0.60, "higher_is_better": True},
+        "interpretation": lambda v: (
+            f"When flagging hallucinations, {v*100:.0f}% are correct" if v > 0 else
+            "No precision data"
+        ),
+        "context": "Of all predicted hallucinations, what fraction were actual hallucinations? High precision = trustworthy alerts."
+    },
+    "recall": {
+        "name": "Recall",
+        "category": "classification",
+        "thresholds": {"good_min": 0.75, "warning_min": 0.60, "higher_is_better": True},
+        "interpretation": lambda v: (
+            f"Catching {v*100:.0f}% of actual hallucinations" if v > 0 else
+            "No recall data"
+        ),
+        "context": "Of all actual hallucinations, what fraction were detected? High recall = few missed hallucinations."
+    },
+    "f1": {
+        "name": "F1 Score",
+        "category": "classification",
+        "thresholds": {"good_min": 0.75, "warning_min": 0.60, "higher_is_better": True},
+        "interpretation": lambda v: (
+            "Excellent balance of precision and recall" if v >= 0.75 else
+            "Good balance" if v >= 0.60 else
+            "Needs improvement - check precision vs recall individually"
+        ),
+        "context": "Harmonic mean of precision and recall. Primary metric for overall detection quality."
+    },
+    "accuracy": {
+        "name": "Accuracy",
+        "category": "classification",
+        "thresholds": {"good_min": 0.80, "warning_min": 0.65, "higher_is_better": True},
+        "interpretation": lambda v: (
+            f"{v*100:.0f}% of all predictions are correct" if v > 0 else
+            "No accuracy data"
+        ),
+        "context": "Overall correctness. Can be misleading with imbalanced classes - use F1 for better insight."
+    },
+    "tnr": {
+        "name": "True Negative Rate",
+        "category": "classification",
+        "thresholds": {"good_min": 0.70, "warning_min": 0.55, "higher_is_better": True},
+        "interpretation": lambda v: (
+            f"Correctly accepting {v*100:.0f}% of grounded content" if v > 0 else
+            "No TNR data"
+        ),
+        "context": "Of all grounded content, what fraction was correctly accepted? High TNR = few false alarms."
+    },
+
+    # Error/Bias Metrics
+    "bias": {
+        "name": "Prediction Bias",
+        "category": "error",
+        "thresholds": {"good_max": 0.10, "warning_max": 0.20, "higher_is_better": False},
+        "interpretation": lambda v: (
+            "Balanced predictions" if abs(v) <= 0.10 else
+            f"{'Over-predicting' if v > 0 else 'Under-predicting'} hallucinations by {abs(v)*100:.0f}%"
+        ),
+        "context": "Systematic tendency to over/under-predict. Positive = too many false positives. Negative = too many false negatives."
     },
     "mae": {
-        "formula": "average(|confidence - actual|)",
-        "intuition": "Average magnitude of confidence calibration error. If model says 80% confident but is correct 60%, that's 0.20 error.",
-        "when_to_use": "When you have confidence scores. Measuring calibration quality.",
-        "target": "< 0.15",
-        "higher_is_better": False
+        "name": "Mean Absolute Error",
+        "category": "error",
+        "thresholds": {"good_max": 0.15, "warning_max": 0.25, "higher_is_better": False},
+        "interpretation": lambda v: (
+            "Well-calibrated confidence" if v <= 0.15 else
+            "Moderate calibration error" if v <= 0.25 else
+            "Poor calibration - confidence scores don't reflect true accuracy"
+        ),
+        "context": "Average magnitude of confidence calibration errors. Lower is better."
     },
     "rmse": {
-        "formula": "sqrt(average((confidence - actual)²))",
-        "intuition": "Like MAE but penalizes large errors more. A few wildly wrong scores will spike RMSE.",
-        "when_to_use": "When large errors are especially problematic. Sensitive to worst-case performance.",
-        "target": "< 0.20",
-        "higher_is_better": False
+        "name": "Root Mean Square Error",
+        "category": "error",
+        "thresholds": {"good_max": 0.20, "warning_max": 0.30, "higher_is_better": False},
+        "interpretation": lambda v: (
+            "Low error variance" if v <= 0.20 else
+            "Moderate error variance" if v <= 0.30 else
+            "High error variance - some predictions are very wrong"
+        ),
+        "context": "Like MAE but penalizes large errors more heavily. Sensitive to outliers."
     }
 }
 
 
-def get_alert_explanation(metric: str, value: float, status: str, thresh_min, thresh_max) -> dict:
-    """Generate detailed explanation for a metric alert."""
+# ============================================
+# PAGE: METRICS OVERVIEW
+# ============================================
 
-    explanations = {
-        "f1": {
-            "title": f"🔴 F1 Score Critical: {value:.3f} (threshold: ≥{thresh_min})",
-            "what": f"The F1 score dropped to {value:.3f}, which is below the minimum threshold of {thresh_min}. This means the balance between precision and recall is poor.",
-            "why": "F1 is your primary metric for hallucination detection accuracy. A low F1 means either you're missing real hallucinations (low recall) OR flagging good content as hallucinations (low precision). Users will either see undetected hallucinations or get frustrated by false alarms.",
-            "fix": "1. Check precision vs recall separately to identify the issue\n   2. If precision is low → tighten detection criteria, add more specific examples\n   3. If recall is low → broaden detection criteria, add examples of missed hallucinations\n   4. Consider upgrading to a more sophisticated prompt (v3 chain-of-thought or v5 structured)"
-        },
-        "tnr": {
-            "title": f"🟠 True Negative Rate Low: {value:.3f} (threshold: ≥{thresh_min})",
-            "what": f"TNR (Specificity) is {value:.3f}, below the {thresh_min} threshold. The system is incorrectly flagging legitimate, grounded content as hallucinations.",
-            "why": "Low TNR means too many false positives. Users will lose trust when valid responses get flagged. In production, this leads to alert fatigue and users ignoring warnings altogether.",
-            "fix": "1. Review false positive cases - what grounded content is being flagged?\n   2. Add examples of valid inferences (FM4) and verbatim grounded content (FM5) to your prompt\n   3. Adjust prompt to be less aggressive - emphasize 'only flag clear hallucinations'\n   4. Check if the model is being too literal in interpretation"
-        },
-        "bias": {
-            "title": f"🟡 Prediction Bias Detected: {value:.3f} (threshold: |bias| ≤{thresh_max})",
-            "what": f"Bias is {value:.3f}, exceeding the ±{thresh_max} threshold. " + ("The system over-predicts hallucinations (too many false positives)." if value > 0 else "The system under-predicts hallucinations (too many false negatives)."),
-            "why": "Systematic bias means the model has a tendency in one direction. " + ("Positive bias frustrates users with false alarms." if value > 0 else "Negative bias lets real hallucinations slip through undetected."),
-            "fix": ("1. Add more examples of grounded content to balance the prompt\n   2. Explicitly tell the model 'when in doubt, mark as grounded'\n   3. Review FM4 (Valid Inference) and FM5 (Verbatim) test cases" if value > 0 else "1. Add more examples of subtle hallucinations (FM3, FM6, FM7)\n   2. Explicitly tell the model to be more vigilant\n   3. Review FM6 (Fluent Hallucination) cases - well-written doesn't mean correct")
-        },
-        "accuracy": {
-            "title": f"🔴 Accuracy Below Threshold: {value:.3f} (threshold: ≥{thresh_min})",
-            "what": f"Overall accuracy is {value:.3f}, below the {thresh_min} threshold. The system is making too many errors overall.",
-            "why": "Low accuracy means the fundamental detection capability is compromised. Both hallucinations and grounded content are being misclassified.",
-            "fix": "1. This usually indicates a fundamental prompt issue - consider a major revision\n   2. Check if test cases are properly labeled\n   3. Review the most confident wrong predictions - what's the model misunderstanding?\n   4. Consider using a more capable base model"
-        },
-        "precision": {
-            "title": f"🟠 Precision Low: {value:.3f} (threshold: ≥{thresh_min})",
-            "what": f"Precision is {value:.3f}. When the system flags something as a hallucination, it's wrong {(1-value)*100:.0f}% of the time.",
-            "why": "Low precision erodes user trust. Every false alarm teaches users to ignore warnings.",
-            "fix": "1. Make detection criteria more specific\n   2. Add examples showing what is NOT a hallucination\n   3. Require higher confidence before flagging"
-        },
-        "recall": {
-            "title": f"🟠 Recall Low: {value:.3f} (threshold: ≥{thresh_min})",
-            "what": f"Recall is {value:.3f}. The system is missing {(1-value)*100:.0f}% of actual hallucinations.",
-            "why": "Low recall means hallucinations slip through undetected. Users see AI-generated misinformation without warning.",
-            "fix": "1. Broaden detection criteria\n   2. Add examples of subtle hallucinations (FM3, FM6, FM7)\n   3. Lower the confidence threshold for flagging"
-        },
-        "cohens_kappa": {
-            "title": f"🟡 Consistency Issue: Cohen's Kappa = {value:.3f} (threshold: ≥{thresh_min})",
-            "what": f"Cohen's Kappa is {value:.3f}, indicating inconsistent predictions across runs or poor agreement with ground truth.",
-            "why": "Low kappa means unreliable results. The same input might get different classifications, making the system unpredictable.",
-            "fix": "1. Reduce temperature in model settings for more deterministic outputs\n   2. Use structured output format (v5) for consistent parsing\n   3. Add more explicit decision criteria to the prompt"
-        }
-    }
+def render_metrics_overview_page(df: pd.DataFrame):
+    """Main metrics dashboard - organized by category."""
 
-    # Default fallback for unknown metrics
-    default = {
-        "title": f"⚠️ {metric.upper()} Alert: {value:.3f} ({status})",
-        "what": f"The metric {metric} has value {value:.3f} which triggered a {status} status.",
-        "why": "This metric is outside expected thresholds and may indicate a problem with model performance.",
-        "fix": "1. Review the metric definition in docs/METRICS.md\n   2. Compare with previous runs to identify when the issue started\n   3. Check recent changes to prompts or test data"
-    }
-
-    return explanations.get(metric, default)
-
-
-def apply_plotly_theme(fig):
-    """Apply consistent Plotly theme to a figure."""
-    fig.update_layout(
-        template="plotly_dark",
-        paper_bgcolor="rgba(30, 41, 59, 0.8)",
-        plot_bgcolor="rgba(30, 41, 59, 0.4)",
-        font=dict(color="#f1f5f9", family="Inter, system-ui, sans-serif"),
-        colorway=["#6366f1", "#8b5cf6", "#10b981", "#f59e0b", "#ef4444", "#06b6d4"],
-        margin=dict(t=40, b=40, l=40, r=40),
-        legend=dict(
-            bgcolor="rgba(30, 41, 59, 0.8)",
-            bordercolor="#334155",
-            borderwidth=1
-        ),
-        xaxis=dict(gridcolor="#334155", zerolinecolor="#475569"),
-        yaxis=dict(gridcolor="#334155", zerolinecolor="#475569")
+    render_page_header(
+        "Evaluation Metrics",
+        "Current performance across all metric categories"
     )
-    return fig
 
-
-def render_footer():
-    """Render the footer with branding."""
-    st.markdown("""
-    <div class="footer-brand">
-        Built with Streamlit | <a href="https://rasar.ai" target="_blank">rasar.ai</a>
-    </div>
-    """, unsafe_allow_html=True)
-
-
-def render_run_evaluation_page():
-    """Render the run evaluation page with UI controls."""
-    render_header("Run Evaluation", "Execute hallucination detection evaluations with customizable settings")
-
-    # Initialize session state for persisting results
-    if 'eval_summary' not in st.session_state:
-        st.session_state.eval_summary = None
-
-    # Load test case definitions
-    test_case_defs = load_test_case_definitions()
-
-    # Load config
-    try:
-        import yaml
-        with open("config/settings.yaml", "r") as f:
-            config = yaml.safe_load(f)
-    except Exception as e:
-        st.error(f"Could not load config: {e}")
+    if df.empty:
+        st.info("No evaluation data yet. Run an evaluation to see metrics here.")
         return
 
-    # Available scenarios and prompts
-    scenarios_config = config.get("scenarios", {})
-    available_prompts = []
-    for f in glob.glob("prompts/*.txt"):
-        available_prompts.append(Path(f).stem)
+    # Get scenario selector
+    scenarios = sorted(df["scenario"].unique())
+    selected_scenario = st.selectbox(
+        "Select Scenario",
+        scenarios,
+        key="overview_scenario"
+    )
 
-    # Get all test cases grouped by failure mode
-    all_cases = list(test_case_defs.keys())
-    train_cases = [c for c in all_cases if not c.startswith("REG_")]
-    reg_cases = [c for c in all_cases if c.startswith("REG_")]
+    # Get latest metrics for this scenario
+    metrics = get_latest_metrics(df, selected_scenario)
 
-    # Group by failure mode
-    fm_groups = {}
-    for case_id in train_cases:
-        fm = case_id.split("_")[0] if "_" in case_id else "Other"
-        if fm not in fm_groups:
-            fm_groups[fm] = []
-        fm_groups[fm].append(case_id)
+    if not metrics:
+        st.info(f"No metrics found for scenario: {selected_scenario}")
+        return
 
-    # --- Configuration Section ---
-    st.subheader("⚙️ Configuration")
+    # Get run info
+    scenario_df = df[df["scenario"] == selected_scenario]
+    latest_run = scenario_df.sort_values("timestamp", ascending=False).iloc[0]
 
-    col1, col2 = st.columns(2)
+    st.caption(f"Latest run: {latest_run['run_id']} · {latest_run['timestamp'][:16]}")
 
-    with col1:
-        # Scenario selection
-        st.markdown("**Select Scenarios to Run:**")
-        selected_scenarios = []
-        for scenario_name, scenario_config in scenarios_config.items():
-            default_enabled = scenario_config.get("enabled", False)
-            if st.checkbox(f"{scenario_name}", value=default_enabled, key=f"scenario_{scenario_name}"):
-                selected_scenarios.append(scenario_name)
+    # --- SECTION 1: Classification Metrics ---
+    render_section_header(
+        "Classification Performance",
+        "How well the model identifies hallucinations vs grounded content"
+    )
 
-    with col2:
-        # Model and settings
-        st.markdown("**Model Settings:**")
-        model = st.selectbox("Model", ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"], index=0)
-        sample_size = st.slider("Sample Size (per scenario)", min_value=5, max_value=100, value=20)
+    classification_metrics = ["f1", "precision", "recall", "tnr", "accuracy"]
+    cols = st.columns(3)
 
-    # --- Test Cases Section ---
-    st.subheader("📋 Test Cases to Evaluate")
+    col_idx = 0
+    for metric_key in classification_metrics:
+        if metric_key in metrics:
+            info = METRIC_INFO.get(metric_key, {})
+            value = metrics[metric_key]["value"]
 
-    # Tabs for different views
-    tab1, tab2, tab3 = st.tabs(["By Failure Mode", "Individual Selection", "Quick Select"])
+            with cols[col_idx % 3]:
+                render_metric_card(
+                    name=info.get("name", metric_key),
+                    value=value,
+                    interpretation=info.get("interpretation", lambda v: "")(value),
+                    context=info.get("context", ""),
+                    thresholds=info.get("thresholds", {}),
+                    format_str=".2f"
+                )
+            col_idx += 1
 
-    with tab1:
-        st.markdown("**Select Failure Modes:**")
-        selected_fms = []
-        cols = st.columns(4)
-        fm_descriptions = {
-            "FM1": "Factual Addition",
-            "FM2": "Fabrication",
-            "FM3": "Subtle Distortion",
-            "FM4": "Valid Inference",
-            "FM5": "Verbatim Grounded",
-            "FM6": "Fluent Hallucination",
-            "FM7": "Partial Grounding",
-        }
-        for i, (fm, cases) in enumerate(sorted(fm_groups.items())):
-            with cols[i % 4]:
-                desc = fm_descriptions.get(fm, fm)
-                if st.checkbox(f"{fm} ({len(cases)})", value=True, key=f"fm_{fm}", help=desc):
-                    selected_fms.append(fm)
-
-        # Get cases from selected failure modes
-        fm_selected_cases = []
-        for fm in selected_fms:
-            fm_selected_cases.extend(fm_groups.get(fm, []))
-
-    with tab2:
-        st.markdown("**Select Individual Test Cases:**")
-        individual_cases = st.multiselect(
-            "Choose specific test cases",
-            options=train_cases,
-            default=[],
-            key="individual_cases"
+    # --- SECTION 2: Agreement Metrics ---
+    if "cohens_kappa" in metrics:
+        render_section_header(
+            "Agreement",
+            "Consistency and reliability of predictions"
         )
 
-    with tab3:
-        st.markdown("**Quick Selection:**")
-        quick_col1, quick_col2, quick_col3 = st.columns(3)
-        with quick_col1:
-            select_all = st.button("✅ Select All", key="select_all")
-        with quick_col2:
-            select_none = st.button("❌ Clear All", key="select_none")
-        with quick_col3:
-            include_regression = st.checkbox("Include Regression Cases (REG_*)", value=False)
+        info = METRIC_INFO["cohens_kappa"]
+        value = metrics["cohens_kappa"]["value"]
 
-    # Determine final test case list
-    if individual_cases:
-        final_cases = individual_cases
-    else:
-        final_cases = fm_selected_cases
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            render_metric_card(
+                name=info["name"],
+                value=value,
+                interpretation=info["interpretation"](value),
+                context=info["context"],
+                thresholds=info["thresholds"],
+                format_str=".3f"
+            )
 
-    if include_regression:
-        final_cases = final_cases + reg_cases
+        with col2:
+            # Kappa interpretation scale
+            st.markdown(f"""
+            <div class="metric-card">
+                <span class="metric-label">Kappa Interpretation Scale</span>
+                <div style="margin-top: 1rem;">
+                    <div style="display: flex; margin-bottom: 0.5rem;">
+                        <span style="width: 120px; color: {COLORS['medium_gray']};">0.81 - 1.00</span>
+                        <span style="color: {COLORS['charcoal']};">Almost Perfect</span>
+                    </div>
+                    <div style="display: flex; margin-bottom: 0.5rem;">
+                        <span style="width: 120px; color: {COLORS['medium_gray']};">0.61 - 0.80</span>
+                        <span style="color: {COLORS['charcoal']};">Substantial</span>
+                    </div>
+                    <div style="display: flex; margin-bottom: 0.5rem;">
+                        <span style="width: 120px; color: {COLORS['medium_gray']};">0.41 - 0.60</span>
+                        <span style="color: {COLORS['charcoal']};">Moderate</span>
+                    </div>
+                    <div style="display: flex; margin-bottom: 0.5rem;">
+                        <span style="width: 120px; color: {COLORS['medium_gray']};">0.21 - 0.40</span>
+                        <span style="color: {COLORS['charcoal']};">Fair</span>
+                    </div>
+                    <div style="display: flex;">
+                        <span style="width: 120px; color: {COLORS['medium_gray']};">0.00 - 0.20</span>
+                        <span style="color: {COLORS['charcoal']};">Slight</span>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
-    # Apply sample size limit with random sampling
-    import random
-    import time
+    # --- SECTION 3: Correlation Metrics ---
+    correlation_metrics = [m for m in ["kendalls_tau", "spearman", "pearson"] if m in metrics]
 
-    if len(final_cases) > sample_size:
-        random.seed(time.time())
-        sampled_cases = random.sample(final_cases, sample_size)
-        # Shuffle to ensure display order is random (not grouped by FM)
-        random.shuffle(sampled_cases)
-        will_sample = True
-    else:
-        sampled_cases = final_cases.copy()
-        random.seed(time.time())
-        random.shuffle(sampled_cases)  # Shuffle even if not sampling
-        will_sample = False
-
-    # --- Preview Section ---
-    if will_sample:
-        st.subheader(f"👁️ Preview: {sample_size} Cases (randomly sampled from {len(final_cases)} available)")
-        st.info(f"📊 **{len(final_cases)}** cases available → **{sample_size}** will be randomly selected per scenario")
-    else:
-        st.subheader(f"👁️ Preview: {len(final_cases)} Test Cases")
-
-    if final_cases:
-        # Show failure mode distribution in the sample
-        fm_distribution = {}
-        for case_id in sampled_cases:
-            fm = case_id.split("_")[0] if "_" in case_id else "Other"
-            fm_distribution[fm] = fm_distribution.get(fm, 0) + 1
-
-        # Display distribution summary
-        dist_str = " | ".join([f"**{fm}**: {count}" for fm, count in sorted(fm_distribution.items())])
-        st.markdown(f"📊 **Sample Distribution:** {dist_str}")
-
-        # Show the sampled cases that will actually run
-        preview_data = []
-        for case_id in sampled_cases:
-            case_def = test_case_defs.get(case_id, {})
-            preview_data.append({
-                "ID": case_id,
-                "Label": case_def.get("label", "?"),
-                "Difficulty": case_def.get("difficulty", "?"),
-                "Failure Mode": case_id.split("_")[0] if "_" in case_id else "?",
-                "Context Preview": (case_def.get("context", "")[:80] + "...") if case_def.get("context") else "N/A"
-            })
-
-        st.dataframe(
-            pd.DataFrame(preview_data),
-            use_container_width=True,
-            height=400  # Scrollable table
+    if correlation_metrics:
+        render_section_header(
+            "Correlation",
+            "How well confidence scores predict actual correctness"
         )
 
-        if will_sample:
-            st.caption(f"⚠️ Note: Actual cases will be randomly re-sampled when evaluation runs. This preview shows one possible sample.")
-    else:
-        st.warning("No test cases selected!")
+        cols = st.columns(len(correlation_metrics))
+        for i, metric_key in enumerate(correlation_metrics):
+            info = METRIC_INFO.get(metric_key, {})
+            value = metrics[metric_key]["value"]
 
-    # --- Run Section ---
-    st.subheader("🎯 Run Evaluation")
-
-    # Summary before run
-    st.markdown(f"""
-    **Run Summary:**
-    - **Scenarios:** {len(selected_scenarios)} selected ({', '.join(selected_scenarios) if selected_scenarios else 'None'})
-    - **Test Cases:** {len(final_cases)} selected (sample: {min(sample_size, len(final_cases))})
-    - **Model:** {model}
-    """)
-
-    # Check for API key (load from .env)
-    import os
-    from dotenv import load_dotenv
-    load_dotenv()
-    has_api_key = bool(os.getenv("OPENAI_API_KEY"))
-    if not has_api_key:
-        st.error("⚠️ OPENAI_API_KEY not found in environment. Set it in .env file.")
-    else:
-        st.success("✅ API Key detected")
-
-    # Password protection for evaluation (hashed for security)
-    import hashlib
-
-    def hash_password(password: str) -> str:
-        """Hash password with SHA-256 and salt."""
-        salt = "eval_system_salt_2024"
-        return hashlib.sha256((password + salt).encode()).hexdigest()
-
-    st.markdown("**🔐 Authorization:**")
-    eval_password = st.text_input("Enter password to run evaluation", type="password", key="eval_password")
-
-    # Stored hash (default is hash of "1978") - set EVAL_PASSWORD_HASH in .env for custom
-    # To generate a new hash: python -c "import hashlib; print(hashlib.sha256(('YOUR_PASSWORD' + 'eval_system_salt_2024').encode()).hexdigest())"
-    default_hash = "a]59e417de5ef9564e8c9b9e0a5a9d8a93c5b8c5d6e7f8a9b0c1d2e3f4a5b6c7d8"  # hash of "1978"
-    stored_hash = os.getenv("EVAL_PASSWORD_HASH", hash_password("1978"))
-
-    password_valid = False
-    if eval_password:
-        input_hash = hash_password(eval_password)
-        password_valid = input_hash == stored_hash
-
-    if eval_password and not password_valid:
-        st.error("❌ Incorrect password")
-    elif password_valid:
-        st.success("✅ Password accepted")
-
-    # Run buttons
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        dry_run = st.button("🔍 Dry Run (Preview)", disabled=not selected_scenarios, key="dry_run")
-
-    with col2:
-        run_eval = st.button("▶️ Start Evaluation", type="primary",
-                             disabled=not (selected_scenarios and final_cases and has_api_key and password_valid),
-                             key="run_eval")
-
-    with col3:
-        if st.button("🔄 Reset Results", key="reset"):
-            st.session_state.eval_summary = None
-            st.rerun()
-
-    # Handle dry run
-    if dry_run:
-        st.info("**Dry Run Preview:**")
-        for scenario in selected_scenarios:
-            scenario_config = scenarios_config.get(scenario, {})
-            prompt = scenario_config.get("prompt_version", "v1_zero_shot")
-            st.markdown(f"- **{scenario}**: prompt=`{prompt}`, cases={min(sample_size, len(final_cases))}")
-
-    # Handle actual run
-    if run_eval:
-        st.session_state.eval_summary = None  # Clear previous results
-        st.markdown("---")
-
-        with st.status(f"🚀 Running evaluation...", expanded=True) as status:
-            st.write(f"**Scenarios:** {', '.join(selected_scenarios)}")
-            st.write(f"**Model:** {model}")
-            st.write(f"**Sample size:** {sample_size}")
-
-            # Estimate: ~0.5-1 second per API call
-            total_calls = len(selected_scenarios) * sample_size
-            est_seconds = total_calls * 0.75
-            st.write(f"**Estimated API calls:** {total_calls} (~{est_seconds:.0f} seconds)")
-            st.markdown("---")
-
-            st.warning(f"⏳ **Evaluation in progress...** Making {total_calls} API calls.")
-
-            try:
-                import sys
-                sys.path.insert(0, "src")
-                from orchestrator import EvaluationOrchestrator
-
-                orchestrator = EvaluationOrchestrator()
-
-                # Run the evaluation
-                summary = orchestrator.run_daily_evaluation(
-                    scenarios=selected_scenarios,
-                    model=model,
-                    sample_size=sample_size
+            with cols[i]:
+                render_metric_card(
+                    name=info.get("name", metric_key),
+                    value=value,
+                    interpretation=info.get("interpretation", lambda v: "")(value),
+                    context=info.get("context", ""),
+                    thresholds=info.get("thresholds", {}),
+                    format_str=".3f"
                 )
 
-                if summary:
-                    # Check test results count
-                    test_count = db.get_test_results_count()
-                    st.write(f"**Test results in DB:** {test_count}")
-
-                    # Store in session state for persistence
-                    st.session_state.eval_summary = {
-                        'run_id': summary.run_id,
-                        'overall_status': summary.overall_status.value,
-                        'scenarios_run': summary.scenarios_run,
-                        'scenarios_passed': summary.scenarios_passed,
-                        'scenarios_failed': summary.scenarios_failed,
-                        'alerts': summary.alerts,
-                        'hillclimb_suggestions': summary.hillclimb_suggestions,
-                        'test_results_count': test_count
-                    }
-                    status.update(label="✅ Evaluation Complete!", state="complete", expanded=False)
-                else:
-                    status.update(label="❌ Evaluation Failed", state="error", expanded=True)
-                    st.error("Evaluation returned no results. Check terminal for errors.")
-
-            except Exception as e:
-                status.update(label="❌ Evaluation Failed", state="error", expanded=True)
-                st.error(f"Error: {e}")
-                st.exception(e)
-
-    # Display results from session state (persists after button click)
-    if st.session_state.eval_summary:
-        summary = st.session_state.eval_summary
-        st.balloons()  # Celebration!
-
-        st.markdown("---")
-        st.header("✅ Evaluation Complete!")
-
-        # Big success banner
-        status_icon = {"healthy": "🟢", "warning": "🟡", "critical": "🔴"}.get(summary['overall_status'], "⚪")
-        st.success(f"""
-        **Run ID:** `{summary['run_id']}`
-
-        **Status:** {status_icon} {summary['overall_status'].upper()}
-
-        **Results:** {summary['scenarios_passed']}/{summary['scenarios_run']} scenarios passed
-        """)
-
-        # Results metrics with styled cards
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            render_metric_card("Scenarios Run", str(summary['scenarios_run']), status="healthy")
-        with col2:
-            render_metric_card("Passed", str(summary['scenarios_passed']), status="healthy")
-        with col3:
-            status = "critical" if summary['scenarios_failed'] > 0 else "healthy"
-            render_metric_card("Failed", str(summary['scenarios_failed']), status=status)
-        with col4:
-            render_metric_card("Status", summary['overall_status'].upper(), status=summary['overall_status'])
-
-        # Alerts
-        if summary['alerts']:
-            st.subheader("⚠️ Alerts")
-            for alert in summary['alerts']:
-                st.warning(alert)
-
-        # Suggestions
-        if summary['hillclimb_suggestions']:
-            st.subheader("💡 Suggestions")
-            for suggestion in summary['hillclimb_suggestions']:
-                st.info(suggestion)
-
-        # Next steps
-        st.subheader("📍 Next Steps")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown("""
-            **View Results:**
-            - Go to **📅 Daily Runs** to see history
-            - Go to **🔄 Compare Runs** to compare with previous
-            """)
-        with col2:
-            st.markdown("""
-            **Run Again:**
-            - Adjust scenarios/settings above
-            - Click **▶️ Start Evaluation** again
-            """)
-
-        # Clear results button
-        if st.button("🗑️ Clear Results", key="clear_results"):
-            st.session_state.eval_summary = None
-            st.rerun()
-
-
-def render_daily_runs_page(df: pd.DataFrame):
-    """Render the daily runs history page."""
-    render_header("Daily Evaluation Runs", "Track evaluation history and monitor performance trends over time")
-
-    # Get runs from metrics table (more reliable than daily_runs)
-    if df.empty or "run_id" not in df.columns:
-        st.info("No runs recorded yet. Use **🚀 Run Evaluation** to generate data.")
-        return
-
-    # Build runs summary from metrics data
-    runs_summary = []
-    for run_id in df["run_id"].unique():
-        run_df = df[df["run_id"] == run_id]
-        timestamp = run_df["timestamp"].iloc[0] if not run_df.empty else ""
-        run_date = timestamp[:10] if timestamp else ""
-
-        # Check health status based on metrics
-        f1_val = run_df[run_df["metric_name"] == "f1"]["metric_value"].values
-        tnr_val = run_df[run_df["metric_name"] == "tnr"]["metric_value"].values
-        bias_val = run_df[run_df["metric_name"] == "bias"]["metric_value"].values
-
-        f1 = f1_val[0] if len(f1_val) > 0 else 0
-        tnr = tnr_val[0] if len(tnr_val) > 0 else 0
-        bias = bias_val[0] if len(bias_val) > 0 else 0
-
-        # Determine status
-        if f1 >= 0.75 and tnr >= 0.65 and abs(bias) <= 0.15:
-            status = "healthy"
-        elif f1 < 0.6 or tnr < 0.5:
-            status = "critical"
-        else:
-            status = "warning"
-
-        scenarios = run_df["scenario"].nunique()
-
-        runs_summary.append({
-            "run_id": run_id,
-            "run_date": run_date,
-            "timestamp": timestamp,
-            "scenarios": scenarios,
-            "f1": f1,
-            "tnr": tnr,
-            "bias": bias,
-            "status": status
-        })
-
-    runs_df = pd.DataFrame(runs_summary).sort_values("timestamp", ascending=False)
-
-    # Summary stats with styled cards
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        render_metric_card("Total Runs", str(len(runs_df)), status="healthy")
-    with col2:
-        healthy_runs = len(runs_df[runs_df["status"] == "healthy"])
-        render_metric_card("Healthy Runs", str(healthy_runs), status="healthy")
-    with col3:
-        latest_status = runs_df.iloc[0]["status"] if not runs_df.empty else "N/A"
-        render_metric_card("Latest Status", latest_status.upper(), status=latest_status)
-    with col4:
-        warning_runs = len(runs_df[runs_df["status"] == "warning"])
-        critical_runs = len(runs_df[runs_df["status"] == "critical"])
-        issues = warning_runs + critical_runs
-        render_metric_card("Issues", str(issues), status="critical" if critical_runs > 0 else ("warning" if warning_runs > 0 else "healthy"))
-
-    st.markdown("---")
-
-    # Runs history table
-    st.markdown('<div class="section-header"><h2>Run History</h2></div>', unsafe_allow_html=True)
-
-    # Add status icons
-    runs_df["status_icon"] = runs_df["status"].apply(
-        lambda x: {"healthy": "🟢", "warning": "🟡", "critical": "🔴"}.get(x, "⚪")
-    )
-
-    st.dataframe(
-        runs_df[["run_id", "run_date", "status_icon", "scenarios", "f1", "tnr", "bias", "status"]],
-        use_container_width=True,
-        column_config={
-            "run_id": st.column_config.TextColumn("Run ID"),
-            "run_date": st.column_config.TextColumn("Date"),
-            "status_icon": st.column_config.TextColumn("", width="small"),
-            "scenarios": st.column_config.NumberColumn("Scenarios"),
-            "f1": st.column_config.NumberColumn("F1", format="%.3f"),
-            "tnr": st.column_config.NumberColumn("TNR", format="%.3f"),
-            "bias": st.column_config.NumberColumn("Bias", format="%.3f"),
-            "status": st.column_config.TextColumn("Status"),
-        }
-    )
-
-    st.markdown("---")
-
-    # Metrics trend over time
-    st.markdown('<div class="section-header"><h2>Metrics Trend Over Time</h2></div>', unsafe_allow_html=True)
-
-    if "run_id" in df.columns:
-        # Get unique runs in order
-        run_order = df.groupby("run_id")["timestamp"].min().sort_values().index.tolist()
-
-        if len(run_order) > 1:
-            # Pivot for trend chart
-            for metric_name in ["f1", "tnr", "bias"]:
-                metric_df = df[df["metric_name"] == metric_name].copy()
-                if not metric_df.empty:
-                    fig = go.Figure()
-
-                    for scenario in metric_df["scenario"].unique():
-                        sdf = metric_df[metric_df["scenario"] == scenario].sort_values("timestamp")
-                        fig.add_trace(go.Scatter(
-                            x=sdf["timestamp"],
-                            y=sdf["metric_value"],
-                            mode="lines+markers",
-                            name=scenario
-                        ))
-
-                    # Add threshold line
-                    threshold = 0.75 if metric_name == "f1" else (0.65 if metric_name == "tnr" else 0.15)
-                    fig.add_hline(y=threshold, line_dash="dash", line_color="red",
-                                  annotation_text=f"Threshold: {threshold}")
-
-                    fig.update_layout(
-                        title=f"{METRIC_LABELS.get(metric_name, metric_name)} Over Time",
-                        xaxis_title="Run Date",
-                        yaxis_title="Value",
-                        height=300
-                    )
-                    apply_plotly_theme(fig)
-                    st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("Need multiple runs to show trends. Run the orchestrator daily to track progress.")
-
-    # Alerts from latest run
-    st.subheader("⚠️ Latest Run Alerts")
-    if not runs_df.empty:
-        latest_alerts = runs_df.iloc[0].get("alerts", "[]")
-        try:
-            alerts = json.loads(latest_alerts) if isinstance(latest_alerts, str) else latest_alerts
-            if alerts:
-                for alert in alerts:
-                    st.warning(alert)
-            else:
-                st.success("No alerts from latest run!")
-        except:
-            st.info("No alerts data available.")
-
-    # How to run daily
-    with st.expander("🔧 How to Run Daily Evaluations"):
-        st.markdown("""
-        **Manual Run:**
-        ```bash
-        python -m src.orchestrator
-        ```
-
-        **Schedule with Windows Task Scheduler:**
-        1. Open Task Scheduler
-        2. Create Basic Task → Name: "Daily LLM Evaluation"
-        3. Trigger: Daily at your preferred time
-        4. Action: Start a program
-           - Program: `python`
-           - Arguments: `-m src.orchestrator`
-           - Start in: `C:\\path\\to\\evaluation-system`
-
-        **Schedule with cron (Linux/Mac):**
-        ```bash
-        # Add to crontab (crontab -e)
-        0 6 * * * cd /path/to/evaluation-system && python -m src.orchestrator
-        ```
-        """)
-
-
-def render_compare_runs_page(df: pd.DataFrame):
-    """Render the run comparison page."""
-    render_header("Compare Runs", "Analyze performance differences between evaluation runs")
-
-    # Get runs that actually have metrics data
-    run_ids = get_runs_with_metrics()
-
-    if len(run_ids) < 2:
-        st.warning(f"Need at least 2 runs with metrics data to compare. Currently have {len(run_ids)} run(s).")
-        st.info("Run the orchestrator to generate more data:")
-        st.code("python -m src.orchestrator", language="bash")
-        return
-
-    # Select runs to compare
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.subheader("Baseline Run")
-        baseline_run = st.selectbox("Select baseline", run_ids, index=min(1, len(run_ids)-1), key="baseline")
-
-    with col2:
-        st.subheader("Compare Run")
-        compare_run = st.selectbox("Select run to compare", run_ids, index=0, key="compare")
-
-    if baseline_run == compare_run:
-        st.warning("Please select different runs to compare.")
-        return
-
-    # Get comparison data
-    comparison_df = get_metrics_comparison(baseline_run, compare_run)
-
-    if comparison_df.empty:
-        st.warning("Could not load comparison data.")
-        return
-
-    # Summary
-    st.subheader("📊 Comparison Summary")
-
-    improved = len(comparison_df[comparison_df["delta"] > 0])
-    declined = len(comparison_df[comparison_df["delta"] < 0])
-    unchanged = len(comparison_df[comparison_df["delta"] == 0])
-
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        render_metric_card("Improved", str(improved), delta="📈", status="healthy")
-    with col2:
-        render_metric_card("Declined", str(declined), delta="📉", status="critical" if declined > 0 else "healthy")
-    with col3:
-        render_metric_card("Unchanged", str(unchanged), delta="➡️", status="warning" if unchanged > 0 else "healthy")
-
-    st.markdown("---")
-
-    # Detailed comparison table
-    st.markdown('<div class="section-header"><h2>Detailed Comparison</h2></div>', unsafe_allow_html=True)
-
-    # Format the dataframe for display
-    comparison_df["change"] = comparison_df.apply(
-        lambda row: f"{'📈' if row['delta'] > 0 else '📉' if row['delta'] < 0 else '➡️'} {row['delta']:+.3f} ({row['delta_pct']:+.1f}%)",
-        axis=1
-    )
-
-    st.dataframe(
-        comparison_df[["scenario", "metric_name", "run1_value", "run2_value", "change"]],
-        use_container_width=True,
-        column_config={
-            "scenario": st.column_config.TextColumn("Scenario"),
-            "metric_name": st.column_config.TextColumn("Metric"),
-            "run1_value": st.column_config.NumberColumn(f"Baseline ({baseline_run[:15]}...)", format="%.3f"),
-            "run2_value": st.column_config.NumberColumn(f"Compare ({compare_run[:15]}...)", format="%.3f"),
-            "change": st.column_config.TextColumn("Change"),
-        }
-    )
-
-    st.markdown("---")
-
-    # Visual comparison chart
-    st.markdown('<div class="section-header"><h2>Visual Comparison</h2></div>', unsafe_allow_html=True)
-
-    scenarios = comparison_df["scenario"].unique()
-    selected_scenario = st.selectbox("Select scenario to visualize", scenarios)
-
-    scenario_data = comparison_df[comparison_df["scenario"] == selected_scenario]
-
-    fig = go.Figure()
-    fig.add_trace(go.Bar(
-        name=f"Baseline ({baseline_run[:10]})",
-        x=scenario_data["metric_name"],
-        y=scenario_data["run1_value"],
-        marker_color="#6366f1"
-    ))
-    fig.add_trace(go.Bar(
-        name=f"Compare ({compare_run[:10]})",
-        x=scenario_data["metric_name"],
-        y=scenario_data["run2_value"],
-        marker_color="#10b981"
-    ))
-
-    fig.update_layout(
-        title=f"Metrics Comparison: {selected_scenario}",
-        barmode="group",
-        height=400
-    )
-    apply_plotly_theme(fig)
-    st.plotly_chart(fig, use_container_width=True)
-
-    # Recommendations
-    st.subheader("💡 Recommendations")
-
-    significant_declines = comparison_df[(comparison_df["delta"] < -0.05)]
-    if not significant_declines.empty:
-        st.error("**Significant Declines Detected:**")
-        for _, row in significant_declines.iterrows():
-            st.markdown(f"- **{row['scenario']} - {row['metric_name']}**: Dropped from {row['run1_value']:.3f} to {row['run2_value']:.3f} ({row['delta_pct']:.1f}%)")
-        st.markdown("""
-        **Recommended Actions:**
-        1. Check if test data changed between runs
-        2. Review prompt modifications
-        3. Check for model API changes or degradation
-        4. Consider rolling back to baseline configuration
-        """)
-    else:
-        st.success("No significant performance declines detected!")
-
-
-def render_metrics_guide_page():
-    """Render the Metrics Guide page - educational resource for understanding metrics."""
-    render_header("Metrics Guide", "Learn about evaluation metrics and how to interpret your results")
-
-    # Quick reference table
-    st.subheader("📊 Quick Reference")
-    quick_ref_data = []
-    for metric_key, label in METRIC_LABELS.items():
-        if metric_key in METRIC_EDUCATION:
-            edu = METRIC_EDUCATION[metric_key]
-            quick_ref_data.append({
-                "Metric": label,
-                "Target": edu["target"],
-                "Direction": "↑ Higher" if edu["higher_is_better"] else "↓ Lower"
-            })
-    if quick_ref_data:
-        st.dataframe(pd.DataFrame(quick_ref_data), use_container_width=True, hide_index=True)
-
-    st.markdown("---")
-
-    # Confusion Matrix explanation
-    st.subheader("🎯 The Confusion Matrix - Foundation of All Metrics")
-    st.markdown("""
-    Before understanding metrics, you need to understand the confusion matrix:
-
-    ```
-                        PREDICTED
-                     Hallucination | Grounded
-                  ┌────────────────┬──────────────┐
-    ACTUAL  Hall. │      TP        │      FN      │
-                  │ (True Positive)│(False Negative)
-                  ├────────────────┼──────────────┤
-           Ground │      FP        │      TN      │
-                  │(False Positive)│(True Negative)
-                  └────────────────┴──────────────┘
-    ```
-
-    - **TP (True Positive)**: Correctly identified hallucination ✅
-    - **TN (True Negative)**: Correctly identified grounded content ✅
-    - **FP (False Positive)**: Wrongly flagged grounded content as hallucination ❌
-    - **FN (False Negative)**: Missed an actual hallucination ❌
-    """)
-
-    st.markdown("---")
-
-    # Categorized metrics
-    categories = {
-        "🎯 Classification Metrics": ["f1", "precision", "recall", "tnr", "accuracy"],
-        "🤝 Agreement Metrics": ["cohens_kappa"],
-        "📈 Correlation Metrics": ["spearman", "pearson", "kendalls_tau"],
-        "⚖️ Error Metrics": ["bias", "mae", "rmse"]
-    }
-
-    for category_name, metric_keys in categories.items():
-        st.subheader(category_name)
-        for metric_key in metric_keys:
-            if metric_key in METRIC_EDUCATION:
-                edu = METRIC_EDUCATION[metric_key]
-                label = METRIC_LABELS.get(metric_key, metric_key)
-                with st.expander(f"**{label}**", expanded=False):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.markdown(f"**Formula:** `{edu['formula']}`")
-                        st.markdown(f"**Target:** {edu['target']}")
-                        direction = "Higher is better ↑" if edu['higher_is_better'] else "Lower is better ↓ (closer to 0)"
-                        st.markdown(f"**Direction:** {direction}")
-                    with col2:
-                        st.markdown(f"**Intuition:**\n\n{edu['intuition']}")
-                    st.markdown(f"**When to use:**\n\n{edu['when_to_use']}")
-
-    st.markdown("---")
-
-    # Decision flowchart
-    st.subheader("🔀 Which Metric Should I Prioritize?")
-    st.markdown("""
-    | Your Primary Concern | Prioritize | Secondary Metrics |
-    |---------------------|------------|-------------------|
-    | Missing hallucinations is dangerous | **Recall** | F1, Bias (check for FN bias) |
-    | False alarms annoy users | **Precision** & **TNR** | F1, Bias (check for FP bias) |
-    | Need balanced performance | **F1 Score** | Precision, Recall, Bias |
-    | Comparing multiple models | **F1** for ranking | Cohen's Kappa for consistency |
-    | Model outputs confidence scores | Add **Correlation metrics** | Kendall's Tau for small samples |
-    | Need reproducible results | Run 3+ evals | Check Variance, Cohen's Kappa |
-    """)
-
-    st.markdown("---")
-
-    # Link to full documentation
-    st.subheader("📚 Full Documentation")
-    st.markdown("""
-    For more detailed explanations, examples, and best practices, see the
-    [complete User Guide](https://github.com/rasiulyte/evaluation-system/blob/main/docs/USER_GUIDE.md).
-    """)
-
-
-def main():
-    try:
-        st.set_page_config(
-            page_title="LLM Eval Dashboard | rasar.ai",
-            page_icon="🎯",
-            layout="wide",
-            initial_sidebar_state="expanded"
+    # --- SECTION 4: Error Metrics ---
+    error_metrics = [m for m in ["bias", "mae", "rmse"] if m in metrics]
+
+    if error_metrics:
+        render_section_header(
+            "Error Analysis",
+            "Systematic biases and calibration quality"
         )
 
-        # Apply custom styling
-        apply_custom_css()
+        cols = st.columns(len(error_metrics))
+        for i, metric_key in enumerate(error_metrics):
+            info = METRIC_INFO.get(metric_key, {})
+            value = metrics[metric_key]["value"]
 
-        df = load_metrics()
+            with cols[i]:
+                render_metric_card(
+                    name=info.get("name", metric_key),
+                    value=value,
+                    interpretation=info.get("interpretation", lambda v: "")(value),
+                    context=info.get("context", ""),
+                    thresholds=info.get("thresholds", {}),
+                    format_str=".3f"
+                )
 
-        # Sidebar branding
-        st.sidebar.markdown("""
-        <div style="text-align: center; padding: 1rem 0 1.5rem 0;">
-            <div style="font-size: 1.5rem; font-weight: 700; color: #6366f1;">🎯 LLM Eval</div>
-            <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">by rasar.ai</div>
+
+# ============================================
+# PAGE: TRENDS
+# ============================================
+
+def render_trends_page(df: pd.DataFrame):
+    """Historical trends visualization."""
+
+    render_page_header(
+        "Performance Trends",
+        "Track metric changes over time"
+    )
+
+    if df.empty:
+        st.info("No historical data available yet.")
+        return
+
+    # Filters
+    col1, col2 = st.columns(2)
+    with col1:
+        scenarios = sorted(df["scenario"].unique())
+        selected_scenario = st.selectbox("Scenario", scenarios, key="trend_scenario")
+
+    with col2:
+        available_metrics = df[df["scenario"] == selected_scenario]["metric_name"].unique()
+        metric_options = [m for m in ["f1", "precision", "recall", "tnr", "cohens_kappa"] if m in available_metrics]
+        if not metric_options:
+            metric_options = list(available_metrics)
+        selected_metric = st.selectbox("Metric", metric_options, key="trend_metric")
+
+    # Filter data
+    filtered = df[(df["scenario"] == selected_scenario) & (df["metric_name"] == selected_metric)]
+    filtered = filtered.sort_values("timestamp")
+
+    if filtered.empty:
+        st.info("No data for this selection.")
+        return
+
+    # Create trend chart
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(
+        x=filtered["timestamp"],
+        y=filtered["metric_value"],
+        mode="lines+markers",
+        name=METRIC_INFO.get(selected_metric, {}).get("name", selected_metric),
+        line=dict(color=COLORS["teal"], width=2),
+        marker=dict(size=6, color=COLORS["navy"])
+    ))
+
+    # Add threshold line if available
+    thresholds = METRIC_INFO.get(selected_metric, {}).get("thresholds", {})
+    if thresholds.get("good_min"):
+        fig.add_hline(
+            y=thresholds["good_min"],
+            line_dash="dash",
+            line_color=COLORS["medium_gray"],
+            annotation_text=f"Target: {thresholds['good_min']}",
+            annotation_position="right"
+        )
+
+    fig.update_layout(
+        title=f"{METRIC_INFO.get(selected_metric, {}).get('name', selected_metric)} Over Time",
+        xaxis_title="Date",
+        yaxis_title="Value",
+        height=400,
+        showlegend=False
+    )
+
+    apply_chart_theme(fig)
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Summary statistics
+    render_section_header("Summary Statistics")
+
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        render_simple_metric("Current", f"{filtered['metric_value'].iloc[-1]:.3f}")
+    with col2:
+        render_simple_metric("Average", f"{filtered['metric_value'].mean():.3f}")
+    with col3:
+        render_simple_metric("Min", f"{filtered['metric_value'].min():.3f}")
+    with col4:
+        render_simple_metric("Max", f"{filtered['metric_value'].max():.3f}")
+
+    # Change analysis
+    if len(filtered) >= 2:
+        first_val = filtered["metric_value"].iloc[0]
+        last_val = filtered["metric_value"].iloc[-1]
+        change = last_val - first_val
+        pct_change = (change / first_val * 100) if first_val != 0 else 0
+
+        st.markdown(f"""
+        <div class="metric-card">
+            <span class="metric-label">Change from First to Latest</span>
+            <div style="margin-top: 0.5rem; color: {COLORS['charcoal']};">
+                {'+' if change >= 0 else ''}{change:.3f} ({'+' if pct_change >= 0 else ''}{pct_change:.1f}%)
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
-        # Sidebar: Navigation
-        st.sidebar.markdown("##### Navigation")
-        page = st.sidebar.radio(
-            "View",
-            ["🚀 Run Evaluation", "📈 Current Metrics", "📅 Daily Runs", "🔄 Compare Runs", "📖 Metrics Guide"],
+
+# ============================================
+# PAGE: RUN HISTORY
+# ============================================
+
+def render_run_history_page(df: pd.DataFrame):
+    """List of all evaluation runs."""
+
+    render_page_header(
+        "Run History",
+        "All evaluation runs and their outcomes"
+    )
+
+    if df.empty:
+        st.info("No runs recorded yet.")
+        return
+
+    # Build runs summary
+    runs_data = []
+    for run_id in df["run_id"].unique():
+        run_df = df[df["run_id"] == run_id]
+        timestamp = run_df["timestamp"].iloc[0]
+
+        # Get key metrics
+        f1_val = run_df[run_df["metric_name"] == "f1"]["metric_value"].values
+        f1 = f1_val[0] if len(f1_val) > 0 else None
+
+        precision_val = run_df[run_df["metric_name"] == "precision"]["metric_value"].values
+        precision = precision_val[0] if len(precision_val) > 0 else None
+
+        recall_val = run_df[run_df["metric_name"] == "recall"]["metric_value"].values
+        recall = recall_val[0] if len(recall_val) > 0 else None
+
+        # Determine overall status
+        if f1 and f1 >= 0.75:
+            status = "Good"
+        elif f1 and f1 >= 0.60:
+            status = "Fair"
+        else:
+            status = "Needs Work"
+
+        runs_data.append({
+            "Run ID": run_id,
+            "Date": timestamp[:10],
+            "Time": timestamp[11:16] if len(timestamp) > 11 else "",
+            "F1": f1,
+            "Precision": precision,
+            "Recall": recall,
+            "Status": status
+        })
+
+    runs_df = pd.DataFrame(runs_data).sort_values("Date", ascending=False)
+
+    # Summary cards
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        render_simple_metric("Total Runs", str(len(runs_df)))
+    with col2:
+        good_runs = len(runs_df[runs_df["Status"] == "Good"])
+        render_simple_metric("Successful", str(good_runs))
+    with col3:
+        if not runs_df.empty:
+            render_simple_metric("Latest Status", runs_df.iloc[0]["Status"])
+
+    st.markdown("---")
+
+    # Runs table
+    st.dataframe(
+        runs_df,
+        use_container_width=True,
+        column_config={
+            "Run ID": st.column_config.TextColumn("Run ID", width="medium"),
+            "Date": st.column_config.TextColumn("Date"),
+            "Time": st.column_config.TextColumn("Time"),
+            "F1": st.column_config.NumberColumn("F1 Score", format="%.3f"),
+            "Precision": st.column_config.NumberColumn("Precision", format="%.3f"),
+            "Recall": st.column_config.NumberColumn("Recall", format="%.3f"),
+            "Status": st.column_config.TextColumn("Status"),
+        },
+        hide_index=True
+    )
+
+
+# ============================================
+# PAGE: METRIC GUIDE
+# ============================================
+
+def render_guide_page():
+    """Educational guide to metrics."""
+
+    render_page_header(
+        "Understanding Metrics",
+        "A practical guide to AI evaluation metrics"
+    )
+
+    # Confusion Matrix primer
+    render_section_header("The Foundation: Confusion Matrix")
+
+    st.markdown(f"""
+    Every classification metric builds on four fundamental counts:
+
+    |  | **Predicted: Hallucination** | **Predicted: Grounded** |
+    |--|------------------------------|-------------------------|
+    | **Actual: Hallucination** | TP (True Positive) | FN (False Negative) |
+    | **Actual: Grounded** | FP (False Positive) | TN (True Negative) |
+
+    - **TP**: Correctly flagged a hallucination
+    - **TN**: Correctly accepted grounded content
+    - **FP**: Wrongly flagged grounded content (false alarm)
+    - **FN**: Missed an actual hallucination (dangerous)
+    """)
+
+    st.markdown("---")
+
+    # Classification metrics
+    render_section_header("Classification Metrics")
+
+    with st.expander("**Precision** — Trust in Alerts", expanded=True):
+        st.markdown(f"""
+        **Formula:** TP / (TP + FP)
+
+        **Question answered:** When the model flags something as a hallucination, how often is it right?
+
+        **Intuition:** High precision means your alerts are trustworthy. When users see a warning,
+        they can believe it. Low precision leads to "alert fatigue" — users ignore warnings because
+        they're often wrong.
+
+        **Target:** ≥ 0.75 for production use
+        """)
+
+    with st.expander("**Recall** — Catch Rate", expanded=True):
+        st.markdown(f"""
+        **Formula:** TP / (TP + FN)
+
+        **Question answered:** Of all actual hallucinations, how many did we catch?
+
+        **Intuition:** High recall means few hallucinations slip through. Critical for safety-sensitive
+        applications where missing a hallucination could cause real harm (medical, legal, financial).
+
+        **Target:** ≥ 0.75 for most applications, higher for safety-critical
+        """)
+
+    with st.expander("**F1 Score** — Balanced Performance", expanded=True):
+        st.markdown(f"""
+        **Formula:** 2 × (Precision × Recall) / (Precision + Recall)
+
+        **Question answered:** How well does the model balance catching hallucinations vs. avoiding false alarms?
+
+        **Intuition:** The harmonic mean punishes extreme imbalances. You can't game F1 by optimizing
+        only precision or only recall. It's the primary metric for overall detection quality.
+
+        **Target:** ≥ 0.75 indicates production-ready performance
+        """)
+
+    st.markdown("---")
+
+    # Agreement metrics
+    render_section_header("Agreement Metrics")
+
+    with st.expander("**Cohen's Kappa** — Chance-Corrected Agreement", expanded=True):
+        st.markdown(f"""
+        **Formula:** (Observed Agreement - Chance Agreement) / (1 - Chance Agreement)
+
+        **Question answered:** How much better than random guessing is this model?
+
+        **Intuition:** Accuracy can be misleading with imbalanced classes. Kappa corrects for chance —
+        a Kappa of 0 means no better than random, while 1 means perfect agreement.
+
+        **Interpretation scale:**
+        - 0.81-1.00: Almost perfect
+        - 0.61-0.80: Substantial
+        - 0.41-0.60: Moderate
+        - 0.21-0.40: Fair
+        - 0.00-0.20: Slight
+        """)
+
+    st.markdown("---")
+
+    # Correlation metrics
+    render_section_header("Correlation Metrics")
+
+    st.markdown("""
+    These metrics measure how well **confidence scores** predict **actual correctness**.
+    A well-calibrated model should be more confident when it's right.
+    """)
+
+    with st.expander("**Kendall's Tau** — Rank Agreement"):
+        st.markdown(f"""
+        **Question answered:** When comparing any two predictions, does higher confidence usually mean higher correctness?
+
+        **Intuition:** Counts concordant vs discordant pairs. More robust to ties and outliers than other
+        correlation measures. Good for small sample sizes.
+
+        **Target:** ≥ 0.60 (Tau values are inherently smaller than Pearson/Spearman)
+        """)
+
+    with st.expander("**Pearson Correlation** — Linear Relationship"):
+        st.markdown(f"""
+        **Question answered:** Is there a proportional relationship between confidence and correctness?
+
+        **Intuition:** If confidence of 0.8 means 80% correct, that's perfect linear calibration.
+        Sensitive to outliers.
+
+        **Target:** ≥ 0.70
+        """)
+
+    st.markdown("---")
+
+    # Which metric to prioritize
+    render_section_header("Which Metric Should You Prioritize?")
+
+    st.markdown(f"""
+    | Your Situation | Primary Metric | Why |
+    |---------------|----------------|-----|
+    | General evaluation | **F1 Score** | Balanced measure of overall quality |
+    | Safety-critical (medical, legal) | **Recall** | Missing hallucinations is dangerous |
+    | User-facing alerts | **Precision + TNR** | False alarms erode trust |
+    | Comparing model versions | **F1** for ranking, **Kappa** for consistency |
+    | Calibration analysis | **Kendall's Tau** or **Pearson** | Confidence should predict correctness |
+    """)
+
+
+# ============================================
+# MAIN APPLICATION
+# ============================================
+
+def main():
+    st.set_page_config(
+        page_title="AI Evaluation · rasar.ai",
+        page_icon="◈",
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
+
+    # Apply brand styling
+    apply_brand_css()
+
+    # Load data
+    df = load_metrics()
+
+    # Sidebar
+    with st.sidebar:
+        st.markdown(f"""
+        <div style="padding: 1rem 0 1.5rem 0;">
+            <div style="font-size: 1.1rem; font-weight: 500; color: {COLORS['navy']};">
+                ◈ AI Evaluation
+            </div>
+            <div style="font-size: 0.75rem; color: {COLORS['medium_gray']}; margin-top: 0.25rem;">
+                rasar.ai
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("---")
+
+        # Navigation
+        page = st.radio(
+            "Navigate",
+            ["Metrics Overview", "Trends", "Run History", "Understanding Metrics"],
             label_visibility="collapsed"
         )
 
-        st.sidebar.markdown("---")
+        st.markdown("---")
 
-        # Quick stats in sidebar
-        try:
-            debug = db.debug_info()
-            col1, col2 = st.sidebar.columns(2)
-            with col1:
-                st.metric("Runs", debug.get('daily_runs_count', 0))
-            with col2:
-                st.metric("Metrics", debug.get('metrics_count', 0))
-        except Exception:
-            pass
+        # Quick stats
+        if not df.empty:
+            total_runs = df["run_id"].nunique()
+            st.caption(f"**{total_runs}** evaluation runs")
 
-        # Debug info (collapsed by default)
-        with st.sidebar.expander("🔧 System Info", expanded=False):
+            latest_run = df.sort_values("timestamp", ascending=False).iloc[0]
+            st.caption(f"Latest: {latest_run['timestamp'][:10]}")
+
+        # Database info (collapsed)
+        with st.expander("System", expanded=False):
             try:
                 debug = db.debug_info()
-                st.caption(f"**Backend:** {debug.get('backend')}")
-                if debug.get('pg_host'):
-                    st.caption(f"**Host:** {debug.get('pg_host')[:30]}...")
-                if debug.get('pg_error'):
-                    st.error(f"Error: {debug.get('pg_error')[:100]}")
-                st.caption(f"**Test Results:** {debug.get('test_results_count', 'N/A')}")
+                st.caption(f"Backend: {debug.get('backend', 'Unknown')}")
+                st.caption(f"Metrics: {debug.get('metrics_count', 0)}")
+                st.caption(f"Test Results: {debug.get('test_results_count', 0)}")
             except Exception as e:
-                st.error(f"Error: {e}")
+                st.caption(f"Error: {e}")
 
-        # Help links
-        st.sidebar.markdown("---")
-        st.sidebar.markdown("""
-        <div style="font-size: 0.85rem;">
-            📚 <a href="https://github.com/rasiulyte/evaluation-system/blob/main/docs/USER_GUIDE.md" target="_blank" style="color: #6366f1;">Documentation</a><br>
-            🐙 <a href="https://github.com/rasiulyte/evaluation-system" target="_blank" style="color: #6366f1;">GitHub Repo</a>
+        st.markdown("---")
+
+        st.markdown(f"""
+        <div style="font-size: 0.8rem; color: {COLORS['medium_gray']};">
+            <a href="https://rasar.ai" target="_blank" style="color: {COLORS['teal']};">rasar.ai</a>
         </div>
         """, unsafe_allow_html=True)
 
-        # Run Evaluation page works without data
-        if page == "🚀 Run Evaluation":
-            render_run_evaluation_page()
-            return
+    # Route to pages
+    if page == "Metrics Overview":
+        render_metrics_overview_page(df)
+    elif page == "Trends":
+        render_trends_page(df)
+    elif page == "Run History":
+        render_run_history_page(df)
+    elif page == "Understanding Metrics":
+        render_guide_page()
 
-        # Other pages need data
-        if df.empty:
-            st.warning("No metrics found in database. Use **🚀 Run Evaluation** to generate data.")
-            return
-
-        # Sidebar: Filters (only show for metrics pages)
-        if page in ["📈 Current Metrics"]:
-            st.sidebar.markdown("---")
-            scenarios = sorted(df["scenario"].unique())
-            scenario = st.sidebar.selectbox("Scenario", scenarios)
-            metrics_list = [m for m in METRIC_LABELS.keys() if m in df["metric_name"].unique()]
-            metric = st.sidebar.selectbox("Metric", metrics_list)
-
-        # Route to different pages
-        if page == "📅 Daily Runs":
-            render_daily_runs_page(df)
-            return
-        elif page == "🔄 Compare Runs":
-            render_compare_runs_page(df)
-            return
-        elif page == "📖 Metrics Guide":
-            render_metrics_guide_page()
-            return
-
-        # Default: Current Metrics page
-        render_header("Current Metrics", f"Analyzing {METRIC_LABELS.get(metric, metric)} performance for {scenario}")
-
-        # Filtered data
-        sdf = df[df["scenario"] == scenario]
-        mdf = sdf[sdf["metric_name"] == metric]
-
-        # Metrics overview
-        st.subheader(f"{METRIC_LABELS.get(metric, metric)}")
-        st.metric(
-            label=f"Latest {METRIC_LABELS.get(metric, metric)}",
-            value=f"{mdf['metric_value'].iloc[-1]:.3f}" if not mdf.empty else "-",
-            delta=None
-        )
-
-        # Educational info about this metric
-        if metric in METRIC_EDUCATION:
-            edu = METRIC_EDUCATION[metric]
-            with st.expander(f"📚 Learn about {METRIC_LABELS.get(metric, metric)}", expanded=False):
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.markdown(f"**Formula:** `{edu['formula']}`")
-                    st.markdown(f"**Target:** {edu['target']}")
-                    direction = "Higher is better" if edu['higher_is_better'] else "Lower is better (closer to 0)"
-                    st.markdown(f"**Direction:** {direction}")
-                with col2:
-                    st.markdown(f"**Intuition:**\n\n{edu['intuition']}")
-                    st.markdown(f"**When to use:**\n\n{edu['when_to_use']}")
-
-        # Metrics history plot
-        st.subheader("History")
-        if not mdf.empty:
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(
-                x=mdf["timestamp"],
-                y=mdf["metric_value"],
-                mode="lines+markers",
-                name=METRIC_LABELS.get(metric, metric),
-                line=dict(color="#6366f1", width=2),
-                marker=dict(size=8, color="#8b5cf6")
-            ))
-            fig.update_layout(
-                xaxis_title="Timestamp",
-                yaxis_title=METRIC_LABELS.get(metric, metric),
-                height=400
-            )
-            apply_plotly_theme(fig)
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("No data for this metric.")
-
-        # Scenario breakdown
-        st.subheader("Scenario Breakdown (latest run)")
-        latest_run = sdf["run_id"].iloc[-1] if not sdf.empty else None
-        if latest_run:
-            ldf = df[(df["run_id"] == latest_run) & (df["scenario"] == scenario)]
-            # Remove duplicates - keep only unique metric names
-            ldf = ldf.drop_duplicates(subset=["metric_name"], keep="last")
-            st.dataframe(ldf[["metric_name", "metric_value", "threshold_min", "threshold_max", "status"]])
-        else:
-            st.info("No scenario data available.")
-
-        # Alerts with detailed explanations (expandable)
-        st.subheader("⚠️ Alerts & Issues")
-        alerts = ldf[ldf["status"] != "healthy"] if latest_run else pd.DataFrame()
-        if not alerts.empty:
-            for idx, row in alerts.iterrows():
-                metric = row['metric_name']
-                value = row['metric_value']
-                status = row['status']
-                thresh_min = row.get('threshold_min')
-                thresh_max = row.get('threshold_max')
-
-                # Generate detailed explanations for each metric issue
-                alert_info = get_alert_explanation(metric, value, status, thresh_min, thresh_max)
-
-                # Expandable alert - shows title, expands to show details
-                with st.expander(alert_info['title'], expanded=False):
-                    st.markdown(f"**What happened:**\n\n{alert_info['what']}")
-                    st.markdown(f"**Why it matters:**\n\n{alert_info['why']}")
-                    st.markdown(f"**How to fix:**\n\n{alert_info['fix']}")
-        else:
-            st.success("✅ All metrics healthy - system is performing within expected thresholds.")
-
-        # --- Test Set and Case Breakdown ---
-        st.header(f"🧪 Test Set & Case Results for {scenario}")
-
-        # Load test case definitions for detail view
-        test_case_defs = load_test_case_definitions()
-
-        # Load test case results from database
-        try:
-            test_cases = db.get_test_results(scenario=scenario)
-        except Exception:
-            test_cases = []
-
-        if test_cases:
-            df_cases = pd.DataFrame(test_cases)
-
-            # Create results lookup by test_case_id
-            filtered_cases = df_cases.to_dict('records')
-            results_by_id = {tc.get("test_case_id"): tc for tc in filtered_cases if tc.get("test_case_id")}
-
-            # Check if we have results for this scenario
-            if df_cases.empty:
-                st.info(f"No test case results found for scenario: {scenario}")
-            else:
-                # Interactive test case selector
-                st.subheader("📋 Click a Test Case to View Details")
-
-                # Get unique test case IDs
-                if "test_case_id" in df_cases.columns:
-                    case_ids = df_cases["test_case_id"].unique().tolist()
-
-                    # Create a selectbox for test case selection (key includes scenario for proper reset)
-                    selected_case = st.selectbox(
-                        "Select Test Case",
-                        options=["-- Select a test case --"] + case_ids,
-                        key=f"test_case_selector_{scenario}"
-                    )
-
-                    # Show detail view if a case is selected
-                    if selected_case and selected_case != "-- Select a test case --":
-                        with st.container():
-                            st.markdown("---")
-                            result_data = results_by_id.get(selected_case, {})
-                            render_test_case_detail(selected_case, test_case_defs, result_data)
-                            st.markdown("---")
-
-                # Show summary table with clickable-style formatting
-                st.subheader(f"📊 Test Results for {scenario}")
-
-                # Add status icons to the dataframe for visual clarity
-                if "correct" in df_cases.columns:
-                    df_cases["status"] = df_cases["correct"].apply(lambda x: "✅" if x else "❌")
-
-                columns = [c for c in ["test_case_id", "status", "ground_truth", "prediction", "confidence", "prompt_id"] if c in df_cases.columns]
-                st.dataframe(
-                    df_cases[columns],
-                    use_container_width=True,
-                    column_config={
-                        "test_case_id": st.column_config.TextColumn("Test Case ID", help="Select from dropdown above to view details"),
-                        "status": st.column_config.TextColumn("Result", width="small"),
-                        "confidence": st.column_config.NumberColumn("Confidence", format="%.2f"),
-                    }
-                )
-                st.caption("💡 Tip: Use the dropdown above to view full details of any test case.")
-
-                # === TEST RESULTS SUMMARY & NEXT STEPS ===
-                render_test_summary(df_cases)
-        else:
-            st.info("No detailed test case results found for this scenario/run.")
-    except Exception as e:
-        st.exception(e)
-
-
-def render_test_summary(df_cases: pd.DataFrame):
-    """Render test results summary with next steps and investigation guidance."""
-
-    st.markdown('<div class="section-header"><h2>Test Results Summary & Next Steps</h2></div>', unsafe_allow_html=True)
-
-    # --- Overall Summary ---
-    total = len(df_cases)
-    if "correct" in df_cases.columns:
-        passed = df_cases["correct"].sum()
-        failed = total - passed
-        pass_rate = (passed / total * 100) if total > 0 else 0
-    else:
-        passed = failed = 0
-        pass_rate = 0
-
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        render_metric_card("Total Tests", str(total), status="healthy")
-    with col2:
-        render_metric_card("Passed", str(int(passed)), status="healthy")
-    with col3:
-        fail_status = "critical" if failed > 0 else "healthy"
-        render_metric_card("Failed", str(int(failed)), status=fail_status)
-    with col4:
-        rate_status = "healthy" if pass_rate >= 75 else ("warning" if pass_rate >= 60 else "critical")
-        render_metric_card("Pass Rate", f"{pass_rate:.1f}%", status=rate_status)
-
-    # --- Failure Breakdown by Type ---
-    st.subheader("🔍 Failure Analysis")
-
-    if "correct" in df_cases.columns and failed > 0:
-        failed_cases = df_cases[df_cases["correct"] == False].copy()
-
-        # Extract failure mode from test_case_id (e.g., FM1_001 -> FM1)
-        if "test_case_id" in failed_cases.columns:
-            failed_cases["failure_mode"] = failed_cases["test_case_id"].str.extract(r"(FM\d+|REG)", expand=False).fillna("Unknown")
-
-            failure_counts = failed_cases["failure_mode"].value_counts()
-
-            # Failure mode descriptions
-            FM_DESCRIPTIONS = {
-                "FM1": "Factual Addition - True facts not in context",
-                "FM2": "Fabrication - Outright false claims",
-                "FM3": "Subtle Distortion - Small changes to facts",
-                "FM4": "Valid Inference - Logical inferences incorrectly flagged",
-                "FM5": "Verbatim Grounded - Direct quotes incorrectly flagged",
-                "FM6": "Fluent Hallucination - Well-written but wrong",
-                "FM7": "Partial Grounding - Mixed grounded/hallucinated",
-                "REG": "Regression Test Cases",
-                "Unknown": "Uncategorized failures"
-            }
-
-            st.write("**Failures by Category:**")
-            for fm, count in failure_counts.items():
-                desc = FM_DESCRIPTIONS.get(fm, "Unknown category")
-                pct = count / failed * 100
-                st.write(f"- **{fm}** ({count} failures, {pct:.0f}%): {desc}")
-
-            # Show failed cases table
-            with st.expander("📄 View Failed Test Cases", expanded=False):
-                fail_cols = [c for c in ["test_case_id", "ground_truth", "prediction", "confidence", "llm_output"] if c in failed_cases.columns]
-                st.dataframe(failed_cases[fail_cols])
-    else:
-        st.success("No failures detected!")
-
-    # --- Next Steps Based on Results ---
-    st.subheader("📝 Recommended Next Steps")
-
-    if pass_rate >= 75:
-        st.success("**Status: PRODUCTION READY**")
-        st.markdown("""
-        1. ✅ Run regression tests on held-out set (`REG_*` cases)
-        2. ✅ Set up drift monitoring baseline
-        3. ✅ Deploy with confidence monitoring enabled
-        """)
-    elif pass_rate >= 60:
-        st.warning("**Status: NEEDS IMPROVEMENT**")
-        st.markdown("""
-        1. 🔄 Review failed cases in the table above
-        2. 🔄 Consider upgrading prompt strategy:
-           - Current < v3? Try **Chain-of-Thought** (v3)
-           - Current v3? Try **Rubric-based** (v4) or **Structured Output** (v5)
-        3. 🔄 Check if failures cluster in specific failure modes
-        4. 🔄 Add more few-shot examples for problem categories
-        """)
-    else:
-        st.error("**Status: SIGNIFICANT ISSUES**")
-        st.markdown("""
-        1. ❌ Do NOT deploy - accuracy too low
-        2. ❌ Analyze failure patterns in detail (see below)
-        3. ❌ Consider fundamental prompt redesign
-        4. ❌ Review test case labels for correctness
-        """)
-
-    # --- Investigation Guide ---
-    st.subheader("🔬 How to Investigate Failures")
-
-    with st.expander("Investigation Checklist", expanded=True):
-        st.markdown("""
-        **Step 1: Identify the Pattern**
-        - Are failures concentrated in one failure mode (FM1-FM7)?
-        - Are failures mostly False Positives (flagging grounded as hallucination)?
-        - Or False Negatives (missing actual hallucinations)?
-
-        **Step 2: Examine Specific Cases**
-        - Click "View Failed Test Cases" above
-        - Look at `llm_output` to see model's reasoning
-        - Compare `ground_truth` vs `prediction`
-
-        **Step 3: Check Confidence Scores**
-        - Low confidence on failures? Model is uncertain - add examples
-        - High confidence on failures? Model has wrong understanding - revise prompt
-
-        **Step 4: Take Action**
-        | Issue | Solution |
-        |-------|----------|
-        | High FM1 failures | Add examples of factual additions to prompt |
-        | High FM3 failures | Emphasize checking for subtle distortions |
-        | High FM6 failures | Add "fluent ≠ correct" guidance |
-        | Many False Positives | Increase TNR focus, relax criteria |
-        | Many False Negatives | Increase recall focus, tighten criteria |
-
-        **Step 5: Re-run & Compare**
-        ```bash
-        # Run evaluation with new prompt
-        python -c "from src.evaluator import Evaluator; e = Evaluator(); print(e.evaluate_batch('v3_chain_of_thought'))"
-
-        # Compare with A/B testing
-        python -c "from src.ab_testing import ABTester; t = ABTester(); t.run_test(results_a, results_b, 'v2', 'v3')"
-        ```
-        """)
-
-    # --- Quick Actions ---
-    st.subheader("⚡ Quick Actions")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.code("# Re-run evaluation\npython -m src.orchestrator", language="bash")
-    with col2:
-        st.code("# Run A/B test\npython -c \"from src.ab_testing import ABTester; ABTester().run_test(...)\"", language="bash")
+    # Footer
+    render_footer()
 
 
 if __name__ == "__main__":
