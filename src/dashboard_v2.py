@@ -1199,9 +1199,12 @@ def render_trends_page(df: pd.DataFrame):
 
     with col2:
         available_metrics = df[df["scenario"] == selected_scenario]["metric_name"].unique()
-        metric_options = [m for m in ["f1", "precision", "recall", "tnr", "cohens_kappa"] if m in available_metrics]
-        if not metric_options:
-            metric_options = list(available_metrics)
+        # Order metrics logically: classification, agreement, correlation, calibration
+        preferred_order = ["f1", "precision", "recall", "tnr", "accuracy", "cohens_kappa",
+                          "spearman", "pearson", "kendalls_tau", "bias", "mae", "rmse"]
+        metric_options = [m for m in preferred_order if m in available_metrics]
+        # Add any metrics not in preferred order
+        metric_options += [m for m in available_metrics if m not in metric_options]
         selected_metric = st.selectbox("Metric", metric_options, key="trend_metric")
 
     # Filter data
