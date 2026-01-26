@@ -3,6 +3,7 @@ Database abstraction layer supporting SQLite (local) and PostgreSQL (Supabase/cl
 """
 import os
 import json
+import sqlite3
 from typing import Dict, Optional, List
 from dotenv import load_dotenv
 
@@ -11,25 +12,41 @@ load_dotenv()
 # Check if we should use PostgreSQL (Supabase) or SQLite
 DATABASE_URL = os.getenv("DATABASE_URL")
 USE_POSTGRES = DATABASE_URL is not None
+POSTGRES_ERROR = None
 
 if USE_POSTGRES:
-    import psycopg2
-    from psycopg2.extras import RealDictCursor
-else:
-    import sqlite3
+    try:
+        import psycopg2
+        from psycopg2.extras import RealDictCursor
+    except ImportError:
+        USE_POSTGRES = False
+        POSTGRES_ERROR = "psycopg2 not installed"
 
 
 class Database:
     """Unified database interface for SQLite and PostgreSQL."""
-    
+
     def __init__(self):
         self.use_postgres = USE_POSTGRES
+        self.connection_error = None
+
+        # Test PostgreSQL connection, fall back to SQLite if it fails
+        if self.use_postgres:
+            try:
+                conn = psycopg2.connect(DATABASE_URL, sslmode='require', connect_timeout=10)
+                conn.close()
+            except Exception as e:
+                self.connection_error = str(e)
+                print(f"PostgreSQL connection failed: {e}")
+                print("Falling back to SQLite...")
+                self.use_postgres = False
+
         self._init_db()
-    
+
     def _get_connection(self):
         if self.use_postgres:
             # Supabase requires SSL
-            return psycopg2.connect(DATABASE_URL, sslmode='require')
+            return psycopg2.connect(DATABASE_URL, sslmode='require', connect_timeout=10)
         else:
             os.makedirs("data", exist_ok=True)
             return sqlite3.connect("data/metrics.db")
@@ -331,6 +348,8 @@ class Database:
         conn = self._get_connection()
         c = conn.cursor()
         info = {"backend": "PostgreSQL" if self.use_postgres else "SQLite"}
+        if self.connection_error:
+            info["pg_error"] = self.connection_error
         try:
             c.execute("SELECT COUNT(*) FROM test_results")
             info["test_results_count"] = c.fetchone()[0]

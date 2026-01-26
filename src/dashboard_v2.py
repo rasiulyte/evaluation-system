@@ -889,6 +889,8 @@ def main():
             try:
                 debug = db.debug_info()
                 st.write(f"Backend: {debug.get('backend')}")
+                if debug.get('pg_error'):
+                    st.error(f"PG Error: {debug.get('pg_error')}")
                 st.write(f"Metrics: {debug.get('metrics_count', debug.get('metrics_error', 'N/A'))}")
                 st.write(f"Test Results: {debug.get('test_results_count', debug.get('test_results_error', 'N/A'))}")
                 st.write(f"Daily Runs: {debug.get('daily_runs_count', debug.get('daily_runs_error', 'N/A'))}")
