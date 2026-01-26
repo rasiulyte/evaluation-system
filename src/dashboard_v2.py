@@ -1401,6 +1401,235 @@ def render_compare_runs_page(df: pd.DataFrame):
 
 
 # ============================================
+# PAGE: RUN EVALUATION
+# ============================================
+
+def load_config():
+    """Load configuration from settings.yaml."""
+    import yaml
+    try:
+        with open("config/settings.yaml", "r") as f:
+            return yaml.safe_load(f)
+    except Exception as e:
+        return None
+
+
+def render_run_evaluation_page():
+    """Page for running new evaluations."""
+
+    render_page_header(
+        "Run Evaluation",
+        "Execute hallucination detection evaluations"
+    )
+
+    # Load config
+    config = load_config()
+
+    if config is None:
+        st.error("Could not load config/settings.yaml. Make sure the file exists.")
+        return
+
+    # Check for API key
+    import os
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        st.warning("⚠️ OPENAI_API_KEY not found in environment. Evaluation will fail without it.")
+
+    # Configuration section
+    render_section_header("Configuration")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        # Model selection
+        available_models = ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"]
+        default_model = config.get('model') or config.get('global', {}).get('default_model', 'gpt-4o-mini')
+
+        model = st.selectbox(
+            "Model",
+            available_models,
+            index=available_models.index(default_model) if default_model in available_models else 0,
+            help="LLM model to use for evaluation"
+        )
+
+    with col2:
+        # Sample size
+        default_sample = config.get('global', {}).get('sample_size', 20)
+        sample_size = st.number_input(
+            "Sample Size",
+            min_value=5,
+            max_value=100,
+            value=default_sample,
+            step=5,
+            help="Number of test cases to evaluate"
+        )
+
+    # Scenario selection
+    scenarios_config = config.get('scenarios', {})
+    available_scenarios = list(scenarios_config.keys())
+    enabled_by_default = [s for s, cfg in scenarios_config.items() if cfg.get('enabled', False)]
+
+    selected_scenarios = st.multiselect(
+        "Scenarios",
+        available_scenarios,
+        default=enabled_by_default,
+        help="Select evaluation scenarios to run"
+    )
+
+    st.markdown("---")
+
+    # Run controls
+    col1, col2, col3 = st.columns([1, 1, 2])
+
+    with col1:
+        dry_run = st.checkbox("Dry Run", help="Preview what would run without executing")
+
+    with col2:
+        run_button = st.button("▶ Run Evaluation", type="primary", use_container_width=True)
+
+    # Results area
+    if run_button:
+        if not selected_scenarios:
+            st.error("Please select at least one scenario.")
+            return
+
+        render_section_header("Execution")
+
+        if dry_run:
+            # Dry run - just show what would happen
+            st.markdown(f"""
+            <div class="metric-card">
+                <span class="metric-label">Dry Run Preview</span>
+                <div style="margin-top: 0.75rem; color: {COLORS['charcoal']};">
+                    <p><strong>Model:</strong> {model}</p>
+                    <p><strong>Sample Size:</strong> {sample_size}</p>
+                    <p><strong>Scenarios:</strong></p>
+                    <ul>
+            """, unsafe_allow_html=True)
+
+            for scenario in selected_scenarios:
+                prompt_version = scenarios_config.get(scenario, {}).get('prompt_version', 'v1_zero_shot')
+                st.markdown(f"<li>{scenario} (prompt: {prompt_version})</li>", unsafe_allow_html=True)
+
+            st.markdown("""
+                    </ul>
+                </div>
+                <div class="metric-context">
+                    Uncheck "Dry Run" and click Run Evaluation to execute.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        else:
+            # Actually run the evaluation
+            try:
+                # Import orchestrator
+                import sys
+                sys.path.insert(0, "src")
+                from orchestrator import EvaluationOrchestrator
+
+                with st.spinner("Running evaluation... This may take a few minutes."):
+                    # Progress placeholder
+                    progress_placeholder = st.empty()
+                    results_placeholder = st.empty()
+
+                    # Run evaluation
+                    orchestrator = EvaluationOrchestrator()
+                    summary = orchestrator.run_daily_evaluation(
+                        scenarios=selected_scenarios,
+                        model=model,
+                        sample_size=sample_size,
+                        dry_run=False
+                    )
+
+                if summary:
+                    # Show results
+                    status_color = COLORS['good'] if summary.overall_status.value == 'healthy' else (
+                        COLORS['poor'] if summary.overall_status.value == 'critical' else COLORS['amber']
+                    )
+                    status_class = "status-good" if summary.overall_status.value == 'healthy' else (
+                        "status-poor" if summary.overall_status.value == 'critical' else "status-warning"
+                    )
+
+                    st.markdown(f"""
+                    <div class="metric-card {status_class}">
+                        <span class="metric-label">Evaluation Complete</span>
+                        <div style="margin-top: 0.75rem;">
+                            <div style="font-size: 1.5rem; font-weight: 600; color: {status_color};">
+                                {summary.overall_status.value.upper()}
+                            </div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    # Summary cards
+                    col1, col2, col3 = st.columns(3)
+
+                    with col1:
+                        st.markdown(f"""
+                        <div class="metric-card">
+                            <span class="metric-label">Run ID</span>
+                            <div style="font-family: monospace; margin-top: 0.5rem; color: {COLORS['navy']};">
+                                {summary.run_id}
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                    with col2:
+                        st.markdown(f"""
+                        <div class="metric-card status-good">
+                            <span class="metric-label">Passed</span>
+                            <div class="metric-value" style="color: {COLORS['good']};">{summary.scenarios_passed}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                    with col3:
+                        fail_class = "status-poor" if summary.scenarios_failed > 0 else ""
+                        fail_color = COLORS['poor'] if summary.scenarios_failed > 0 else COLORS['charcoal']
+                        st.markdown(f"""
+                        <div class="metric-card {fail_class}">
+                            <span class="metric-label">Failed</span>
+                            <div class="metric-value" style="color: {fail_color};">{summary.scenarios_failed}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                    # Alerts
+                    if summary.alerts:
+                        render_section_header("Alerts")
+                        for alert in summary.alerts:
+                            st.markdown(f"""
+                            <div class="metric-card status-warning" style="margin-bottom: 0.5rem;">
+                                <span style="color: {COLORS['amber']};">⚠️ {alert}</span>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                    st.success("✓ Results saved to database. View them in Metrics Overview or Trends.")
+
+                else:
+                    st.error("Evaluation failed. Check the logs for details.")
+
+            except Exception as e:
+                st.error(f"Error running evaluation: {str(e)}")
+                import traceback
+                with st.expander("Error Details"):
+                    st.code(traceback.format_exc())
+
+    # Recent runs info
+    render_section_header("Recent Runs")
+
+    try:
+        run_ids = db.get_run_ids()
+        if run_ids:
+            st.caption(f"Last 5 runs:")
+            for run_id in run_ids[:5]:
+                st.markdown(f"• `{run_id}`")
+        else:
+            st.caption("No runs recorded yet.")
+    except Exception:
+        st.caption("Could not load run history.")
+
+
+# ============================================
 # PAGE: METRIC GUIDE
 # ============================================
 
@@ -1575,7 +1804,7 @@ def main():
         # Navigation
         page = st.radio(
             "Navigate",
-            ["Metrics Overview", "Trends", "Compare Runs", "Run History", "Understanding Metrics"],
+            ["Metrics Overview", "Trends", "Compare Runs", "Run History", "Run Evaluation", "Understanding Metrics"],
             label_visibility="collapsed"
         )
 
@@ -1616,6 +1845,8 @@ def main():
         render_compare_runs_page(df)
     elif page == "Run History":
         render_run_history_page(df)
+    elif page == "Run Evaluation":
+        render_run_evaluation_page()
     elif page == "Understanding Metrics":
         render_guide_page()
 
