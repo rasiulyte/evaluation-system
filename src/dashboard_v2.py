@@ -1525,11 +1525,25 @@ def render_compare_runs_page(df: pd.DataFrame):
     # Detailed comparison
     render_section_header("Detailed Comparison")
 
+    # Scenario filter for detailed view
+    scenarios = sorted(comparison_df["scenario"].unique())
+    selected_detail_scenario = st.selectbox(
+        "Filter by Scenario",
+        ["All Scenarios"] + scenarios,
+        key="detail_scenario"
+    )
+
+    # Filter data based on selection
+    if selected_detail_scenario == "All Scenarios":
+        filtered_comparison = comparison_df
+    else:
+        filtered_comparison = comparison_df[comparison_df["scenario"] == selected_detail_scenario]
+
     # Metrics where LOWER is better (increase = bad, decrease = good)
     lower_is_better = {"bias", "mae", "rmse"}
 
     # Display comparison as styled rows with colored changes
-    for _, row in comparison_df.iterrows():
+    for _, row in filtered_comparison.iterrows():
         delta = row["delta"]
         pct = row["delta_pct"]
         baseline = row["metric_value_baseline"]
@@ -1568,12 +1582,15 @@ def render_compare_runs_page(df: pd.DataFrame):
                 border_class = "status-poor"
             change_text = f"↓ {delta:.3f} ({pct:.1f}%)"
 
+        # Show scenario label only when viewing all scenarios
+        scenario_label = f'<span style="color: {COLORS["medium_gray"]}; font-size: 0.8rem; margin-left: 0.75rem;">{row["scenario"]}</span>' if selected_detail_scenario == "All Scenarios" else ""
+
         st.markdown(f"""
         <div class="metric-card {border_class}" style="margin-bottom: 0.5rem; padding: 1rem 1.25rem;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
                     <span style="color: {COLORS['navy']}; font-weight: 500;">{row['metric_name']}</span>
-                    <span style="color: {COLORS['medium_gray']}; font-size: 0.8rem; margin-left: 0.75rem;">{row['scenario']}</span>
+                    {scenario_label}
                 </div>
                 <span style="color: {change_color}; font-weight: 500; font-size: 0.9rem;">{change_text}</span>
             </div>
