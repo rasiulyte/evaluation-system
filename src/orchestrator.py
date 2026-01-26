@@ -254,10 +254,13 @@ class EvaluationOrchestrator:
 
                 # Add scenario info to results and save to database
                 saved_count = 0
+                skipped_count = 0
+                error_count = 0
                 for r in results:
                     r['scenario'] = scenario
+                    pred = r.get('prediction')
                     # Save all results that have a prediction key (including 'unknown')
-                    if 'prediction' in r and r.get('prediction') not in [None, '']:
+                    if 'prediction' in r and pred not in [None, '']:
                         try:
                             db.save_test_result(
                                 run_id=run_id,
@@ -265,7 +268,7 @@ class EvaluationOrchestrator:
                                 test_case_id=r.get('test_case_id', ''),
                                 prompt_id=r.get('prompt_id', ''),
                                 ground_truth=r.get('ground_truth', ''),
-                                prediction=r.get('prediction', ''),
+                                prediction=pred,
                                 confidence=float(r.get('confidence', 0.0)),
                                 correct=bool(r.get('correct', False)),
                                 llm_output=r.get('llm_output', ''),
@@ -273,10 +276,15 @@ class EvaluationOrchestrator:
                             )
                             saved_count += 1
                         except Exception as save_err:
-                            print(f"  Error saving result for {r.get('test_case_id')}: {save_err}")
+                            error_count += 1
+                            print(f"  DB Error for {r.get('test_case_id')}: {save_err}")
                     elif 'error' in r:
-                        print(f"  Error for {r.get('test_case_id')}: {r.get('error')}")
-                print(f"  Saved {saved_count} test results to database")
+                        error_count += 1
+                        print(f"  API Error for {r.get('test_case_id')}: {r.get('error')}")
+                    else:
+                        skipped_count += 1
+                        print(f"  Skipped {r.get('test_case_id')}: prediction='{pred}'")
+                print(f"  Results: {saved_count} saved, {skipped_count} skipped, {error_count} errors")
                 all_test_case_results.extend(results)
 
                 # Calculate metrics

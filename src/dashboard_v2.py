@@ -509,6 +509,10 @@ def render_run_evaluation_page():
                 )
 
                 if summary:
+                    # Check test results count
+                    test_count = db.get_test_results_count()
+                    st.write(f"**Test results in DB:** {test_count}")
+
                     # Store in session state for persistence
                     st.session_state.eval_summary = {
                         'run_id': summary.run_id,
@@ -517,7 +521,8 @@ def render_run_evaluation_page():
                         'scenarios_passed': summary.scenarios_passed,
                         'scenarios_failed': summary.scenarios_failed,
                         'alerts': summary.alerts,
-                        'hillclimb_suggestions': summary.hillclimb_suggestions
+                        'hillclimb_suggestions': summary.hillclimb_suggestions,
+                        'test_results_count': test_count
                     }
                     status.update(label="✅ Evaluation Complete!", state="complete", expanded=False)
                 else:
