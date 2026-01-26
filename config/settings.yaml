@@ -14,23 +14,23 @@ scenarios:
     prompt_version: v5_structured_output
     sample_size: 20
   factual_accuracy:
-    enabled: false
+    enabled: true
     prompt_version: v5_structured_output
     sample_size: 20
   reasoning_quality:
-    enabled: false
+    enabled: true
     prompt_version: v5_structured_output
     sample_size: 20
   instruction_following:
-    enabled: false
+    enabled: true
     prompt_version: v5_structured_output
     sample_size: 20
   safety_compliance:
-    enabled: false
+    enabled: true
     prompt_version: v5_structured_output
     sample_size: 20
   consistency:
-    enabled: false
+    enabled: true
     prompt_version: v5_structured_output
     sample_size: 20
 
