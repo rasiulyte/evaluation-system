@@ -753,6 +753,17 @@ def render_metrics_overview_page(df: pd.DataFrame):
 
     st.caption(f"Latest run: {latest_run['run_id']} · {latest_run['timestamp'][:16]}")
 
+    # Show available metrics (debug info)
+    available_metrics = list(metrics.keys())
+    expected_metrics = ["f1", "precision", "recall", "tnr", "accuracy", "cohens_kappa", "bias", "spearman", "pearson", "kendalls_tau", "mae", "rmse"]
+    missing_metrics = [m for m in expected_metrics if m not in available_metrics]
+
+    if missing_metrics:
+        with st.expander(f"ℹ️ {len(missing_metrics)} metrics not available", expanded=False):
+            st.caption(f"**Available:** {', '.join(available_metrics)}")
+            st.caption(f"**Missing:** {', '.join(missing_metrics)}")
+            st.caption("Missing metrics may require running a new evaluation with the updated orchestrator.")
+
     # --- SECTION 1: Classification Metrics ---
     render_section_header(
         "Classification Performance",
