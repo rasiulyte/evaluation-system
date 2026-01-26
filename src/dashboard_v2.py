@@ -772,6 +772,31 @@ def render_footer():
 # DATA LOADING
 # ============================================
 
+def load_test_case(test_case_id: str) -> dict:
+    """Load a test case by ID from the test_cases directory."""
+    import json
+    from pathlib import Path
+
+    # Try to find the test case in JSON files
+    project_root = Path(__file__).parent.parent
+    test_cases_dir = project_root / "data" / "test_cases"
+
+    if not test_cases_dir.exists():
+        return None
+
+    for json_file in test_cases_dir.glob("*.json"):
+        try:
+            with open(json_file, "r") as f:
+                cases = json.load(f)
+                for case in cases:
+                    if case.get("id") == test_case_id:
+                        return case
+        except Exception:
+            continue
+
+    return None
+
+
 def load_metrics() -> pd.DataFrame:
     """Load metrics from database."""
     try:
@@ -1439,6 +1464,37 @@ def render_run_history_page(df: pd.DataFrame):
                         if table_data:
                             results_df = pd.DataFrame(table_data)
                             st.dataframe(results_df, use_container_width=True, hide_index=True)
+
+                            # Add test case viewer
+                            test_case_ids = [r.get('test_case_id', '') for r in results if r.get('test_case_id')]
+                            if test_case_ids:
+                                selected_case = st.selectbox(
+                                    "View test case details:",
+                                    ["Select a test case..."] + test_case_ids,
+                                    key=f"tc_{row['Run ID']}_{scenario}"
+                                )
+
+                                if selected_case and selected_case != "Select a test case...":
+                                    # Load test case from file
+                                    test_case_data = load_test_case(selected_case)
+                                    if test_case_data:
+                                        st.markdown(f"---")
+                                        st.markdown(f"##### Test Case: `{selected_case}`")
+
+                                        col1, col2 = st.columns(2)
+                                        with col1:
+                                            st.markdown(f"**Label:** `{test_case_data.get('label', '—')}`")
+                                        with col2:
+                                            if test_case_data.get('failure_mode'):
+                                                st.markdown(f"**Failure Mode:** `{test_case_data.get('failure_mode')}`")
+
+                                        st.markdown("**Context:**")
+                                        st.markdown(f"""<div style="background: {COLORS['light_gray']}; padding: 1rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1rem;">{test_case_data.get('context', '—')}</div>""", unsafe_allow_html=True)
+
+                                        st.markdown("**Response (to evaluate):**")
+                                        st.markdown(f"""<div style="background: {COLORS['light_gray']}; padding: 1rem; border-radius: 6px; font-size: 0.85rem;">{test_case_data.get('response', '—')}</div>""", unsafe_allow_html=True)
+                                    else:
+                                        st.warning(f"Could not load test case: {selected_case}")
 
                         st.markdown("")
                 else:
