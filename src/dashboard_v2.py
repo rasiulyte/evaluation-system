@@ -1535,9 +1535,21 @@ def render_compare_runs_page(df: pd.DataFrame):
 
     # Filter data based on selection
     if selected_detail_scenario == "All Scenarios":
-        filtered_comparison = comparison_df
+        filtered_comparison = comparison_df.copy()
     else:
-        filtered_comparison = comparison_df[comparison_df["scenario"] == selected_detail_scenario]
+        filtered_comparison = comparison_df[comparison_df["scenario"] == selected_detail_scenario].copy()
+
+    # Define metric ordering (classification → agreement → correlation → error)
+    metric_order = {
+        "f1": 1, "precision": 2, "recall": 3, "tnr": 4, "accuracy": 5,
+        "cohens_kappa": 6,
+        "spearman": 7, "pearson": 8, "kendalls_tau": 9,
+        "bias": 10, "mae": 11, "rmse": 12
+    }
+    filtered_comparison["_metric_order"] = filtered_comparison["metric_name"].map(
+        lambda x: metric_order.get(x, 99)
+    )
+    filtered_comparison = filtered_comparison.sort_values(["scenario", "_metric_order"])
 
     # Metrics where LOWER is better (increase = bad, decrease = good)
     lower_is_better = {"bias", "mae", "rmse"}
