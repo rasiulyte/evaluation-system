@@ -476,7 +476,11 @@ def apply_brand_css():
         border: 1px solid {COLORS['light_gray']} !important;
     }}
 
-    /* Logo button - styled as text */
+    /* Logo button - styled as text, left aligned */
+    [data-testid="stSidebar"] .stButton:first-of-type {{
+        text-align: left !important;
+    }}
+
     [data-testid="stSidebar"] .stButton:first-of-type > button {{
         background-color: transparent !important;
         color: {COLORS['navy']} !important;
@@ -486,6 +490,8 @@ def apply_brand_css():
         font-weight: 500 !important;
         text-align: left !important;
         justify-content: flex-start !important;
+        width: auto !important;
+        min-width: 0 !important;
     }}
 
     [data-testid="stSidebar"] .stButton:first-of-type > button:hover {{
@@ -2246,7 +2252,7 @@ def render_home_page():
             <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">1. Run Evaluation</div>
             <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
                 Start by running an evaluation. The system tests an LLM's ability to detect
-                hallucinations in AI-generated responses. You'll need an OpenAI API key.
+                hallucinations in AI-generated responses. You'll need an admin password and OpenAI API key.
             </div>
         </div>
         """, unsafe_allow_html=True)
