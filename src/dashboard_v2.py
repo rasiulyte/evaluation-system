@@ -2698,91 +2698,266 @@ def render_prompt_lab_page(df: pd.DataFrame):
 
     st.markdown("---")
 
-    # Available prompts
-    render_section_header("Available Prompts")
+    # Prompt Version Analysis
+    render_section_header("Prompt Version Analysis")
+
+    st.markdown("Each prompt version represents a different approach. Click to see details, use cases, and limitations.")
 
     prompts = load_all_prompts()
 
-    if not prompts:
-        st.info("No prompts found in prompts/ directory")
-    else:
-        st.markdown(f"**{len(prompts)} prompts available** — click to view content")
+    # v1 Zero Shot
+    with st.expander("**v1_zero_shot** — Basic approach, no examples"):
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            st.markdown(f"""
+            **Approach:** Simply ask the model to classify without examples or detailed instructions.
 
-        for prompt_id, content in prompts.items():
-            # Determine prompt characteristics
-            has_calibration = "calibration" in content.lower() or "confidence" in content.lower() and "0.95" in content
-            has_json = "json" in content.lower()
-            has_examples = "example" in content.lower()
+            **✓ Use when:**
+            - Quick baseline testing
+            - Evaluating model's inherent capability
+            - Token budget is very limited
 
-            tags = []
-            if has_json:
-                tags.append("structured output")
-            if has_calibration:
-                tags.append("calibrated confidence")
-            if has_examples:
-                tags.append("few-shot")
+            **✗ Don't use when:**
+            - You need consistent output format
+            - You need confidence scores
+            - High accuracy is required
 
-            tag_str = " · ".join(tags) if tags else "basic"
+            **Limitations:**
+            - Output format varies (hard to parse)
+            - No confidence scores
+            - Model may misunderstand the task
+            """)
+        with col2:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div style="font-size: 0.8rem; color: {COLORS['medium_gray']};">Best for</div>
+                <div style="font-weight: 500; color: {COLORS['navy']};">Baselines</div>
+            </div>
+            """, unsafe_allow_html=True)
+        if "v1_zero_shot" in prompts:
+            st.code(prompts["v1_zero_shot"], language=None)
 
-            with st.expander(f"**{prompt_id}** — _{tag_str}_"):
-                st.code(content, language=None)
+    # v2 Few Shot
+    with st.expander("**v2_few_shot** — Learning from examples"):
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            st.markdown(f"""
+            **Approach:** Provide examples of correct classifications to guide the model.
+
+            **✓ Use when:**
+            - Model struggles with zero-shot
+            - You have good representative examples
+            - Consistency matters more than token cost
+
+            **✗ Don't use when:**
+            - Token budget is tight (examples add tokens)
+            - Your examples might bias edge cases
+            - You need structured output
+
+            **Limitations:**
+            - Examples may not cover all cases
+            - Higher token usage
+            - Still no guaranteed output format
+            """)
+        with col2:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div style="font-size: 0.8rem; color: {COLORS['medium_gray']};">Best for</div>
+                <div style="font-weight: 500; color: {COLORS['navy']};">Consistency</div>
+            </div>
+            """, unsafe_allow_html=True)
+        if "v2_few_shot" in prompts:
+            st.code(prompts["v2_few_shot"], language=None)
+
+    # v3 Chain of Thought
+    with st.expander("**v3_chain_of_thought** — Step-by-step reasoning"):
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            st.markdown(f"""
+            **Approach:** Ask the model to reason through the problem step by step before concluding.
+
+            **✓ Use when:**
+            - Complex cases requiring nuanced judgment
+            - You want to understand the reasoning
+            - Debugging why classifications fail
+
+            **✗ Don't use when:**
+            - Speed/latency is critical
+            - Token budget is limited
+            - You only need the final answer
+
+            **Limitations:**
+            - Slower (more tokens generated)
+            - Reasoning can still be flawed
+            - Output format still varies
+            """)
+        with col2:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div style="font-size: 0.8rem; color: {COLORS['medium_gray']};">Best for</div>
+                <div style="font-weight: 500; color: {COLORS['navy']};">Explainability</div>
+            </div>
+            """, unsafe_allow_html=True)
+        if "v3_chain_of_thought" in prompts:
+            st.code(prompts["v3_chain_of_thought"], language=None)
+
+    # v4 Rubric Based
+    with st.expander("**v4_rubric_based** — Multi-dimensional scoring"):
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            st.markdown(f"""
+            **Approach:** Score across 4 dimensions (grounding, factual, inference, numeric) with a 100-point scale.
+
+            **✓ Use when:**
+            - You need detailed breakdown of WHY something is hallucinated
+            - Analyzing failure patterns
+            - Training human reviewers
+
+            **✗ Don't use when:**
+            - You need automated metric calculation
+            - Simple pass/fail is sufficient
+            - Parsing reliability matters
+
+            **Limitations:**
+            - Complex text output (hard to parse)
+            - No single confidence score for correlation metrics
+            - Model may not follow rubric consistently
+            """)
+        with col2:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div style="font-size: 0.8rem; color: {COLORS['medium_gray']};">Best for</div>
+                <div style="font-weight: 500; color: {COLORS['navy']};">Deep Analysis</div>
+            </div>
+            """, unsafe_allow_html=True)
+        if "v4_rubric_based" in prompts:
+            st.code(prompts["v4_rubric_based"], language=None)
+
+    # v5 Structured Output
+    with st.expander("**v5_structured_output** — JSON format for automation"):
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            st.markdown(f"""
+            **Approach:** Request JSON output with classification, confidence, and reasoning fields.
+
+            **✓ Use when:**
+            - Building automated pipelines
+            - You need parseable output
+            - Integrating with other systems
+
+            **✗ Don't use when:**
+            - You need meaningful confidence scores (use v6)
+            - Correlation metrics matter (Spearman ~0.26)
+
+            **Limitations:**
+            - Confidence values are arbitrary (not calibrated)
+            - Model picks numbers without clear meaning
+            - Spearman correlation ~0.26 (nearly random)
+            """)
+        with col2:
+            st.markdown(f"""
+            <div class="metric-card status-warning">
+                <div style="font-size: 0.8rem; color: {COLORS['medium_gray']};">Best for</div>
+                <div style="font-weight: 500; color: {COLORS['navy']};">Automation</div>
+                <div style="font-size: 0.75rem; color: {COLORS['amber']}; margin-top: 0.25rem;">⚠ Poor calibration</div>
+            </div>
+            """, unsafe_allow_html=True)
+        if "v5_structured_output" in prompts:
+            st.code(prompts["v5_structured_output"], language=None)
+
+    # v6 Calibrated Confidence
+    with st.expander("**v6_calibrated_confidence** — JSON with meaningful confidence ⭐ Recommended"):
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            st.markdown(f"""
+            **Approach:** JSON output with explicit calibration guidelines for confidence values.
+
+            **✓ Use when:**
+            - Production systems
+            - You need trustworthy confidence scores
+            - Correlation metrics matter
+            - You want to threshold by confidence
+
+            **✗ Don't use when:**
+            - You need detailed dimensional breakdown (use v4)
+            - Explainability is the primary goal (use v3)
+
+            **Why it's recommended:**
+            - Confidence actually predicts correctness
+            - Spearman correlation ~0.84 (vs 0.26 for v5)
+            - Easy to parse AND meaningful scores
+            """)
+        with col2:
+            st.markdown(f"""
+            <div class="metric-card status-good">
+                <div style="font-size: 0.8rem; color: {COLORS['medium_gray']};">Best for</div>
+                <div style="font-weight: 500; color: {COLORS['navy']};">Production</div>
+                <div style="font-size: 0.75rem; color: {COLORS['good']}; margin-top: 0.25rem;">⭐ Recommended</div>
+            </div>
+            """, unsafe_allow_html=True)
+        if "v6_calibrated_confidence" in prompts:
+            st.code(prompts["v6_calibrated_confidence"], language=None)
 
     st.markdown("---")
 
-    # Example comparison: v5 vs v6
-    render_section_header("Case Study: v5 vs v6")
+    # Comparison table
+    render_section_header("Quick Comparison")
 
     st.markdown(f"""
-    <div class="metric-card" style="margin-bottom: 1rem;">
-        <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">The Problem with v5</div>
-        <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
-            <code>v5_structured_output</code> tells the model to output confidence between 0.0-1.0, but doesn't explain
-            <strong>what each value means</strong>. The model picks arbitrary numbers, so confidence doesn't predict correctness.
-        </div>
+    <div class="metric-card">
+        <table style="width: 100%; font-size: 0.85rem; border-collapse: collapse;">
+            <tr style="border-bottom: 2px solid {COLORS['light_gray']};">
+                <th style="text-align: left; padding: 0.5rem;">Version</th>
+                <th style="text-align: left; padding: 0.5rem;">Output</th>
+                <th style="text-align: left; padding: 0.5rem;">Parseable</th>
+                <th style="text-align: left; padding: 0.5rem;">Confidence</th>
+                <th style="text-align: left; padding: 0.5rem;">Best For</th>
+            </tr>
+            <tr style="border-bottom: 1px solid {COLORS['light_gray']};">
+                <td style="padding: 0.5rem;"><code>v1</code></td>
+                <td style="padding: 0.5rem;">Text</td>
+                <td style="padding: 0.5rem;">❌</td>
+                <td style="padding: 0.5rem;">❌</td>
+                <td style="padding: 0.5rem;">Baselines</td>
+            </tr>
+            <tr style="border-bottom: 1px solid {COLORS['light_gray']};">
+                <td style="padding: 0.5rem;"><code>v2</code></td>
+                <td style="padding: 0.5rem;">Text</td>
+                <td style="padding: 0.5rem;">❌</td>
+                <td style="padding: 0.5rem;">❌</td>
+                <td style="padding: 0.5rem;">Consistency</td>
+            </tr>
+            <tr style="border-bottom: 1px solid {COLORS['light_gray']};">
+                <td style="padding: 0.5rem;"><code>v3</code></td>
+                <td style="padding: 0.5rem;">Text + reasoning</td>
+                <td style="padding: 0.5rem;">❌</td>
+                <td style="padding: 0.5rem;">❌</td>
+                <td style="padding: 0.5rem;">Explainability</td>
+            </tr>
+            <tr style="border-bottom: 1px solid {COLORS['light_gray']};">
+                <td style="padding: 0.5rem;"><code>v4</code></td>
+                <td style="padding: 0.5rem;">Rubric scores</td>
+                <td style="padding: 0.5rem;">⚠️</td>
+                <td style="padding: 0.5rem;">⚠️ (derived)</td>
+                <td style="padding: 0.5rem;">Deep analysis</td>
+            </tr>
+            <tr style="border-bottom: 1px solid {COLORS['light_gray']};">
+                <td style="padding: 0.5rem;"><code>v5</code></td>
+                <td style="padding: 0.5rem;">JSON</td>
+                <td style="padding: 0.5rem;">✅</td>
+                <td style="padding: 0.5rem;">⚠️ (uncalibrated)</td>
+                <td style="padding: 0.5rem;">Automation</td>
+            </tr>
+            <tr>
+                <td style="padding: 0.5rem;"><code>v6</code> ⭐</td>
+                <td style="padding: 0.5rem;">JSON</td>
+                <td style="padding: 0.5rem;">✅</td>
+                <td style="padding: 0.5rem;">✅ (calibrated)</td>
+                <td style="padding: 0.5rem;">Production</td>
+            </tr>
+        </table>
     </div>
     """, unsafe_allow_html=True)
-
-    st.markdown(f"""
-    <div class="metric-card status-good" style="margin-bottom: 1rem;">
-        <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">The v6 Solution</div>
-        <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
-            <code>v6_calibrated_confidence</code> adds explicit calibration guidelines:
-            <ul style="margin-top: 0.5rem; margin-bottom: 0;">
-                <li><strong>0.95-1.0:</strong> Direct quotes or paraphrases</li>
-                <li><strong>0.80-0.94:</strong> Clearly supported with minor inference</li>
-                <li><strong>0.60-0.79:</strong> Moderate inference required</li>
-                <li><strong>0.40-0.59:</strong> Ambiguous evidence</li>
-                <li><strong>0.20-0.39:</strong> Likely adds info not in context</li>
-                <li><strong>0.00-0.19:</strong> Contradicts or fabricates</li>
-            </ul>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Results comparison
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.markdown(f"""
-        <div class="metric-card status-poor">
-            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.5rem;">v5 Results</div>
-            <div style="font-size: 0.9rem; color: {COLORS['charcoal']};">
-                <strong>Spearman Correlation: ~0.26</strong><br>
-                <span style="color: {COLORS['medium_gray']};">Confidence is nearly random — doesn't predict correctness</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col2:
-        st.markdown(f"""
-        <div class="metric-card status-good">
-            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.5rem;">v6 Results</div>
-            <div style="font-size: 0.9rem; color: {COLORS['charcoal']};">
-                <strong>Spearman Correlation: ~0.84</strong><br>
-                <span style="color: {COLORS['medium_gray']};">Confidence is meaningful — high confidence = more likely correct</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
 
     st.markdown("---")
 
