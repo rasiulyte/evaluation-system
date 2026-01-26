@@ -741,6 +741,7 @@ def render_footer():
     <div class="footer">
         <p>A sandbox for learning AI evaluation</p>
         <p><a href="https://rasar.ai" target="_blank">rasar.ai</a></p>
+        <p style="margin-top: 0.5rem;">&copy; 2025 rasar.ai. All rights reserved.</p>
     </div>
     """, unsafe_allow_html=True)
 
