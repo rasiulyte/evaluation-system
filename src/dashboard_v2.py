@@ -1442,11 +1442,44 @@ def load_config():
 
 def render_run_evaluation_page():
     """Page for running new evaluations."""
+    import os
 
     render_page_header(
         "Run Evaluation",
         "Execute hallucination detection evaluations"
     )
+
+    # Password protection
+    render_section_header("Authentication")
+
+    # Get admin password from secrets or use default
+    try:
+        admin_password = st.secrets.get("ADMIN_PASSWORD", "1978")
+    except Exception:
+        admin_password = "1978"
+
+    # Check if already authenticated in session
+    if "eval_authenticated" not in st.session_state:
+        st.session_state.eval_authenticated = False
+
+    if not st.session_state.eval_authenticated:
+        password_input = st.text_input("Enter admin password to run evaluations", type="password")
+
+        if password_input:
+            if password_input == admin_password:
+                st.session_state.eval_authenticated = True
+                st.rerun()
+            else:
+                st.error("Incorrect password")
+        return
+
+    # Show authenticated status
+    st.markdown(f"""
+    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+        <span style="color: {COLORS['good']};">✓</span>
+        <span style="color: {COLORS['medium_gray']}; font-size: 0.85rem;">Authenticated</span>
+    </div>
+    """, unsafe_allow_html=True)
 
     # Load config
     config = load_config()
@@ -1456,7 +1489,6 @@ def render_run_evaluation_page():
         return
 
     # Check for API key - check both env and Streamlit secrets
-    import os
     api_key = os.getenv("OPENAI_API_KEY")
 
     # Try to get from Streamlit secrets if not in env
@@ -1469,9 +1501,35 @@ def render_run_evaluation_page():
         except Exception:
             pass
 
-    if not api_key:
-        st.error("⚠️ OPENAI_API_KEY not found. Add it to Streamlit secrets or environment variables.")
-        st.caption("On Streamlit Cloud: Go to App Settings → Secrets and add OPENAI_API_KEY")
+    # Show API key status
+    render_section_header("System Status")
+
+    if api_key:
+        # Show masked key
+        masked_key = api_key[:7] + "..." + api_key[-4:] if len(api_key) > 15 else "***"
+        st.markdown(f"""
+        <div class="metric-card status-good" style="padding: 1rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="color: {COLORS['good']}; font-size: 1.2rem;">✓</span>
+                <span style="color: {COLORS['charcoal']};">OpenAI API Key configured</span>
+            </div>
+            <div style="font-family: monospace; font-size: 0.8rem; color: {COLORS['medium_gray']}; margin-top: 0.5rem;">
+                {masked_key}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+        <div class="metric-card status-poor" style="padding: 1rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="color: {COLORS['poor']}; font-size: 1.2rem;">✗</span>
+                <span style="color: {COLORS['charcoal']};">OpenAI API Key missing</span>
+            </div>
+            <div style="font-size: 0.85rem; color: {COLORS['medium_gray']}; margin-top: 0.5rem;">
+                Add OPENAI_API_KEY to Streamlit secrets (Settings → Secrets)
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
         return
 
     # Configuration section
