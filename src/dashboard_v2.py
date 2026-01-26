@@ -476,6 +476,23 @@ def apply_brand_css():
         border: 1px solid {COLORS['light_gray']} !important;
     }}
 
+    /* Logo button - styled as text */
+    [data-testid="stSidebar"] .stButton:first-of-type > button {{
+        background-color: transparent !important;
+        color: {COLORS['navy']} !important;
+        border: none !important;
+        padding: 0.5rem 0 !important;
+        font-size: 1.1rem !important;
+        font-weight: 500 !important;
+        text-align: left !important;
+        justify-content: flex-start !important;
+    }}
+
+    [data-testid="stSidebar"] .stButton:first-of-type > button:hover {{
+        background-color: transparent !important;
+        color: {COLORS['teal']} !important;
+    }}
+
     /* ===== DATAFRAMES ===== */
 
     .stDataFrame {{
@@ -2194,6 +2211,138 @@ def render_guide_page():
 
 
 # ============================================
+# PAGE: HOME
+# ============================================
+
+def render_home_page():
+    """Home page explaining the dashboard."""
+
+    render_page_header(
+        "Welcome to Eval Lab",
+        "A sandbox for learning AI evaluation"
+    )
+
+    st.markdown(f"""
+    <div class="metric-card" style="padding: 1.5rem; margin-bottom: 1.5rem;">
+        <div style="font-size: 1.1rem; color: {COLORS['navy']}; margin-bottom: 1rem; font-weight: 500;">
+            What is this?
+        </div>
+        <div style="color: {COLORS['charcoal']}; line-height: 1.7;">
+            Eval Lab is an interactive environment for learning how to evaluate AI systems,
+            specifically focused on <strong>hallucination detection</strong>. Run experiments,
+            explore metrics, and build intuition for what makes an AI system reliable.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # How to use section
+    render_section_header("How to Use This Dashboard")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown(f"""
+        <div class="metric-card" style="height: 100%;">
+            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">1. Run Evaluation</div>
+            <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
+                Start by running an evaluation. The system tests an LLM's ability to detect
+                hallucinations in AI-generated responses. You'll need an OpenAI API key.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown(f"""
+        <div class="metric-card" style="height: 100%; margin-top: 1rem;">
+            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">2. Explore Metrics</div>
+            <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
+                View results in <strong>Metrics Overview</strong>. Each metric has interpretation
+                guides and mental models to help you understand what the numbers mean.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown(f"""
+        <div class="metric-card" style="height: 100%;">
+            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">3. Track Progress</div>
+            <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
+                Use <strong>Trends</strong> to see how metrics change over time. Use
+                <strong>Compare Runs</strong> to analyze differences between evaluations.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown(f"""
+        <div class="metric-card" style="height: 100%; margin-top: 1rem;">
+            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">4. Learn More</div>
+            <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
+                Visit <strong>Understanding Metrics</strong> for detailed explanations of
+                each metric, including formulas, intuitions, and when to use them.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # Key concepts section
+    render_section_header("Key Concepts")
+
+    st.markdown(f"""
+    <div class="metric-card" style="margin-bottom: 1rem;">
+        <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.5rem;">Hallucination Detection</div>
+        <div style="color: {COLORS['charcoal']}; font-size: 0.9rem;">
+            AI models sometimes generate content that sounds plausible but is factually incorrect or
+            unsupported by the given context. Detecting these "hallucinations" is critical for building
+            trustworthy AI systems.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div style="font-weight: 500; color: {COLORS['teal']}; margin-bottom: 0.5rem;">Classification</div>
+            <div style="color: {COLORS['charcoal']}; font-size: 0.85rem;">
+                F1, Precision, Recall — How well does the system identify hallucinations vs grounded content?
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div style="font-weight: 500; color: {COLORS['teal']}; margin-bottom: 0.5rem;">Correlation</div>
+            <div style="color: {COLORS['charcoal']}; font-size: 0.85rem;">
+                Spearman, Kendall's Tau — Does the model's confidence actually predict correctness?
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col3:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div style="font-weight: 500; color: {COLORS['teal']}; margin-bottom: 0.5rem;">Calibration</div>
+            <div style="color: {COLORS['charcoal']}; font-size: 0.85rem;">
+                Bias, MAE, RMSE — Are the confidence scores well-calibrated and unbiased?
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # Quick start
+    render_section_header("Quick Start")
+
+    st.markdown(f"""
+    <div class="metric-card status-good" style="padding: 1.25rem;">
+        <div style="color: {COLORS['charcoal']};">
+            <strong>Ready to begin?</strong> Navigate to <strong>Run Evaluation</strong> in the sidebar
+            to run your first evaluation, or explore <strong>Understanding Metrics</strong> to learn
+            about what each metric measures.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+# ============================================
 # MAIN APPLICATION
 # ============================================
 
@@ -2211,14 +2360,20 @@ def main():
     # Load data
     df = load_metrics()
 
+    # Initialize session state for navigation
+    if "current_page" not in st.session_state:
+        st.session_state.current_page = "Home"
+
     # Sidebar
     with st.sidebar:
+        # Clickable logo that goes to Home
+        if st.button("◈ Eval Lab", key="logo_btn", use_container_width=True):
+            st.session_state.current_page = "Home"
+            st.rerun()
+
         st.markdown(f"""
-        <div style="padding: 1rem 0 1.5rem 0;">
-            <div style="font-size: 1.1rem; font-weight: 500; color: {COLORS['navy']};">
-                ◈ Eval Lab
-            </div>
-            <div style="font-size: 0.75rem; color: {COLORS['medium_gray']}; margin-top: 0.25rem;">
+        <div style="padding: 0 0 1rem 0; margin-top: -0.5rem;">
+            <div style="font-size: 0.75rem; color: {COLORS['medium_gray']};">
                 learn AI evaluation
             </div>
             <div style="font-size: 0.7rem; margin-top: 0.25rem;">
@@ -2230,11 +2385,22 @@ def main():
         st.markdown("---")
 
         # Navigation
+        pages = ["Home", "Metrics Overview", "Trends", "Compare Runs", "Run History", "Run Evaluation", "Understanding Metrics"]
+
+        # Find current page index
+        current_index = pages.index(st.session_state.current_page) if st.session_state.current_page in pages else 0
+
         page = st.radio(
             "Navigate",
-            ["Metrics Overview", "Trends", "Compare Runs", "Run History", "Run Evaluation", "Understanding Metrics"],
-            label_visibility="collapsed"
+            pages,
+            index=current_index,
+            label_visibility="collapsed",
+            key="nav_radio"
         )
+
+        # Update session state when radio changes
+        if page != st.session_state.current_page:
+            st.session_state.current_page = page
 
         st.markdown("---")
 
@@ -2257,7 +2423,9 @@ def main():
                 st.caption(f"Error: {e}")
 
     # Route to pages
-    if page == "Metrics Overview":
+    if page == "Home":
+        render_home_page()
+    elif page == "Metrics Overview":
         render_metrics_overview_page(df)
     elif page == "Trends":
         render_trends_page(df)
