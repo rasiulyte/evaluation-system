@@ -1606,6 +1606,323 @@ def render_run_history_page(df: pd.DataFrame):
 
 
 # ============================================
+# PAGE: SLICE ANALYSIS
+# ============================================
+
+def render_slice_analysis_page(df: pd.DataFrame):
+    """Analyze performance across different slices (failure modes, difficulty, etc.)."""
+
+    render_page_header(
+        "Slice Analysis",
+        "See how performance varies across different subsets of test cases"
+    )
+
+    # Explanation
+    st.markdown(f"""
+    <div class="metric-card" style="padding: 1.25rem; margin-bottom: 1.5rem;">
+        <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.5rem;">What is Slice Analysis?</div>
+        <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
+            Overall metrics can hide weaknesses. A model with 85% F1 might struggle badly on specific
+            <strong>slices</strong> (subsets) of data. Slice analysis breaks down performance by:
+            <strong>failure mode</strong>, <strong>difficulty</strong>, and <strong>label type</strong>.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Get test results with failure mode info
+    try:
+        test_results = db.get_test_results()
+        if not test_results:
+            st.info("No test results available. Run an evaluation first.")
+            return
+
+        results_df = pd.DataFrame(test_results)
+
+        # Load test case metadata to get failure_mode and difficulty
+        all_test_cases = load_all_test_cases()
+        test_case_meta = {tc['id']: tc for tc in all_test_cases}
+
+        # Enrich results with metadata
+        results_df['failure_mode'] = results_df['test_case_id'].apply(
+            lambda x: test_case_meta.get(x, {}).get('failure_mode', 'unknown')
+        )
+        results_df['difficulty'] = results_df['test_case_id'].apply(
+            lambda x: test_case_meta.get(x, {}).get('difficulty', 'unknown')
+        )
+
+    except Exception as e:
+        st.error(f"Error loading data: {e}")
+        return
+
+    # Run selector
+    runs = results_df['run_id'].unique().tolist() if 'run_id' in results_df.columns else []
+    if not runs:
+        st.info("No runs available for slice analysis.")
+        return
+
+    selected_run = st.selectbox(
+        "Select Run to Analyze",
+        runs,
+        index=0,
+        key="slice_run_select"
+    )
+
+    run_data = results_df[results_df['run_id'] == selected_run] if 'run_id' in results_df.columns else results_df
+
+    st.markdown("---")
+
+    # ==========================================
+    # SLICE BY FAILURE MODE
+    # ==========================================
+    render_section_header("By Failure Mode")
+
+    failure_modes = run_data['failure_mode'].unique()
+    failure_mode_stats = []
+
+    for fm in sorted(failure_modes):
+        if fm == 'unknown':
+            continue
+        fm_data = run_data[run_data['failure_mode'] == fm]
+        total = len(fm_data)
+        correct = fm_data['correct'].sum() if 'correct' in fm_data.columns else 0
+        accuracy = correct / total if total > 0 else 0
+
+        # Calculate more detailed metrics if we have enough data
+        if 'ground_truth' in fm_data.columns and 'prediction' in fm_data.columns:
+            y_true = (fm_data['ground_truth'] == 'hallucination').astype(int)
+            y_pred = (fm_data['prediction'] == 'hallucination').astype(int)
+
+            tp = ((y_true == 1) & (y_pred == 1)).sum()
+            fp = ((y_true == 0) & (y_pred == 1)).sum()
+            fn = ((y_true == 1) & (y_pred == 0)).sum()
+
+            precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+            recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+            f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
+        else:
+            precision = recall = f1 = 0
+
+        failure_mode_stats.append({
+            'Failure Mode': fm.replace('_', ' ').title(),
+            'Cases': total,
+            'Correct': int(correct),
+            'Accuracy': accuracy,
+            'Precision': precision,
+            'Recall': recall,
+            'F1': f1
+        })
+
+    if failure_mode_stats:
+        fm_df = pd.DataFrame(failure_mode_stats)
+
+        # Visual cards for each failure mode
+        cols = st.columns(3)
+        for i, row in fm_df.iterrows():
+            with cols[i % 3]:
+                # Determine status color
+                f1_val = row['F1']
+                if f1_val >= 0.75:
+                    status_class = "status-good"
+                    status_color = COLORS['good']
+                elif f1_val >= 0.60:
+                    status_class = "status-warning"
+                    status_color = COLORS['amber']
+                else:
+                    status_class = "status-poor"
+                    status_color = COLORS['poor']
+
+                st.markdown(f"""
+                <div class="metric-card {status_class}" style="padding: 1rem; margin-bottom: 0.75rem;">
+                    <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.5rem; font-size: 0.9rem;">
+                        {row['Failure Mode']}
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                        <span style="font-size: 1.5rem; font-weight: 600; color: {status_color};">{row['F1']:.0%}</span>
+                        <span style="font-size: 0.8rem; color: {COLORS['medium_gray']};">F1</span>
+                    </div>
+                    <div style="font-size: 0.75rem; color: {COLORS['medium_gray']}; margin-top: 0.5rem;">
+                        {row['Cases']} cases · {row['Correct']}/{row['Cases']} correct
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+        # Summary table
+        with st.expander("View detailed table"):
+            display_df = fm_df.copy()
+            display_df['Accuracy'] = display_df['Accuracy'].apply(lambda x: f"{x:.1%}")
+            display_df['Precision'] = display_df['Precision'].apply(lambda x: f"{x:.1%}")
+            display_df['Recall'] = display_df['Recall'].apply(lambda x: f"{x:.1%}")
+            display_df['F1'] = display_df['F1'].apply(lambda x: f"{x:.1%}")
+            st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+
+    # ==========================================
+    # SLICE BY DIFFICULTY
+    # ==========================================
+    render_section_header("By Difficulty")
+
+    difficulty_order = ['easy', 'medium', 'hard']
+    difficulty_stats = []
+
+    for diff in difficulty_order:
+        diff_data = run_data[run_data['difficulty'] == diff]
+        total = len(diff_data)
+        if total == 0:
+            continue
+
+        correct = diff_data['correct'].sum() if 'correct' in diff_data.columns else 0
+        accuracy = correct / total if total > 0 else 0
+
+        # Avg confidence
+        avg_conf = diff_data['confidence'].mean() if 'confidence' in diff_data.columns else 0
+
+        difficulty_stats.append({
+            'Difficulty': diff.title(),
+            'Cases': total,
+            'Correct': int(correct),
+            'Accuracy': accuracy,
+            'Avg Confidence': avg_conf
+        })
+
+    if difficulty_stats:
+        diff_df = pd.DataFrame(difficulty_stats)
+
+        cols = st.columns(3)
+        for i, row in diff_df.iterrows():
+            with cols[i]:
+                acc_val = row['Accuracy']
+                if acc_val >= 0.80:
+                    status_color = COLORS['good']
+                elif acc_val >= 0.65:
+                    status_color = COLORS['amber']
+                else:
+                    status_color = COLORS['poor']
+
+                # Icon based on difficulty
+                diff_icon = "🟢" if row['Difficulty'] == 'Easy' else ("🟡" if row['Difficulty'] == 'Medium' else "🔴")
+
+                st.markdown(f"""
+                <div class="metric-card" style="padding: 1rem; text-align: center;">
+                    <div style="font-size: 1.5rem; margin-bottom: 0.25rem;">{diff_icon}</div>
+                    <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.5rem;">
+                        {row['Difficulty']}
+                    </div>
+                    <div style="font-size: 1.75rem; font-weight: 600; color: {status_color};">
+                        {row['Accuracy']:.0%}
+                    </div>
+                    <div style="font-size: 0.75rem; color: {COLORS['medium_gray']};">
+                        {row['Correct']}/{row['Cases']} correct
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # ==========================================
+    # SLICE BY LABEL (Ground Truth)
+    # ==========================================
+    render_section_header("By Ground Truth Label")
+
+    if 'ground_truth' in run_data.columns:
+        label_stats = []
+
+        for label in ['grounded', 'hallucination']:
+            label_data = run_data[run_data['ground_truth'] == label]
+            total = len(label_data)
+            if total == 0:
+                continue
+
+            correct = label_data['correct'].sum() if 'correct' in label_data.columns else 0
+            accuracy = correct / total if total > 0 else 0
+            avg_conf = label_data['confidence'].mean() if 'confidence' in label_data.columns else 0
+
+            label_stats.append({
+                'Label': label.title(),
+                'Cases': total,
+                'Correct': int(correct),
+                'Accuracy': accuracy,
+                'Avg Confidence': avg_conf
+            })
+
+        if label_stats:
+            cols = st.columns(2)
+            for i, row in enumerate(label_stats):
+                with cols[i]:
+                    acc_val = row['Accuracy']
+                    if acc_val >= 0.80:
+                        status_color = COLORS['good']
+                    elif acc_val >= 0.65:
+                        status_color = COLORS['amber']
+                    else:
+                        status_color = COLORS['poor']
+
+                    label_color = COLORS['good'] if row['Label'] == 'Grounded' else COLORS['poor']
+
+                    st.markdown(f"""
+                    <div class="metric-card" style="padding: 1.25rem; border-left: 4px solid {label_color};">
+                        <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem; font-size: 1rem;">
+                            {row['Label']} Cases
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <span style="color: {COLORS['charcoal']};">Accuracy</span>
+                            <span style="font-weight: 600; color: {status_color};">{row['Accuracy']:.1%}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <span style="color: {COLORS['charcoal']};">Avg Confidence</span>
+                            <span style="font-weight: 500;">{row['Avg Confidence']:.1%}</span>
+                        </div>
+                        <div style="font-size: 0.8rem; color: {COLORS['medium_gray']}; margin-top: 0.5rem;">
+                            {row['Correct']}/{row['Cases']} correctly classified
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+    # ==========================================
+    # KEY INSIGHTS
+    # ==========================================
+    st.markdown("---")
+    render_section_header("Key Insights")
+
+    insights = []
+
+    # Find worst failure mode
+    if failure_mode_stats:
+        worst_fm = min(failure_mode_stats, key=lambda x: x['F1'])
+        best_fm = max(failure_mode_stats, key=lambda x: x['F1'])
+
+        if worst_fm['F1'] < 0.70:
+            insights.append(f"⚠️ **Weakest on {worst_fm['Failure Mode']}** — F1 of {worst_fm['F1']:.0%} suggests the model struggles with this failure mode.")
+
+        if best_fm['F1'] > 0.85:
+            insights.append(f"✓ **Strongest on {best_fm['Failure Mode']}** — F1 of {best_fm['F1']:.0%} shows good performance.")
+
+        gap = best_fm['F1'] - worst_fm['F1']
+        if gap > 0.20:
+            insights.append(f"📊 **Performance gap of {gap:.0%}** between best and worst failure modes — consider targeted improvements.")
+
+    # Difficulty insights
+    if difficulty_stats:
+        easy_acc = next((d['Accuracy'] for d in difficulty_stats if d['Difficulty'] == 'Easy'), None)
+        hard_acc = next((d['Accuracy'] for d in difficulty_stats if d['Difficulty'] == 'Hard'), None)
+
+        if easy_acc and hard_acc:
+            drop = easy_acc - hard_acc
+            if drop > 0.15:
+                insights.append(f"📉 **{drop:.0%} accuracy drop** from easy to hard cases — model struggles with complexity.")
+
+    if not insights:
+        insights.append("✓ Performance is relatively consistent across slices.")
+
+    for insight in insights:
+        st.markdown(f"""
+        <div style="padding: 0.75rem 1rem; background: {COLORS['light_gray']}50; border-radius: 6px; margin-bottom: 0.5rem;">
+            {insight}
+        </div>
+        """, unsafe_allow_html=True)
+
+
+# ============================================
 # PAGE: COMPARE RUNS
 # ============================================
 
@@ -3812,7 +4129,7 @@ def main():
             },
             "ANALYZE": {
                 "icon": "📊",
-                "pages": ["Metrics Overview", "Trends", "Compare Runs", "Run History", "Test Cases"]
+                "pages": ["Metrics Overview", "Slice Analysis", "Trends", "Compare Runs", "Run History", "Test Cases"]
             },
             "RUN": {
                 "icon": "▶️",
@@ -3875,6 +4192,8 @@ def main():
         render_home_page()
     elif page == "Metrics Overview":
         render_metrics_overview_page(df)
+    elif page == "Slice Analysis":
+        render_slice_analysis_page(df)
     elif page == "Trends":
         render_trends_page(df)
     elif page == "Compare Runs":
