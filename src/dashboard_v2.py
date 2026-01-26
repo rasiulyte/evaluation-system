@@ -1657,7 +1657,8 @@ def render_compare_runs_page(df: pd.DataFrame):
     significant_improvements = []
     significant_declines = []
 
-    for _, row in comparison_df.iterrows():
+    # Use filtered data to respect scenario selection
+    for _, row in filtered_comparison.iterrows():
         delta = row["delta"]
         metric_name = row["metric_name"].lower()
         is_lower_better = metric_name in lower_is_better_metrics
@@ -1677,7 +1678,8 @@ def render_compare_runs_page(df: pd.DataFrame):
         decline_items = ""
         for row in significant_declines:
             direction = "↑" if row['delta'] > 0 else "↓"
-            decline_items += f'<div style="margin-bottom: 0.25rem;">• <strong>{row["metric_name"]}</strong> ({row["scenario"]}): {row["metric_value_baseline"]:.3f} → {row["metric_value_compare"]:.3f} ({direction} {row["delta_pct"]:.1f}%)</div>'
+            scenario_text = f' ({row["scenario"]})' if selected_detail_scenario == "All Scenarios" else ""
+            decline_items += f'<div style="margin-bottom: 0.25rem;">• <strong>{row["metric_name"]}</strong>{scenario_text}: {row["metric_value_baseline"]:.3f} → {row["metric_value_compare"]:.3f} ({direction} {row["delta_pct"]:.1f}%)</div>'
 
         decline_html = (
             f'<div class="metric-card status-poor">'
@@ -1692,7 +1694,8 @@ def render_compare_runs_page(df: pd.DataFrame):
         improvement_items = ""
         for row in significant_improvements:
             direction = "↑" if row['delta'] > 0 else "↓"
-            improvement_items += f'<div style="margin-bottom: 0.25rem;">• <strong>{row["metric_name"]}</strong> ({row["scenario"]}): {row["metric_value_baseline"]:.3f} → {row["metric_value_compare"]:.3f} ({direction} {row["delta_pct"]:.1f}%)</div>'
+            scenario_text = f' ({row["scenario"]})' if selected_detail_scenario == "All Scenarios" else ""
+            improvement_items += f'<div style="margin-bottom: 0.25rem;">• <strong>{row["metric_name"]}</strong>{scenario_text}: {row["metric_value_baseline"]:.3f} → {row["metric_value_compare"]:.3f} ({direction} {row["delta_pct"]:.1f}%)</div>'
 
         improvement_html = (
             f'<div class="metric-card status-good">'
