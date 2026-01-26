@@ -1213,35 +1213,42 @@ def render_compare_runs_page(df: pd.DataFrame):
     # Detailed comparison
     render_section_header("Detailed Comparison")
 
-    # Format the comparison table
-    display_df = comparison_df.copy()
-    display_df["Baseline"] = display_df["metric_value_baseline"].apply(lambda x: f"{x:.3f}")
-    display_df["Compare"] = display_df["metric_value_compare"].apply(lambda x: f"{x:.3f}")
-
-    def format_change(row):
+    # Display comparison as styled rows with colored changes
+    for _, row in comparison_df.iterrows():
         delta = row["delta"]
         pct = row["delta_pct"]
+        baseline = row["metric_value_baseline"]
+        compare = row["metric_value_compare"]
+
+        # Determine color and text for change
         if delta > 0.001:
-            return f"↑ +{delta:.3f} (+{pct:.1f}%)"
+            change_color = COLORS['good']
+            change_text = f"↑ +{delta:.3f} (+{pct:.1f}%)"
+            border_class = "status-good"
         elif delta < -0.001:
-            return f"↓ {delta:.3f} ({pct:.1f}%)"
+            change_color = COLORS['poor']
+            change_text = f"↓ {delta:.3f} ({pct:.1f}%)"
+            border_class = "status-poor"
         else:
-            return "—"
+            change_color = COLORS['medium_gray']
+            change_text = "— No change"
+            border_class = ""
 
-    display_df["Change"] = display_df.apply(format_change, axis=1)
-
-    st.dataframe(
-        display_df[["scenario", "metric_name", "Baseline", "Compare", "Change"]],
-        use_container_width=True,
-        column_config={
-            "scenario": st.column_config.TextColumn("Scenario"),
-            "metric_name": st.column_config.TextColumn("Metric"),
-            "Baseline": st.column_config.TextColumn(f"Baseline"),
-            "Compare": st.column_config.TextColumn(f"Compare"),
-            "Change": st.column_config.TextColumn("Change"),
-        },
-        hide_index=True
-    )
+        st.markdown(f"""
+        <div class="metric-card {border_class}" style="margin-bottom: 0.5rem; padding: 1rem 1.25rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <span style="color: {COLORS['navy']}; font-weight: 500;">{row['metric_name']}</span>
+                    <span style="color: {COLORS['medium_gray']}; font-size: 0.8rem; margin-left: 0.75rem;">{row['scenario']}</span>
+                </div>
+                <span style="color: {change_color}; font-weight: 500; font-size: 0.9rem;">{change_text}</span>
+            </div>
+            <div style="display: flex; gap: 2rem; margin-top: 0.5rem; font-size: 0.85rem;">
+                <span style="color: {COLORS['medium_gray']};">Baseline: <strong style="color: {COLORS['charcoal']}; font-family: monospace;">{baseline:.3f}</strong></span>
+                <span style="color: {COLORS['medium_gray']};">Compare: <strong style="color: {COLORS['charcoal']}; font-family: monospace;">{compare:.3f}</strong></span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
     # Visual comparison chart
     render_section_header("Visual Comparison")
