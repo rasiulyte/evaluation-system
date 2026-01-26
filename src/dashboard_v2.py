@@ -45,6 +45,209 @@ COLORS = {
 
 
 # ============================================
+# METRIC INTERPRETATIONS - Beginner-friendly feedback
+# ============================================
+
+METRIC_INFO = {
+    "f1": {
+        "name": "F1 Score",
+        "mental_model": "Like a smoke detector: catches real fires without false alarms when cooking",
+        "scale": [
+            (0.95, 1.00, "Exceptional", "Ready for high-stakes production"),
+            (0.85, 0.95, "Excellent", "Production ready"),
+            (0.75, 0.85, "Good", "Acceptable, minor tuning helpful"),
+            (0.65, 0.75, "Fair", "Needs improvement before production"),
+            (0.50, 0.65, "Poor", "Significant changes needed"),
+            (0.00, 0.50, "Failing", "Fundamental redesign required"),
+        ],
+        "target": ">= 0.75",
+    },
+    "precision": {
+        "name": "Precision",
+        "mental_model": "Like a doctor's diagnosis: when they say 'you have X', how often are they right?",
+        "scale": [
+            (0.95, 1.00, "Exceptional", "Users fully trust warnings"),
+            (0.90, 0.95, "Excellent", "Rare false alarms"),
+            (0.80, 0.90, "Good", "Occasional false alarms, acceptable"),
+            (0.70, 0.80, "Fair", "Noticeable false alarms"),
+            (0.60, 0.70, "Poor", "Users start ignoring warnings"),
+            (0.00, 0.60, "Failing", "Warnings are meaningless"),
+        ],
+        "target": ">= 0.75",
+    },
+    "recall": {
+        "name": "Recall",
+        "mental_model": "Like airport security: how many prohibited items do they actually catch?",
+        "scale": [
+            (0.95, 1.00, "Exceptional", "Almost nothing slips through"),
+            (0.90, 0.95, "Excellent", "Very few missed"),
+            (0.80, 0.90, "Good", "Some slip through, usually acceptable"),
+            (0.70, 0.80, "Fair", "Notable blind spots"),
+            (0.60, 0.70, "Poor", "Many missed"),
+            (0.00, 0.60, "Failing", "More missed than caught"),
+        ],
+        "target": ">= 0.75",
+    },
+    "tnr": {
+        "name": "TNR (Specificity)",
+        "mental_model": "Like email spam filter: do important emails rarely go to spam?",
+        "scale": [
+            (0.95, 1.00, "Exceptional", "Good content flows freely"),
+            (0.85, 0.95, "Excellent", "Rare blocking of good content"),
+            (0.75, 0.85, "Good", "Occasional false blocks"),
+            (0.65, 0.75, "Fair", "Users notice false blocks"),
+            (0.55, 0.65, "Poor", "Frustrating user experience"),
+            (0.00, 0.55, "Failing", "Blocks more good than bad"),
+        ],
+        "target": ">= 0.65",
+    },
+    "accuracy": {
+        "name": "Accuracy",
+        "mental_model": "Like weather forecast: what % of predictions are correct?",
+        "scale": [
+            (0.95, 1.00, "Exceptional", "Highly reliable"),
+            (0.85, 0.95, "Excellent", "Very reliable"),
+            (0.75, 0.85, "Good", "Generally reliable"),
+            (0.65, 0.75, "Fair", "Sometimes unreliable"),
+            (0.50, 0.65, "Poor", "Often wrong"),
+            (0.00, 0.50, "Failing", "Worse than random guessing"),
+        ],
+        "target": ">= 0.75",
+    },
+    "cohens_kappa": {
+        "name": "Cohen's Kappa",
+        "mental_model": "Like two doctors diagnosing same patients: how much do they agree beyond luck?",
+        "scale": [
+            (0.81, 1.00, "Almost Perfect", "Extremely reliable"),
+            (0.61, 0.81, "Substantial", "Good reliability"),
+            (0.41, 0.61, "Moderate", "Fair reliability"),
+            (0.21, 0.41, "Fair", "Limited reliability"),
+            (0.00, 0.21, "Slight", "Poor reliability"),
+            (-1.0, 0.00, "Poor", "Worse than chance"),
+        ],
+        "target": ">= 0.60",
+    },
+    "spearman": {
+        "name": "Spearman Correlation",
+        "mental_model": "Like student self-assessment: when confident, are they actually right?",
+        "scale": [
+            (0.80, 1.00, "Strong", "Confidence is very trustworthy"),
+            (0.60, 0.80, "Moderate", "Confidence is useful but imperfect"),
+            (0.40, 0.60, "Weak", "Confidence only somewhat helpful"),
+            (0.20, 0.40, "Very Weak", "Confidence barely meaningful"),
+            (0.00, 0.20, "None", "Confidence is random noise"),
+            (-1.0, 0.00, "Negative", "Confidence is backwards!"),
+        ],
+        "target": ">= 0.60",
+    },
+    "pearson": {
+        "name": "Pearson Correlation",
+        "mental_model": "Is there a straight-line relationship between confidence and correctness?",
+        "scale": [
+            (0.80, 1.00, "Strong", "Linear relationship"),
+            (0.60, 0.80, "Moderate", "Moderate relationship"),
+            (0.40, 0.60, "Weak", "Weak relationship"),
+            (0.20, 0.40, "Very Weak", "Minimal relationship"),
+            (0.00, 0.20, "None", "No relationship"),
+            (-1.0, 0.00, "Negative", "Inverse relationship"),
+        ],
+        "target": ">= 0.60",
+    },
+    "kendalls_tau": {
+        "name": "Kendall's Tau",
+        "mental_model": "Like ranking horses: do your predictions match actual race results?",
+        "scale": [
+            (0.70, 1.00, "Strong", "Excellent ranking alignment"),
+            (0.50, 0.70, "Moderate", "Good ranking alignment"),
+            (0.30, 0.50, "Weak", "Some ranking alignment"),
+            (0.10, 0.30, "Very Weak", "Minimal alignment"),
+            (0.00, 0.10, "None", "Rankings are unrelated"),
+            (-1.0, 0.00, "Negative", "Rankings are reversed"),
+        ],
+        "target": ">= 0.50",
+    },
+    "bias": {
+        "name": "Bias",
+        "mental_model": "Like a scale not zeroed: does it consistently read heavy or light?",
+        "scale": [
+            (0.20, 1.00, "Strong Positive", "Way too aggressive - flags too much"),
+            (0.10, 0.20, "Moderate Positive", "Somewhat aggressive"),
+            (-0.10, 0.10, "Balanced", "Fair and unbiased"),
+            (-0.20, -0.10, "Moderate Negative", "Somewhat lenient"),
+            (-1.0, -0.20, "Strong Negative", "Way too lenient - misses too much"),
+        ],
+        "target": "|bias| <= 0.15",
+        "lower_is_better": True,
+        "absolute": True,
+    },
+    "mae": {
+        "name": "MAE",
+        "mental_model": "Like GPS accuracy: on average, how far off are your confidence scores?",
+        "scale": [
+            (0.00, 0.10, "Excellent", "Near-perfect calibration"),
+            (0.10, 0.20, "Good", "Well calibrated"),
+            (0.20, 0.30, "Fair", "Acceptable calibration"),
+            (0.30, 0.40, "Poor", "Needs calibration work"),
+            (0.40, 1.00, "Failing", "Severely miscalibrated"),
+        ],
+        "target": "< 0.20",
+        "lower_is_better": True,
+    },
+    "rmse": {
+        "name": "RMSE",
+        "mental_model": "Like judging an archer: penalizes shots that completely miss the target",
+        "scale": [
+            (0.00, 0.15, "Excellent", "Small, consistent errors"),
+            (0.15, 0.25, "Good", "Reasonable error distribution"),
+            (0.25, 0.35, "Fair", "Some large errors present"),
+            (0.35, 0.50, "Poor", "Frequent large errors"),
+            (0.50, 1.00, "Failing", "Major errors common"),
+        ],
+        "target": "< 0.25",
+        "lower_is_better": True,
+    },
+}
+
+
+def get_metric_interpretation(metric_name: str, value: float) -> dict:
+    """Get interpretation for a metric value."""
+    info = METRIC_INFO.get(metric_name, {})
+    if not info:
+        return {"level": "Unknown", "description": "", "mental_model": ""}
+
+    scale = info.get("scale", [])
+    lower_is_better = info.get("lower_is_better", False)
+    use_absolute = info.get("absolute", False)
+
+    check_value = abs(value) if use_absolute else value
+
+    for low, high, level, description in scale:
+        if lower_is_better:
+            if low <= check_value < high:
+                return {
+                    "level": level,
+                    "description": description,
+                    "mental_model": info.get("mental_model", ""),
+                    "target": info.get("target", ""),
+                }
+        else:
+            if low <= check_value <= high:
+                return {
+                    "level": level,
+                    "description": description,
+                    "mental_model": info.get("mental_model", ""),
+                    "target": info.get("target", ""),
+                }
+
+    return {
+        "level": "Unknown",
+        "description": "",
+        "mental_model": info.get("mental_model", ""),
+        "target": info.get("target", ""),
+    }
+
+
+# ============================================
 # CUSTOM CSS - Minimal, Clean, Professional
 # ============================================
 
@@ -426,10 +629,11 @@ def render_metric_card(
     interpretation: str,
     context: str,
     thresholds: dict,
-    format_str: str = ".3f"
+    format_str: str = ".3f",
+    metric_key: str = None
 ):
     """
-    Render a metric card with consistent styling.
+    Render a metric card with consistent styling and interpretation feedback.
 
     Args:
         name: Metric display name
@@ -438,10 +642,30 @@ def render_metric_card(
         context: When this metric matters
         thresholds: Dict with good_min, warning_min, higher_is_better
         format_str: Format string for value display
+        metric_key: Key to look up in METRIC_INFO for detailed interpretation
     """
     status_class, badge_class, status_text = get_status_class(value, thresholds)
 
-    formatted_value = f"{value:{format_str}}" if isinstance(value, (int, float)) else str(value)
+    formatted_value = f"{value:{format_str}}" if isinstance(value, (int, float)) and not (value != value) else "N/A"
+
+    # Get detailed interpretation if metric_key provided
+    interp_html = ""
+    if metric_key and metric_key in METRIC_INFO:
+        interp = get_metric_interpretation(metric_key, value)
+        if interp["level"] != "Unknown":
+            level_color = COLORS["good"] if status_class == "status-good" else (
+                COLORS["poor"] if status_class == "status-poor" else COLORS["amber"]
+            )
+            interp_html = f"""
+            <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid {COLORS['light_gray']};">
+                <div style="font-size: 0.75rem; color: {level_color}; font-weight: 500; margin-bottom: 0.25rem;">
+                    {interp["level"]}: {interp["description"]}
+                </div>
+                <div style="font-size: 0.7rem; color: {COLORS['medium_gray']}; font-style: italic;">
+                    {interp["mental_model"]}
+                </div>
+            </div>
+            """
 
     st.markdown(f"""
     <div class="metric-card {status_class}">
@@ -452,6 +676,7 @@ def render_metric_card(
         <div class="metric-value">{formatted_value}</div>
         <div class="metric-interpretation">{interpretation}</div>
         <div class="metric-context">{context}</div>
+        {interp_html}
     </div>
     """, unsafe_allow_html=True)
 
@@ -786,7 +1011,8 @@ def render_metrics_overview_page(df: pd.DataFrame):
                     interpretation=info.get("interpretation", lambda v: "")(value),
                     context=info.get("context", ""),
                     thresholds=info.get("thresholds", {}),
-                    format_str=".2f"
+                    format_str=".2f",
+                    metric_key=metric_key
                 )
             col_idx += 1
 
@@ -808,7 +1034,8 @@ def render_metrics_overview_page(df: pd.DataFrame):
                 interpretation=info["interpretation"](value),
                 context=info["context"],
                 thresholds=info["thresholds"],
-                format_str=".3f"
+                format_str=".3f",
+                metric_key="cohens_kappa"
             )
 
         with col2:
@@ -871,7 +1098,8 @@ def render_metrics_overview_page(df: pd.DataFrame):
                         interpretation=info.get("interpretation", lambda v: "")(value),
                         context=info.get("context", ""),
                         thresholds=info.get("thresholds", {}),
-                        format_str=".3f"
+                        format_str=".3f",
+                        metric_key=metric_key
                     )
         else:
             st.markdown(f"""
@@ -919,7 +1147,8 @@ def render_metrics_overview_page(df: pd.DataFrame):
                         interpretation=info.get("interpretation", lambda v: "")(value),
                         context=info.get("context", ""),
                         thresholds=info.get("thresholds", {}),
-                        format_str=".3f"
+                        format_str=".3f",
+                        metric_key=metric_key
                     )
 
 
