@@ -2344,25 +2344,23 @@ def render_home_page():
     # How to use section
     render_section_header("How to Use This Dashboard")
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
 
     with col1:
         st.markdown(f"""
         <div class="metric-card" style="height: 100%;">
             <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">1. Explore Metrics</div>
             <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
-                Start with <strong>Metrics Overview</strong> to see evaluation results. Each metric includes
-                interpretation guides and mental models to help you understand what the numbers mean.
+                Start with <strong>Metrics Overview</strong> to see evaluation results with interpretation guides.
             </div>
         </div>
         """, unsafe_allow_html=True)
 
         st.markdown(f"""
         <div class="metric-card" style="height: 100%; margin-top: 1rem;">
-            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">2. Compare & Analyze</div>
+            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">2. Compare Runs</div>
             <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
-                Use <strong>Compare Runs</strong> to see how metrics differ between evaluations.
-                Use <strong>Trends</strong> to track how performance changes over time.
+                Use <strong>Compare Runs</strong> and <strong>Trends</strong> to analyze differences between evaluations.
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -2370,20 +2368,37 @@ def render_home_page():
     with col2:
         st.markdown(f"""
         <div class="metric-card" style="height: 100%;">
-            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">3. Learn the Theory</div>
+            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">3. Browse Test Cases</div>
             <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
-                Visit <strong>Understanding Metrics</strong> for detailed explanations. See the
-                <a href="https://github.com/rasiulyte/evaluation-system/blob/main/docs/METRICS.md" target="_blank" style="color: {COLORS['teal']};">Metrics Guide</a> on GitHub for the complete reference.
+                Visit <strong>Test Cases</strong> to see all test data — context, response, and expected labels.
             </div>
         </div>
         """, unsafe_allow_html=True)
 
         st.markdown(f"""
         <div class="metric-card" style="height: 100%; margin-top: 1rem;">
-            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">4. Run Your Own (Optional)</div>
+            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">4. Learn Prompt Engineering</div>
             <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
-                Admins can run new evaluations via <strong>Run Evaluation</strong>.
-                Requires authentication and an OpenAI API key.
+                Explore <strong>Prompt Lab</strong> to understand hillclimbing and how prompts affect results.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col3:
+        st.markdown(f"""
+        <div class="metric-card" style="height: 100%;">
+            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">5. Understand the Theory</div>
+            <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
+                Read <strong>Understanding Metrics</strong> or the <a href="https://github.com/rasiulyte/evaluation-system/blob/main/docs/METRICS.md" target="_blank" style="color: {COLORS['teal']};">Metrics Guide</a> on GitHub.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown(f"""
+        <div class="metric-card" style="height: 100%; margin-top: 1rem;">
+            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">6. Run Evaluations (Admin)</div>
+            <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
+                Admins can run new evaluations via <strong>Run Evaluation</strong> (requires password + API key).
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -2437,14 +2452,29 @@ def render_home_page():
     # Quick start
     render_section_header("Quick Start")
 
-    st.markdown(f"""
-    <div class="metric-card status-good" style="padding: 1.25rem;">
-        <div style="color: {COLORS['charcoal']};">
-            <strong>Ready to begin?</strong> Head to <strong>Metrics Overview</strong> to explore
-            evaluation results, or visit <strong>Understanding Metrics</strong> to learn what each metric measures.
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown(f"""
+        <div class="metric-card status-good" style="padding: 1.25rem;">
+            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.5rem;">For Learning</div>
+            <div style="color: {COLORS['charcoal']}; font-size: 0.9rem;">
+                Start with <strong>Test Cases</strong> to see real examples, then explore <strong>Prompt Lab</strong>
+                to understand how different prompts affect evaluation quality.
+            </div>
         </div>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown(f"""
+        <div class="metric-card" style="padding: 1.25rem;">
+            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.5rem;">For Analysis</div>
+            <div style="color: {COLORS['charcoal']}; font-size: 0.9rem;">
+                Go to <strong>Metrics Overview</strong> to see results, then use <strong>Compare Runs</strong>
+                to analyze differences between evaluation runs.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
 
 # ============================================
