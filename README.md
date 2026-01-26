@@ -1,6 +1,8 @@
-# LLM-as-Judge: Hallucination Detection System
+# Eval Lab: LLM-as-Judge Learning Sandbox
 
-An **LLM-as-Judge** (autograder) system for detecting hallucinations in AI-generated content. This project demonstrates how to use one LLM to evaluate the outputs of another LLM.
+A **learning sandbox** for exploring LLM-as-Judge (autograder) evaluation techniques. This project is designed for **learning and experimentation**, not as a production framework.
+
+> **Note**: This is an educational project. Explore the code, run experiments, and learn how AI evaluation works!
 
 ## What is LLM-as-Judge?
 

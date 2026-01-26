@@ -2568,8 +2568,8 @@ def render_home_page():
     """Getting Started page explaining the dashboard."""
 
     render_page_header(
-        "Welcome to LLM-as-Judge",
-        "Learn how to use LLMs to evaluate other LLMs"
+        "Welcome to Eval Lab",
+        "A sandbox for learning LLM-as-Judge evaluation"
     )
 
     st.markdown(f"""
@@ -3757,7 +3757,7 @@ def render_prompt_lab_page(df: pd.DataFrame):
 
 def main():
     st.set_page_config(
-        page_title="LLM-as-Judge · rasar.ai",
+        page_title="Eval Lab · rasar.ai",
         page_icon="◈",
         layout="wide",
         initial_sidebar_state="expanded"
@@ -3776,14 +3776,14 @@ def main():
     # Sidebar
     with st.sidebar:
         # Logo - clickable, styled via CSS
-        if st.button("◈ LLM-as-Judge", key="logo_btn", use_container_width=True):
+        if st.button("◈ Eval Lab", key="logo_btn", use_container_width=True):
             st.session_state.current_page = "Getting Started"
             st.rerun()
 
         st.markdown(f"""
         <div style="padding: 0 0 0.75rem 0; margin-top: -0.5rem;">
             <div style="font-size: 0.8rem; color: {COLORS['medium_gray']};">
-                Hallucination Detection
+                Learning Sandbox
             </div>
             <div style="font-size: 0.75rem; margin-top: 0.25rem;">
                 <a href="https://rasar.ai" target="_blank" style="color: {COLORS['teal']};">rasar.ai</a>
