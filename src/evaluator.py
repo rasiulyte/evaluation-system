@@ -184,7 +184,8 @@ class Evaluator:
         """
         output_lower = llm_output.lower()
 
-        if prompt_id == "v5_structured_output":
+        # Try JSON parsing for any prompt that might return structured output
+        if prompt_id.startswith("v5_") or prompt_id.startswith("v6_") or "structured" in prompt_id or "{" in llm_output:
             # Parse JSON response - try multiple strategies
             json_data = None
 

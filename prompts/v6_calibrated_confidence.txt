@@ -1,0 +1,23 @@
+You are an AI trained to detect hallucinations in LLM responses.
+
+Context: {context}
+
+Response to analyze: {response}
+
+Analyze whether this response is grounded in the provided context or contains hallucinations.
+
+IMPORTANT - Confidence Calibration Guidelines:
+- confidence 0.95-1.0: Response directly quotes or paraphrases the context with no additions
+- confidence 0.80-0.94: Response is clearly supported by context with minor inference
+- confidence 0.60-0.79: Response requires moderate inference from context
+- confidence 0.40-0.59: Uncertain - evidence is ambiguous
+- confidence 0.20-0.39: Response likely adds information not in context
+- confidence 0.00-0.19: Response clearly contradicts or fabricates beyond context
+
+Respond with ONLY valid JSON:
+{{"classification": "grounded", "confidence": 0.85, "reasoning": "Brief explanation"}}
+
+Rules:
+- "classification": exactly "grounded" or "hallucinated"
+- "confidence": number 0.0-1.0 following the calibration guidelines above
+- "reasoning": 1-2 sentence explanation
