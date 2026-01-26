@@ -169,6 +169,99 @@ METRIC_LABELS = {
     "precision": "Precision",
     "recall": "Recall",
     "cohens_kappa": "Cohen's Kappa",
+    "spearman": "Spearman Correlation",
+    "pearson": "Pearson Correlation",
+    "kendalls_tau": "Kendall's Tau",
+    "mae": "Mean Absolute Error",
+    "rmse": "Root Mean Squared Error",
+}
+
+# Educational descriptions for each metric
+METRIC_EDUCATION = {
+    "f1": {
+        "formula": "2 × (Precision × Recall) / (Precision + Recall)",
+        "intuition": "Harmonic mean of precision and recall. Punishes extreme imbalances - you can't game it by optimizing only one metric.",
+        "when_to_use": "Primary metric for most evaluations. Use when both false positives and false negatives matter equally.",
+        "target": "≥ 0.75",
+        "higher_is_better": True
+    },
+    "tnr": {
+        "formula": "TN / (TN + FP)",
+        "intuition": "Of all grounded content, how much did we correctly accept? High TNR means the model rarely cries wolf.",
+        "when_to_use": "When over-flagging disrupts workflows. Customer-facing applications where false alarms annoy users.",
+        "target": "≥ 0.65",
+        "higher_is_better": True
+    },
+    "bias": {
+        "formula": "(FP - FN) / Total",
+        "intuition": "Positive = too many false positives (trigger-happy). Negative = too many false negatives (too lenient). Zero = balanced.",
+        "when_to_use": "Detecting systematic patterns in errors. Ensuring model doesn't favor one class.",
+        "target": "|bias| ≤ 0.15",
+        "higher_is_better": False  # Closer to 0 is better
+    },
+    "accuracy": {
+        "formula": "(TP + TN) / Total",
+        "intuition": "Percentage of all predictions that were correct. Simple but can be misleading with imbalanced data.",
+        "when_to_use": "Quick health check. When classes are balanced (similar hallucinations and grounded).",
+        "target": "≥ 0.75",
+        "higher_is_better": True
+    },
+    "precision": {
+        "formula": "TP / (TP + FP)",
+        "intuition": "When model says 'hallucination', how often is it correct? Think 'trust in alarms'.",
+        "when_to_use": "When false positives are costly (blocking good content). When users lose trust if warnings are often wrong.",
+        "target": "≥ 0.75",
+        "higher_is_better": True
+    },
+    "recall": {
+        "formula": "TP / (TP + FN)",
+        "intuition": "Of all actual hallucinations, how many did we catch? Think 'catch rate'.",
+        "when_to_use": "When missing positives is dangerous (medical, safety, legal). When hallucinations could cause real harm.",
+        "target": "≥ 0.75",
+        "higher_is_better": True
+    },
+    "cohens_kappa": {
+        "formula": "(observed agreement - chance agreement) / (1 - chance agreement)",
+        "intuition": "Agreement corrected for chance. Kappa=0 means no better than random guessing. Kappa=1 means perfect agreement.",
+        "when_to_use": "Comparing model consistency across runs. Measuring inter-rater reliability. Accounts for class imbalance.",
+        "target": "≥ 0.70",
+        "higher_is_better": True
+    },
+    "spearman": {
+        "formula": "Correlation of ranks",
+        "intuition": "When confidence goes up, does correctness tend to go up? Doesn't care about exact values, only order.",
+        "when_to_use": "When you have confidence scores. When relationship might not be linear. More robust to outliers than Pearson.",
+        "target": "≥ 0.70",
+        "higher_is_better": True
+    },
+    "pearson": {
+        "formula": "Covariance / (std_x × std_y)",
+        "intuition": "Linear relationship between confidence and correctness. If confidence of 0.6 means 60% correct, that's linear.",
+        "when_to_use": "When you expect a linear relationship. For well-calibrated models.",
+        "target": "≥ 0.70",
+        "higher_is_better": True
+    },
+    "kendalls_tau": {
+        "formula": "(concordant - discordant pairs) / total pairs",
+        "intuition": "Compares every pair of predictions. If higher confidence usually means higher correctness, tau is positive.",
+        "when_to_use": "Small sample sizes (more robust than Spearman). When there are many ties. Directly interpretable.",
+        "target": "≥ 0.60 (tau values are inherently smaller)",
+        "higher_is_better": True
+    },
+    "mae": {
+        "formula": "average(|confidence - actual|)",
+        "intuition": "Average magnitude of confidence calibration error. If model says 80% confident but is correct 60%, that's 0.20 error.",
+        "when_to_use": "When you have confidence scores. Measuring calibration quality.",
+        "target": "< 0.15",
+        "higher_is_better": False
+    },
+    "rmse": {
+        "formula": "sqrt(average((confidence - actual)²))",
+        "intuition": "Like MAE but penalizes large errors more. A few wildly wrong scores will spike RMSE.",
+        "when_to_use": "When large errors are especially problematic. Sensitive to worst-case performance.",
+        "target": "< 0.20",
+        "higher_is_better": False
+    }
 }
 
 
@@ -878,6 +971,105 @@ def render_compare_runs_page(df: pd.DataFrame):
         st.success("No significant performance declines detected!")
 
 
+def render_metrics_guide_page():
+    """Render the Metrics Guide page - educational resource for understanding metrics."""
+    st.header("📖 Metrics Guide")
+    st.markdown("""
+    This guide explains all evaluation metrics used in this system. Understanding these metrics
+    is essential for interpreting AI evaluation results and making informed decisions.
+    """)
+
+    # Quick reference table
+    st.subheader("📊 Quick Reference")
+    quick_ref_data = []
+    for metric_key, label in METRIC_LABELS.items():
+        if metric_key in METRIC_EDUCATION:
+            edu = METRIC_EDUCATION[metric_key]
+            quick_ref_data.append({
+                "Metric": label,
+                "Target": edu["target"],
+                "Direction": "↑ Higher" if edu["higher_is_better"] else "↓ Lower"
+            })
+    if quick_ref_data:
+        st.dataframe(pd.DataFrame(quick_ref_data), use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+
+    # Confusion Matrix explanation
+    st.subheader("🎯 The Confusion Matrix - Foundation of All Metrics")
+    st.markdown("""
+    Before understanding metrics, you need to understand the confusion matrix:
+
+    ```
+                        PREDICTED
+                     Hallucination | Grounded
+                  ┌────────────────┬──────────────┐
+    ACTUAL  Hall. │      TP        │      FN      │
+                  │ (True Positive)│(False Negative)
+                  ├────────────────┼──────────────┤
+           Ground │      FP        │      TN      │
+                  │(False Positive)│(True Negative)
+                  └────────────────┴──────────────┘
+    ```
+
+    - **TP (True Positive)**: Correctly identified hallucination ✅
+    - **TN (True Negative)**: Correctly identified grounded content ✅
+    - **FP (False Positive)**: Wrongly flagged grounded content as hallucination ❌
+    - **FN (False Negative)**: Missed an actual hallucination ❌
+    """)
+
+    st.markdown("---")
+
+    # Categorized metrics
+    categories = {
+        "🎯 Classification Metrics": ["f1", "precision", "recall", "tnr", "accuracy"],
+        "🤝 Agreement Metrics": ["cohens_kappa"],
+        "📈 Correlation Metrics": ["spearman", "pearson", "kendalls_tau"],
+        "⚖️ Error Metrics": ["bias", "mae", "rmse"]
+    }
+
+    for category_name, metric_keys in categories.items():
+        st.subheader(category_name)
+        for metric_key in metric_keys:
+            if metric_key in METRIC_EDUCATION:
+                edu = METRIC_EDUCATION[metric_key]
+                label = METRIC_LABELS.get(metric_key, metric_key)
+                with st.expander(f"**{label}**", expanded=False):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown(f"**Formula:** `{edu['formula']}`")
+                        st.markdown(f"**Target:** {edu['target']}")
+                        direction = "Higher is better ↑" if edu['higher_is_better'] else "Lower is better ↓ (closer to 0)"
+                        st.markdown(f"**Direction:** {direction}")
+                    with col2:
+                        st.markdown(f"**Intuition:**\n\n{edu['intuition']}")
+                    st.markdown(f"**When to use:**\n\n{edu['when_to_use']}")
+
+    st.markdown("---")
+
+    # Decision flowchart
+    st.subheader("🔀 Which Metric Should I Prioritize?")
+    st.markdown("""
+    | Your Primary Concern | Prioritize | Secondary Metrics |
+    |---------------------|------------|-------------------|
+    | Missing hallucinations is dangerous | **Recall** | F1, Bias (check for FN bias) |
+    | False alarms annoy users | **Precision** & **TNR** | F1, Bias (check for FP bias) |
+    | Need balanced performance | **F1 Score** | Precision, Recall, Bias |
+    | Comparing multiple models | **F1** for ranking | Cohen's Kappa for consistency |
+    | Model outputs confidence scores | Add **Correlation metrics** | Kendall's Tau for small samples |
+    | Need reproducible results | Run 3+ evals | Check Variance, Cohen's Kappa |
+    """)
+
+    st.markdown("---")
+
+    # Link to full documentation
+    st.subheader("📚 Full Documentation")
+    st.markdown("""
+    For more detailed explanations, examples, and best practices, see the
+    [complete User Guide](https://github.com/rasiulyte/evaluation-system/blob/main/docs/USER_GUIDE.md).
+    """)
+
+
 def main():
     try:
         st.set_page_config(page_title="Evaluation Dashboard v2", layout="wide")
@@ -887,7 +1079,7 @@ def main():
 
         # Sidebar: Navigation (always show)
         st.sidebar.title("Navigation")
-        page = st.sidebar.radio("View", ["🚀 Run Evaluation", "📈 Current Metrics", "📅 Daily Runs", "🔄 Compare Runs"])
+        page = st.sidebar.radio("View", ["🚀 Run Evaluation", "📈 Current Metrics", "📅 Daily Runs", "🔄 Compare Runs", "📖 Metrics Guide"])
 
         # Debug info
         with st.sidebar.expander("🔧 Debug Info"):
@@ -935,6 +1127,9 @@ def main():
         elif page == "🔄 Compare Runs":
             render_compare_runs_page(df)
             return
+        elif page == "📖 Metrics Guide":
+            render_metrics_guide_page()
+            return
 
         # Default: Current Metrics page
 
@@ -949,6 +1144,20 @@ def main():
             value=f"{mdf['metric_value'].iloc[-1]:.3f}" if not mdf.empty else "-",
             delta=None
         )
+
+        # Educational info about this metric
+        if metric in METRIC_EDUCATION:
+            edu = METRIC_EDUCATION[metric]
+            with st.expander(f"📚 Learn about {METRIC_LABELS.get(metric, metric)}", expanded=False):
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown(f"**Formula:** `{edu['formula']}`")
+                    st.markdown(f"**Target:** {edu['target']}")
+                    direction = "Higher is better" if edu['higher_is_better'] else "Lower is better (closer to 0)"
+                    st.markdown(f"**Direction:** {direction}")
+                with col2:
+                    st.markdown(f"**Intuition:**\n\n{edu['intuition']}")
+                    st.markdown(f"**When to use:**\n\n{edu['when_to_use']}")
 
         # Metrics history plot
         st.subheader("History")
