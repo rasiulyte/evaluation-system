@@ -1649,9 +1649,9 @@ def render_slice_analysis_page(df: pd.DataFrame):
     <div class="metric-card" style="padding: 1.25rem; margin-bottom: 1.5rem;">
         <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.5rem;">What is Slice Analysis?</div>
         <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
-            Overall metrics can hide weaknesses. A model with 85% F1 might struggle badly on specific
-            <strong>slices</strong> (subsets) of data. Slice analysis breaks down performance by:
-            <strong>failure mode</strong>, <strong>difficulty</strong>, and <strong>label type</strong>.
+            Think of it like a report card that shows grades for each subject, not just the overall GPA.
+            Your model might score 85% overall, but struggle with specific types of problems.
+            Slice analysis reveals these hidden weaknesses by breaking down performance into categories.
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -1702,6 +1702,20 @@ def render_slice_analysis_page(df: pd.DataFrame):
     # SLICE BY FAILURE MODE
     # ==========================================
     render_section_header("By Failure Mode")
+
+    # Beginner-friendly explanation
+    st.markdown(f"""
+    <div style="background: #f8fafc; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; border-left: 3px solid {COLORS['teal']};">
+        <div style="font-size: 0.85rem; color: {COLORS['charcoal']}; line-height: 1.6;">
+            <strong>How to read this:</strong> Each card shows how well the model handles a specific type of test case.
+            <ul style="margin: 0.5rem 0 0 0; padding-left: 1.25rem;">
+                <li><strong>Green (75%+)</strong> = Good performance</li>
+                <li><strong>Yellow (60-74%)</strong> = Needs improvement</li>
+                <li><strong>Red (&lt;60%)</strong> = Problem area to focus on</li>
+            </ul>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     failure_modes = run_data['failure_mode'].unique()
     failure_mode_stats = []
@@ -1779,11 +1793,15 @@ def render_slice_analysis_page(df: pd.DataFrame):
 
                 # Use appropriate metric label based on failure mode type
                 is_grounded = row.get('is_grounded_mode', False)
-                metric_label = "TNR" if is_grounded else "F1"
                 metric_value = row['F1']  # F1 holds TNR for grounded modes
 
-                # Add note for grounded modes
-                mode_note = "(tests grounded)" if is_grounded else "(tests hallucination)"
+                # Beginner-friendly descriptions
+                if is_grounded:
+                    metric_label = "Accuracy"
+                    mode_note = "Should say 'safe' for these"
+                else:
+                    metric_label = "Catch rate"
+                    mode_note = "Should catch these errors"
 
                 st.markdown(f"""
                 <div class="metric-card {status_class}" style="padding: 1rem; margin-bottom: 0.75rem;">
@@ -1817,12 +1835,18 @@ def render_slice_analysis_page(df: pd.DataFrame):
             display_df = display_df[['Failure Mode', 'Type', 'Cases', 'Correct', 'Accuracy', 'Score']]
             st.dataframe(display_df, use_container_width=True, hide_index=True)
 
-        # Explanation
-        st.caption("""
-        **Note**: Failure modes test different things:
-        - **Grounded modes** (Factual Addition, Valid Inference, Verbatim Grounded): All cases should be classified as "grounded". TNR measures how well we avoid false positives.
-        - **Hallucination modes** (Fabrication, Subtle Distortion, Fluent Hallucination, Partial Grounding): All cases should be classified as "hallucination". F1 measures detection accuracy.
-        """)
+        # Beginner-friendly explanation
+        st.markdown(f"""
+        <div style="background: #fefce8; border-radius: 6px; padding: 0.75rem 1rem; margin-top: 1rem; font-size: 0.85rem;">
+            <strong>Understanding the scores:</strong>
+            <ul style="margin: 0.5rem 0 0 0; padding-left: 1.25rem; color: {COLORS['charcoal']};">
+                <li><strong>Factual Addition, Valid Inference, Verbatim Grounded</strong> - These are safe/correct responses.
+                    The score shows how often the model correctly says "this is fine" (avoiding false alarms).</li>
+                <li><strong>Fabrication, Subtle Distortion, Fluent Hallucination, Partial Grounding</strong> - These contain errors.
+                    The score shows how often the model catches these problems.</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
 
     st.markdown("---")
 
@@ -1830,6 +1854,17 @@ def render_slice_analysis_page(df: pd.DataFrame):
     # SLICE BY DIFFICULTY
     # ==========================================
     render_section_header("By Difficulty")
+
+    # Beginner-friendly explanation
+    st.markdown(f"""
+    <div style="background: #f8fafc; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; border-left: 3px solid {COLORS['teal']};">
+        <div style="font-size: 0.85rem; color: {COLORS['charcoal']}; line-height: 1.6;">
+            <strong>What this means:</strong> Test cases are labeled by how tricky they are for humans to classify.
+            Easy cases are obvious; hard cases require careful reading. If the model struggles on easy cases,
+            something is wrong. If it struggles on hard cases, that's expected.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     difficulty_order = ['easy', 'medium', 'hard']
     difficulty_stats = []
@@ -1893,6 +1928,20 @@ def render_slice_analysis_page(df: pd.DataFrame):
     # ==========================================
     render_section_header("By Ground Truth Label")
 
+    # Beginner-friendly explanation
+    st.markdown(f"""
+    <div style="background: #f8fafc; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; border-left: 3px solid {COLORS['teal']};">
+        <div style="font-size: 0.85rem; color: {COLORS['charcoal']}; line-height: 1.6;">
+            <strong>What this shows:</strong> How well the model performs on each type of content:
+            <ul style="margin: 0.5rem 0 0 0; padding-left: 1.25rem;">
+                <li><strong>Grounded</strong> = Safe, accurate content. Does the model correctly say "this is fine"?</li>
+                <li><strong>Hallucination</strong> = Content with errors. Does the model catch these problems?</li>
+            </ul>
+            If one score is much lower than the other, the model is biased toward one type of prediction.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
     if 'ground_truth' in run_data.columns:
         label_stats = []
 
@@ -1951,7 +2000,7 @@ def render_slice_analysis_page(df: pd.DataFrame):
     # KEY INSIGHTS
     # ==========================================
     st.markdown("---")
-    render_section_header("Key Insights")
+    render_section_header("Key Insights", "What the numbers are telling you")
 
     insights = []
 
@@ -1961,14 +2010,26 @@ def render_slice_analysis_page(df: pd.DataFrame):
         best_fm = max(failure_mode_stats, key=lambda x: x['F1'])
 
         if worst_fm['F1'] < 0.70:
-            insights.append(f"⚠️ **Weakest on {worst_fm['Failure Mode']}** — F1 of {worst_fm['F1']:.0%} suggests the model struggles with this failure mode.")
+            insights.append({
+                'icon': '⚠️',
+                'title': f"Struggles with {worst_fm['Failure Mode']}",
+                'detail': f"Only {worst_fm['F1']:.0%} accuracy. This is an area to improve — consider adding more examples of this type to your prompt."
+            })
 
         if best_fm['F1'] > 0.85:
-            insights.append(f"✓ **Strongest on {best_fm['Failure Mode']}** — F1 of {best_fm['F1']:.0%} shows good performance.")
+            insights.append({
+                'icon': '✓',
+                'title': f"Good at {best_fm['Failure Mode']}",
+                'detail': f"{best_fm['F1']:.0%} accuracy shows the model handles this type well."
+            })
 
         gap = best_fm['F1'] - worst_fm['F1']
         if gap > 0.20:
-            insights.append(f"📊 **Performance gap of {gap:.0%}** between best and worst failure modes — consider targeted improvements.")
+            insights.append({
+                'icon': '📊',
+                'title': f"Uneven performance ({gap:.0%} gap)",
+                'detail': f"Big difference between best ({best_fm['Failure Mode']}) and worst ({worst_fm['Failure Mode']}) areas. Focus on improving weak spots."
+            })
 
     # Difficulty insights
     if difficulty_stats:
@@ -1978,15 +2039,35 @@ def render_slice_analysis_page(df: pd.DataFrame):
         if easy_acc and hard_acc:
             drop = easy_acc - hard_acc
             if drop > 0.15:
-                insights.append(f"📉 **{drop:.0%} accuracy drop** from easy to hard cases — model struggles with complexity.")
+                insights.append({
+                    'icon': '📉',
+                    'title': f"Drops {drop:.0%} on hard cases",
+                    'detail': "Performance falls significantly on tricky cases. This is somewhat expected, but large drops may indicate the model needs better reasoning guidance."
+                })
+            elif drop < 0.05:
+                insights.append({
+                    'icon': '✓',
+                    'title': "Consistent across difficulty levels",
+                    'detail': "The model performs similarly on easy and hard cases — good sign of robust performance."
+                })
 
     if not insights:
-        insights.append("✓ Performance is relatively consistent across slices.")
+        insights.append({
+            'icon': '✓',
+            'title': "Balanced performance",
+            'detail': "No major issues detected. Performance is relatively consistent across all categories."
+        })
 
     for insight in insights:
         st.markdown(f"""
-        <div style="padding: 0.75rem 1rem; background: {COLORS['light_gray']}50; border-radius: 6px; margin-bottom: 0.5rem;">
-            {insight}
+        <div style="padding: 1rem; background: {COLORS['light_gray']}50; border-radius: 8px; margin-bottom: 0.75rem;">
+            <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
+                <span style="font-size: 1.25rem;">{insight['icon']}</span>
+                <div>
+                    <div style="font-weight: 600; color: {COLORS['navy']}; margin-bottom: 0.25rem;">{insight['title']}</div>
+                    <div style="font-size: 0.85rem; color: {COLORS['charcoal']}; line-height: 1.5;">{insight['detail']}</div>
+                </div>
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
