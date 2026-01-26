@@ -2558,6 +2558,99 @@ def render_home_page():
     </div>
     """, unsafe_allow_html=True)
 
+    # Evaluation workflow (at top for visibility)
+    render_section_header("How Evaluation Works")
+
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, {COLORS['navy']}08, {COLORS['teal']}08);
+                padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+        <p style="margin: 0 0 1rem 0; color: {COLORS['charcoal']};">
+            When you click <strong>Run Evaluation</strong>, here's exactly what happens behind the scenes:
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Workflow steps
+    workflow_steps = [
+        {
+            "num": "1",
+            "title": "Load Test Cases",
+            "desc": "The system loads test cases from <code>data/test_cases/</code>. Each test case has a <strong>context</strong> (source material), a <strong>response</strong> (text to evaluate), and an expected <strong>label</strong> (grounded or hallucination).",
+            "detail": "A random sample is selected based on the configured sample size (default: 20 cases)."
+        },
+        {
+            "num": "2",
+            "title": "Load Prompt Template",
+            "desc": "The selected prompt template (e.g., <code>v6_calibrated_confidence</code>) is loaded from <code>prompts/</code>. This template tells the LLM how to analyze the response.",
+            "detail": "The prompt includes instructions for classification and confidence calibration guidelines."
+        },
+        {
+            "num": "3",
+            "title": "Format & Send to LLM",
+            "desc": "For each test case, the context and response are inserted into the prompt template. The formatted prompt is sent to the LLM (e.g., GPT-4o-mini).",
+            "detail": "Example: \"Context: {context}\\n\\nResponse to analyze: {response}\\n\\nIs this grounded or hallucinated?\""
+        },
+        {
+            "num": "4",
+            "title": "Parse LLM Response",
+            "desc": "The LLM returns a JSON response with <code>classification</code>, <code>confidence</code>, and <code>reasoning</code>. The system parses this to extract the prediction.",
+            "detail": "Example output: {\"classification\": \"hallucinated\", \"confidence\": 0.85, \"reasoning\": \"The response adds information not in context...\"}"
+        },
+        {
+            "num": "5",
+            "title": "Compare to Ground Truth",
+            "desc": "Each LLM prediction is compared against the expected label from the test case. A prediction is <span style='color: {COLORS['good']};'>correct</span> if it matches, <span style='color: {COLORS['poor']};'>wrong</span> if it doesn't.",
+            "detail": "This comparison creates the raw data for calculating metrics."
+        },
+        {
+            "num": "6",
+            "title": "Calculate Metrics",
+            "desc": "Using all predictions vs ground truth labels, the system calculates metrics: F1, Precision, Recall, TNR, Accuracy, Cohen's Kappa, and correlation metrics (Spearman, etc.).",
+            "detail": "Calibration metrics (Bias, MAE, RMSE) are calculated from the confidence scores."
+        },
+        {
+            "num": "7",
+            "title": "Save Results",
+            "desc": "Everything is saved: individual test results (with LLM reasoning) go to <code>data/daily_runs/</code> and aggregated metrics go to the database for the dashboard.",
+            "detail": "Results are timestamped so you can track changes over time and compare runs."
+        }
+    ]
+
+    for i, step in enumerate(workflow_steps):
+        bg_color = f"{COLORS['teal']}08" if i % 2 == 0 else f"{COLORS['navy']}05"
+        st.markdown(f"""
+        <div style="display: flex; gap: 1rem; margin-bottom: 0.75rem; padding: 1rem; background: {bg_color}; border-radius: 8px; border-left: 4px solid {COLORS['teal']};">
+            <div style="background: {COLORS['teal']}; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0;">
+                {step['num']}
+            </div>
+            <div style="flex: 1;">
+                <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.25rem;">{step['title']}</div>
+                <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.5;">{step['desc']}</div>
+                <div style="color: {COLORS['medium_gray']}; font-size: 0.8rem; margin-top: 0.5rem; font-style: italic;">{step['detail']}</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # Visual diagram
+    st.markdown(f"""
+    <div class="metric-card" style="margin-top: 1.5rem; padding: 1.5rem; text-align: center;">
+        <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 1rem;">Data Flow Summary</div>
+        <div style="font-family: monospace; font-size: 0.85rem; color: {COLORS['charcoal']}; line-height: 2;">
+            <span style="background: {COLORS['light_gray']}; padding: 0.25rem 0.5rem; border-radius: 4px;">Test Cases</span>
+            <span style="color: {COLORS['teal']}; margin: 0 0.5rem;">→</span>
+            <span style="background: {COLORS['light_gray']}; padding: 0.25rem 0.5rem; border-radius: 4px;">+ Prompt</span>
+            <span style="color: {COLORS['teal']}; margin: 0 0.5rem;">→</span>
+            <span style="background: {COLORS['teal']}20; padding: 0.25rem 0.5rem; border-radius: 4px; border: 1px solid {COLORS['teal']};">LLM</span>
+            <span style="color: {COLORS['teal']}; margin: 0 0.5rem;">→</span>
+            <span style="background: {COLORS['light_gray']}; padding: 0.25rem 0.5rem; border-radius: 4px;">Predictions</span>
+            <span style="color: {COLORS['teal']}; margin: 0 0.5rem;">→</span>
+            <span style="background: {COLORS['light_gray']}; padding: 0.25rem 0.5rem; border-radius: 4px;">vs Ground Truth</span>
+            <span style="color: {COLORS['teal']}; margin: 0 0.5rem;">→</span>
+            <span style="background: {COLORS['good']}20; padding: 0.25rem 0.5rem; border-radius: 4px; border: 1px solid {COLORS['good']};">Metrics</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
     # How to use section
     render_section_header("How to Use This Dashboard")
 
@@ -2665,99 +2758,6 @@ def render_home_page():
             </div>
         </div>
         """, unsafe_allow_html=True)
-
-    # Evaluation workflow
-    render_section_header("How Evaluation Works")
-
-    st.markdown(f"""
-    <div style="background: linear-gradient(135deg, {COLORS['navy']}08, {COLORS['teal']}08);
-                padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
-        <p style="margin: 0 0 1rem 0; color: {COLORS['charcoal']};">
-            When you click <strong>Run Evaluation</strong>, here's exactly what happens behind the scenes:
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Workflow steps
-    workflow_steps = [
-        {
-            "num": "1",
-            "title": "Load Test Cases",
-            "desc": "The system loads test cases from <code>data/test_cases/</code>. Each test case has a <strong>context</strong> (source material), a <strong>response</strong> (text to evaluate), and an expected <strong>label</strong> (grounded or hallucination).",
-            "detail": "A random sample is selected based on the configured sample size (default: 20 cases)."
-        },
-        {
-            "num": "2",
-            "title": "Load Prompt Template",
-            "desc": "The selected prompt template (e.g., <code>v6_calibrated_confidence</code>) is loaded from <code>prompts/</code>. This template tells the LLM how to analyze the response.",
-            "detail": "The prompt includes instructions for classification and confidence calibration guidelines."
-        },
-        {
-            "num": "3",
-            "title": "Format & Send to LLM",
-            "desc": "For each test case, the context and response are inserted into the prompt template. The formatted prompt is sent to the LLM (e.g., GPT-4o-mini).",
-            "detail": "Example: \"Context: {context}\\n\\nResponse to analyze: {response}\\n\\nIs this grounded or hallucinated?\""
-        },
-        {
-            "num": "4",
-            "title": "Parse LLM Response",
-            "desc": "The LLM returns a JSON response with <code>classification</code>, <code>confidence</code>, and <code>reasoning</code>. The system parses this to extract the prediction.",
-            "detail": "Example output: {\"classification\": \"hallucinated\", \"confidence\": 0.85, \"reasoning\": \"The response adds information not in context...\"}"
-        },
-        {
-            "num": "5",
-            "title": "Compare to Ground Truth",
-            "desc": "Each LLM prediction is compared against the expected label from the test case. A prediction is <span style='color: {COLORS['good']};'>correct</span> if it matches, <span style='color: {COLORS['poor']};'>wrong</span> if it doesn't.",
-            "detail": "This comparison creates the raw data for calculating metrics."
-        },
-        {
-            "num": "6",
-            "title": "Calculate Metrics",
-            "desc": "Using all predictions vs ground truth labels, the system calculates metrics: F1, Precision, Recall, TNR, Accuracy, Cohen's Kappa, and correlation metrics (Spearman, etc.).",
-            "detail": "Calibration metrics (Bias, MAE, RMSE) are calculated from the confidence scores."
-        },
-        {
-            "num": "7",
-            "title": "Save Results",
-            "desc": "Everything is saved: individual test results (with LLM reasoning) go to <code>data/daily_runs/</code> and aggregated metrics go to the database for the dashboard.",
-            "detail": "Results are timestamped so you can track changes over time and compare runs."
-        }
-    ]
-
-    for i, step in enumerate(workflow_steps):
-        bg_color = f"{COLORS['teal']}08" if i % 2 == 0 else f"{COLORS['navy']}05"
-        st.markdown(f"""
-        <div style="display: flex; gap: 1rem; margin-bottom: 0.75rem; padding: 1rem; background: {bg_color}; border-radius: 8px; border-left: 4px solid {COLORS['teal']};">
-            <div style="background: {COLORS['teal']}; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0;">
-                {step['num']}
-            </div>
-            <div style="flex: 1;">
-                <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.25rem;">{step['title']}</div>
-                <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.5;">{step['desc']}</div>
-                <div style="color: {COLORS['medium_gray']}; font-size: 0.8rem; margin-top: 0.5rem; font-style: italic;">{step['detail']}</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    # Visual diagram
-    st.markdown(f"""
-    <div class="metric-card" style="margin-top: 1.5rem; padding: 1.5rem; text-align: center;">
-        <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 1rem;">Data Flow Summary</div>
-        <div style="font-family: monospace; font-size: 0.85rem; color: {COLORS['charcoal']}; line-height: 2;">
-            <span style="background: {COLORS['light_gray']}; padding: 0.25rem 0.5rem; border-radius: 4px;">Test Cases</span>
-            <span style="color: {COLORS['teal']}; margin: 0 0.5rem;">→</span>
-            <span style="background: {COLORS['light_gray']}; padding: 0.25rem 0.5rem; border-radius: 4px;">+ Prompt</span>
-            <span style="color: {COLORS['teal']}; margin: 0 0.5rem;">→</span>
-            <span style="background: {COLORS['teal']}20; padding: 0.25rem 0.5rem; border-radius: 4px; border: 1px solid {COLORS['teal']};">LLM</span>
-            <span style="color: {COLORS['teal']}; margin: 0 0.5rem;">→</span>
-            <span style="background: {COLORS['light_gray']}; padding: 0.25rem 0.5rem; border-radius: 4px;">Predictions</span>
-            <span style="color: {COLORS['teal']}; margin: 0 0.5rem;">→</span>
-            <span style="background: {COLORS['light_gray']}; padding: 0.25rem 0.5rem; border-radius: 4px;">vs Ground Truth</span>
-            <span style="color: {COLORS['teal']}; margin: 0 0.5rem;">→</span>
-            <span style="background: {COLORS['good']}20; padding: 0.25rem 0.5rem; border-radius: 4px; border: 1px solid {COLORS['good']};">Metrics</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
 
     # Quick start
     render_section_header("Quick Start")
