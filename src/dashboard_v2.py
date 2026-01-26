@@ -11,6 +11,292 @@ sys.path.insert(0, "src")
 from database import db
 
 
+# ============================================
+# CUSTOM STYLING - Modern Dark Theme
+# ============================================
+
+def apply_custom_css():
+    """Apply custom CSS for a modern, professional look."""
+    st.markdown("""
+    <style>
+    /* Main color palette - Modern dark theme with accent colors */
+    :root {
+        --primary-color: #6366f1;      /* Indigo accent */
+        --secondary-color: #8b5cf6;    /* Purple accent */
+        --success-color: #10b981;      /* Green */
+        --warning-color: #f59e0b;      /* Amber */
+        --error-color: #ef4444;        /* Red */
+        --background-dark: #0f172a;    /* Dark blue-gray */
+        --card-bg: #1e293b;            /* Slightly lighter */
+        --text-primary: #f1f5f9;       /* Light text */
+        --text-secondary: #94a3b8;     /* Muted text */
+    }
+
+    /* Hide Streamlit branding */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+
+    /* Custom header styling */
+    .main-header {
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        padding: 1.5rem 2rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+        color: white;
+    }
+
+    .main-header h1 {
+        margin: 0;
+        font-size: 1.8rem;
+        font-weight: 600;
+    }
+
+    .main-header p {
+        margin: 0.5rem 0 0 0;
+        opacity: 0.9;
+        font-size: 0.95rem;
+    }
+
+    /* Metric cards */
+    .metric-card {
+        background: linear-gradient(145deg, #1e293b, #334155);
+        border-radius: 12px;
+        padding: 1.5rem;
+        border: 1px solid #334155;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .metric-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(99, 102, 241, 0.15);
+    }
+
+    /* Status badges */
+    .status-healthy {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    .status-warning {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    .status-critical {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+    }
+
+    [data-testid="stSidebar"] .stRadio > label {
+        color: #f1f5f9;
+    }
+
+    /* Navigation pills */
+    .nav-link {
+        display: block;
+        padding: 0.75rem 1rem;
+        margin: 0.25rem 0;
+        border-radius: 8px;
+        color: #94a3b8;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .nav-link:hover {
+        background: rgba(99, 102, 241, 0.1);
+        color: #f1f5f9;
+    }
+
+    .nav-link.active {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: white;
+    }
+
+    /* Expander styling */
+    .streamlit-expanderHeader {
+        font-weight: 500;
+        color: #f1f5f9;
+    }
+
+    /* Button styling */
+    .stButton > button {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.5rem 1.5rem;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .stButton > button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+    }
+
+    /* Primary button variant */
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, #10b981, #059669);
+    }
+
+    /* Data tables */
+    .stDataFrame {
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    /* Info/warning/error boxes */
+    .stAlert {
+        border-radius: 8px;
+        border-left-width: 4px;
+    }
+
+    /* Section headers */
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin: 2rem 0 1rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #334155;
+    }
+
+    .section-header h2 {
+        margin: 0;
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: #f1f5f9;
+    }
+
+    /* Quick stats row */
+    .stats-row {
+        display: flex;
+        gap: 1rem;
+        margin: 1rem 0;
+    }
+
+    .stat-item {
+        flex: 1;
+        background: #1e293b;
+        border-radius: 10px;
+        padding: 1rem;
+        text-align: center;
+        border: 1px solid #334155;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #6366f1;
+    }
+
+    .stat-label {
+        font-size: 0.85rem;
+        color: #94a3b8;
+        margin-top: 0.25rem;
+    }
+
+    /* Plotly chart container */
+    .js-plotly-plot {
+        border-radius: 12px;
+    }
+
+    /* Footer branding */
+    .footer-brand {
+        text-align: center;
+        padding: 2rem;
+        margin-top: 3rem;
+        border-top: 1px solid #334155;
+        color: #64748b;
+        font-size: 0.85rem;
+    }
+
+    .footer-brand a {
+        color: #6366f1;
+        text-decoration: none;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .main-header {
+            padding: 1rem;
+        }
+        .main-header h1 {
+            font-size: 1.4rem;
+        }
+        .stats-row {
+            flex-direction: column;
+        }
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+
+def render_header(title: str, subtitle: str = None):
+    """Render a styled header."""
+    subtitle_html = f"<p>{subtitle}</p>" if subtitle else ""
+    st.markdown(f"""
+    <div class="main-header">
+        <h1>{title}</h1>
+        {subtitle_html}
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def render_status_badge(status: str) -> str:
+    """Return HTML for a status badge."""
+    status_lower = status.lower()
+    if status_lower == "healthy":
+        return '<span class="status-healthy">Healthy</span>'
+    elif status_lower == "warning":
+        return '<span class="status-warning">Warning</span>'
+    else:
+        return '<span class="status-critical">Critical</span>'
+
+
+def render_metric_card(label: str, value: str, delta: str = None, status: str = "healthy"):
+    """Render a styled metric card."""
+    delta_html = f"<div style='color: #94a3b8; font-size: 0.85rem;'>{delta}</div>" if delta else ""
+    badge = render_status_badge(status)
+    st.markdown(f"""
+    <div class="metric-card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #94a3b8; font-size: 0.9rem;">{label}</span>
+            {badge}
+        </div>
+        <div style="font-size: 2.5rem; font-weight: 700; color: #f1f5f9; margin: 0.5rem 0;">{value}</div>
+        {delta_html}
+    </div>
+    """, unsafe_allow_html=True)
+
+
+# Plotly theme for consistent chart styling
+PLOTLY_THEME = {
+    "template": "plotly_dark",
+    "paper_bgcolor": "rgba(30, 41, 59, 0.8)",
+    "plot_bgcolor": "rgba(30, 41, 59, 0.8)",
+    "font": {"color": "#f1f5f9", "family": "Inter, system-ui, sans-serif"},
+    "colorway": ["#6366f1", "#8b5cf6", "#10b981", "#f59e0b", "#ef4444", "#06b6d4"]
+}
+
+
 def load_metrics() -> pd.DataFrame:
     """Load metrics from database."""
     try:
@@ -324,9 +610,38 @@ def get_alert_explanation(metric: str, value: float, status: str, thresh_min, th
     return explanations.get(metric, default)
 
 
+def apply_plotly_theme(fig):
+    """Apply consistent Plotly theme to a figure."""
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="rgba(30, 41, 59, 0.8)",
+        plot_bgcolor="rgba(30, 41, 59, 0.4)",
+        font=dict(color="#f1f5f9", family="Inter, system-ui, sans-serif"),
+        colorway=["#6366f1", "#8b5cf6", "#10b981", "#f59e0b", "#ef4444", "#06b6d4"],
+        margin=dict(t=40, b=40, l=40, r=40),
+        legend=dict(
+            bgcolor="rgba(30, 41, 59, 0.8)",
+            bordercolor="#334155",
+            borderwidth=1
+        ),
+        xaxis=dict(gridcolor="#334155", zerolinecolor="#475569"),
+        yaxis=dict(gridcolor="#334155", zerolinecolor="#475569")
+    )
+    return fig
+
+
+def render_footer():
+    """Render the footer with branding."""
+    st.markdown("""
+    <div class="footer-brand">
+        Built with Streamlit | <a href="https://rasar.ai" target="_blank">rasar.ai</a>
+    </div>
+    """, unsafe_allow_html=True)
+
+
 def render_run_evaluation_page():
     """Render the run evaluation page with UI controls."""
-    st.header("🚀 Run Evaluation")
+    render_header("Run Evaluation", "Execute hallucination detection evaluations with customizable settings")
 
     # Initialize session state for persisting results
     if 'eval_summary' not in st.session_state:
@@ -645,16 +960,17 @@ def render_run_evaluation_page():
         **Results:** {summary['scenarios_passed']}/{summary['scenarios_run']} scenarios passed
         """)
 
-        # Results metrics
+        # Results metrics with styled cards
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.metric("Scenarios Run", summary['scenarios_run'])
+            render_metric_card("Scenarios Run", str(summary['scenarios_run']), status="healthy")
         with col2:
-            st.metric("Passed", summary['scenarios_passed'], delta=None)
+            render_metric_card("Passed", str(summary['scenarios_passed']), status="healthy")
         with col3:
-            st.metric("Failed", summary['scenarios_failed'], delta=None, delta_color="inverse")
+            status = "critical" if summary['scenarios_failed'] > 0 else "healthy"
+            render_metric_card("Failed", str(summary['scenarios_failed']), status=status)
         with col4:
-            st.metric("Status", summary['overall_status'].upper())
+            render_metric_card("Status", summary['overall_status'].upper(), status=summary['overall_status'])
 
         # Alerts
         if summary['alerts']:
@@ -692,7 +1008,7 @@ def render_run_evaluation_page():
 
 def render_daily_runs_page(df: pd.DataFrame):
     """Render the daily runs history page."""
-    st.header("📅 Daily Evaluation Runs")
+    render_header("Daily Evaluation Runs", "Track evaluation history and monitor performance trends over time")
 
     # Get runs from metrics table (more reliable than daily_runs)
     if df.empty or "run_id" not in df.columns:
@@ -738,22 +1054,26 @@ def render_daily_runs_page(df: pd.DataFrame):
 
     runs_df = pd.DataFrame(runs_summary).sort_values("timestamp", ascending=False)
 
-    # Summary stats
+    # Summary stats with styled cards
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("Total Runs", len(runs_df))
+        render_metric_card("Total Runs", str(len(runs_df)), status="healthy")
     with col2:
         healthy_runs = len(runs_df[runs_df["status"] == "healthy"])
-        st.metric("Healthy Runs", healthy_runs)
+        render_metric_card("Healthy Runs", str(healthy_runs), status="healthy")
     with col3:
         latest_status = runs_df.iloc[0]["status"] if not runs_df.empty else "N/A"
-        status_icon = {"healthy": "🟢", "warning": "🟡", "critical": "🔴"}.get(latest_status, "⚪")
-        st.metric("Latest Status", f"{status_icon} {latest_status.upper()}")
+        render_metric_card("Latest Status", latest_status.upper(), status=latest_status)
     with col4:
-        st.metric("Total Runs", f"{len(runs_df)} runs")
+        warning_runs = len(runs_df[runs_df["status"] == "warning"])
+        critical_runs = len(runs_df[runs_df["status"] == "critical"])
+        issues = warning_runs + critical_runs
+        render_metric_card("Issues", str(issues), status="critical" if critical_runs > 0 else ("warning" if warning_runs > 0 else "healthy"))
+
+    st.markdown("---")
 
     # Runs history table
-    st.subheader("📋 Run History")
+    st.markdown('<div class="section-header"><h2>Run History</h2></div>', unsafe_allow_html=True)
 
     # Add status icons
     runs_df["status_icon"] = runs_df["status"].apply(
@@ -775,8 +1095,10 @@ def render_daily_runs_page(df: pd.DataFrame):
         }
     )
 
+    st.markdown("---")
+
     # Metrics trend over time
-    st.subheader("📈 Metrics Trend Over Time")
+    st.markdown('<div class="section-header"><h2>Metrics Trend Over Time</h2></div>', unsafe_allow_html=True)
 
     if "run_id" in df.columns:
         # Get unique runs in order
@@ -809,6 +1131,7 @@ def render_daily_runs_page(df: pd.DataFrame):
                         yaxis_title="Value",
                         height=300
                     )
+                    apply_plotly_theme(fig)
                     st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("Need multiple runs to show trends. Run the orchestrator daily to track progress.")
@@ -854,7 +1177,7 @@ def render_daily_runs_page(df: pd.DataFrame):
 
 def render_compare_runs_page(df: pd.DataFrame):
     """Render the run comparison page."""
-    st.header("🔄 Compare Runs")
+    render_header("Compare Runs", "Analyze performance differences between evaluation runs")
 
     # Get runs that actually have metrics data
     run_ids = get_runs_with_metrics()
@@ -896,14 +1219,16 @@ def render_compare_runs_page(df: pd.DataFrame):
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Improved", f"📈 {improved}", delta=None)
+        render_metric_card("Improved", str(improved), delta="📈", status="healthy")
     with col2:
-        st.metric("Declined", f"📉 {declined}", delta=None)
+        render_metric_card("Declined", str(declined), delta="📉", status="critical" if declined > 0 else "healthy")
     with col3:
-        st.metric("Unchanged", f"➡️ {unchanged}", delta=None)
+        render_metric_card("Unchanged", str(unchanged), delta="➡️", status="warning" if unchanged > 0 else "healthy")
+
+    st.markdown("---")
 
     # Detailed comparison table
-    st.subheader("📋 Detailed Comparison")
+    st.markdown('<div class="section-header"><h2>Detailed Comparison</h2></div>', unsafe_allow_html=True)
 
     # Format the dataframe for display
     comparison_df["change"] = comparison_df.apply(
@@ -923,8 +1248,10 @@ def render_compare_runs_page(df: pd.DataFrame):
         }
     )
 
+    st.markdown("---")
+
     # Visual comparison chart
-    st.subheader("📈 Visual Comparison")
+    st.markdown('<div class="section-header"><h2>Visual Comparison</h2></div>', unsafe_allow_html=True)
 
     scenarios = comparison_df["scenario"].unique()
     selected_scenario = st.selectbox("Select scenario to visualize", scenarios)
@@ -936,13 +1263,13 @@ def render_compare_runs_page(df: pd.DataFrame):
         name=f"Baseline ({baseline_run[:10]})",
         x=scenario_data["metric_name"],
         y=scenario_data["run1_value"],
-        marker_color="lightblue"
+        marker_color="#6366f1"
     ))
     fig.add_trace(go.Bar(
         name=f"Compare ({compare_run[:10]})",
         x=scenario_data["metric_name"],
         y=scenario_data["run2_value"],
-        marker_color="darkblue"
+        marker_color="#10b981"
     ))
 
     fig.update_layout(
@@ -950,6 +1277,7 @@ def render_compare_runs_page(df: pd.DataFrame):
         barmode="group",
         height=400
     )
+    apply_plotly_theme(fig)
     st.plotly_chart(fig, use_container_width=True)
 
     # Recommendations
@@ -973,11 +1301,7 @@ def render_compare_runs_page(df: pd.DataFrame):
 
 def render_metrics_guide_page():
     """Render the Metrics Guide page - educational resource for understanding metrics."""
-    st.header("📖 Metrics Guide")
-    st.markdown("""
-    This guide explains all evaluation metrics used in this system. Understanding these metrics
-    is essential for interpreting AI evaluation results and making informed decisions.
-    """)
+    render_header("Metrics Guide", "Learn about evaluation metrics and how to interpret your results")
 
     # Quick reference table
     st.subheader("📊 Quick Reference")
@@ -1072,35 +1396,68 @@ def render_metrics_guide_page():
 
 def main():
     try:
-        st.set_page_config(page_title="Evaluation Dashboard v2", layout="wide")
-        st.title("📊 Evaluation Dashboard v2 (DB-powered)")
+        st.set_page_config(
+            page_title="LLM Eval Dashboard | rasar.ai",
+            page_icon="🎯",
+            layout="wide",
+            initial_sidebar_state="expanded"
+        )
+
+        # Apply custom styling
+        apply_custom_css()
 
         df = load_metrics()
 
-        # Sidebar: Navigation (always show)
-        st.sidebar.title("Navigation")
-        page = st.sidebar.radio("View", ["🚀 Run Evaluation", "📈 Current Metrics", "📅 Daily Runs", "🔄 Compare Runs", "📖 Metrics Guide"])
+        # Sidebar branding
+        st.sidebar.markdown("""
+        <div style="text-align: center; padding: 1rem 0 1.5rem 0;">
+            <div style="font-size: 1.5rem; font-weight: 700; color: #6366f1;">🎯 LLM Eval</div>
+            <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">by rasar.ai</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-        # Debug info
-        with st.sidebar.expander("🔧 Debug Info"):
+        # Sidebar: Navigation
+        st.sidebar.markdown("##### Navigation")
+        page = st.sidebar.radio(
+            "View",
+            ["🚀 Run Evaluation", "📈 Current Metrics", "📅 Daily Runs", "🔄 Compare Runs", "📖 Metrics Guide"],
+            label_visibility="collapsed"
+        )
+
+        st.sidebar.markdown("---")
+
+        # Quick stats in sidebar
+        try:
+            debug = db.debug_info()
+            col1, col2 = st.sidebar.columns(2)
+            with col1:
+                st.metric("Runs", debug.get('daily_runs_count', 0))
+            with col2:
+                st.metric("Metrics", debug.get('metrics_count', 0))
+        except Exception:
+            pass
+
+        # Debug info (collapsed by default)
+        with st.sidebar.expander("🔧 System Info", expanded=False):
             try:
                 debug = db.debug_info()
-                st.write(f"Backend: {debug.get('backend')}")
+                st.caption(f"**Backend:** {debug.get('backend')}")
                 if debug.get('pg_host'):
-                    st.write(f"Host: {debug.get('pg_host')}")
-                    st.write(f"User: {debug.get('pg_user')}")
-                    st.write(f"Port: {debug.get('pg_port')}")
+                    st.caption(f"**Host:** {debug.get('pg_host')[:30]}...")
                 if debug.get('pg_error'):
-                    st.error(f"PG Error: {debug.get('pg_error')}")
-                st.write(f"Metrics: {debug.get('metrics_count', debug.get('metrics_error', 'N/A'))}")
-                st.write(f"Test Results: {debug.get('test_results_count', debug.get('test_results_error', 'N/A'))}")
-                st.write(f"Daily Runs: {debug.get('daily_runs_count', debug.get('daily_runs_error', 'N/A'))}")
+                    st.error(f"Error: {debug.get('pg_error')[:100]}")
+                st.caption(f"**Test Results:** {debug.get('test_results_count', 'N/A')}")
             except Exception as e:
-                st.error(f"Debug error: {e}")
+                st.error(f"Error: {e}")
 
-        # Help documentation link
+        # Help links
         st.sidebar.markdown("---")
-        st.sidebar.markdown("📚 [User Guide & Documentation](https://github.com/rasiulyte/evaluation-system/blob/main/docs/USER_GUIDE.md)")
+        st.sidebar.markdown("""
+        <div style="font-size: 0.85rem;">
+            📚 <a href="https://github.com/rasiulyte/evaluation-system/blob/main/docs/USER_GUIDE.md" target="_blank" style="color: #6366f1;">Documentation</a><br>
+            🐙 <a href="https://github.com/rasiulyte/evaluation-system" target="_blank" style="color: #6366f1;">GitHub Repo</a>
+        </div>
+        """, unsafe_allow_html=True)
 
         # Run Evaluation page works without data
         if page == "🚀 Run Evaluation":
@@ -1132,13 +1489,14 @@ def main():
             return
 
         # Default: Current Metrics page
+        render_header("Current Metrics", f"Analyzing {METRIC_LABELS.get(metric, metric)} performance for {scenario}")
 
         # Filtered data
         sdf = df[df["scenario"] == scenario]
         mdf = sdf[sdf["metric_name"] == metric]
 
         # Metrics overview
-        st.header(f"{METRIC_LABELS.get(metric, metric)} for {scenario}")
+        st.subheader(f"{METRIC_LABELS.get(metric, metric)}")
         st.metric(
             label=f"Latest {METRIC_LABELS.get(metric, metric)}",
             value=f"{mdf['metric_value'].iloc[-1]:.3f}" if not mdf.empty else "-",
@@ -1167,13 +1525,16 @@ def main():
                 x=mdf["timestamp"],
                 y=mdf["metric_value"],
                 mode="lines+markers",
-                name=METRIC_LABELS.get(metric, metric)
+                name=METRIC_LABELS.get(metric, metric),
+                line=dict(color="#6366f1", width=2),
+                marker=dict(size=8, color="#8b5cf6")
             ))
             fig.update_layout(
                 xaxis_title="Timestamp",
                 yaxis_title=METRIC_LABELS.get(metric, metric),
                 height=400
             )
+            apply_plotly_theme(fig)
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("No data for this metric.")
@@ -1286,7 +1647,7 @@ def main():
 def render_test_summary(df_cases: pd.DataFrame):
     """Render test results summary with next steps and investigation guidance."""
 
-    st.header("📋 Test Results Summary & Next Steps")
+    st.markdown('<div class="section-header"><h2>Test Results Summary & Next Steps</h2></div>', unsafe_allow_html=True)
 
     # --- Overall Summary ---
     total = len(df_cases)
@@ -1300,14 +1661,15 @@ def render_test_summary(df_cases: pd.DataFrame):
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("Total Tests", total)
+        render_metric_card("Total Tests", str(total), status="healthy")
     with col2:
-        st.metric("Passed", int(passed), delta=None)
+        render_metric_card("Passed", str(int(passed)), status="healthy")
     with col3:
-        st.metric("Failed", int(failed), delta=None, delta_color="inverse")
+        fail_status = "critical" if failed > 0 else "healthy"
+        render_metric_card("Failed", str(int(failed)), status=fail_status)
     with col4:
-        color = "🟢" if pass_rate >= 75 else "🟡" if pass_rate >= 60 else "🔴"
-        st.metric("Pass Rate", f"{pass_rate:.1f}% {color}")
+        rate_status = "healthy" if pass_rate >= 75 else ("warning" if pass_rate >= 60 else "critical")
+        render_metric_card("Pass Rate", f"{pass_rate:.1f}%", status=rate_status)
 
     # --- Failure Breakdown by Type ---
     st.subheader("🔍 Failure Analysis")
