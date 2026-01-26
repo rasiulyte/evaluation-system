@@ -1370,19 +1370,16 @@ def render_run_history_page(df: pd.DataFrame):
 
     st.markdown("---")
 
-    # Display each run as a card with colored status
+    # Display each run as an expandable card
     for _, row in runs_df.iterrows():
         status_raw = row['status_raw']
         if status_raw == "passing":
-            status_class = "status-good"
             status_color = COLORS['good']
             status_text = "✓ Passing"
         elif status_raw == "failing":
-            status_class = "status-poor"
             status_color = COLORS['poor']
             status_text = "✗ Failing"
         else:
-            status_class = "status-warning"
             status_color = COLORS['amber']
             status_text = "○ Fair"
 
@@ -1390,20 +1387,64 @@ def render_run_history_page(df: pd.DataFrame):
         prec_str = f"{row['Precision']:.3f}" if row['Precision'] is not None else "—"
         rec_str = f"{row['Recall']:.3f}" if row['Recall'] is not None else "—"
 
-        st.markdown(f"""
-        <div class="metric-card {status_class}" style="margin-bottom: 0.75rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                <span style="font-family: monospace; font-size: 0.85rem; color: {COLORS['navy']};">{row['Run ID']}</span>
-                <span style="color: {status_color}; font-weight: 500;">{status_text}</span>
-            </div>
-            <div style="display: flex; gap: 2rem; font-size: 0.85rem; color: {COLORS['medium_gray']};">
-                <span>{row['Date']} {row['Time']}</span>
-                <span>F1: <strong style="color: {COLORS['charcoal']};">{f1_str}</strong></span>
-                <span>Precision: <strong style="color: {COLORS['charcoal']};">{prec_str}</strong></span>
-                <span>Recall: <strong style="color: {COLORS['charcoal']};">{rec_str}</strong></span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        # Create expander for each run
+        with st.expander(f"**{row['Run ID']}** — {row['Date']} {row['Time']} — F1: {f1_str}"):
+            # Summary row
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.markdown(f"**Status:** <span style='color: {status_color};'>{status_text}</span>", unsafe_allow_html=True)
+            with col2:
+                st.markdown(f"**F1:** {f1_str}")
+            with col3:
+                st.markdown(f"**Precision:** {prec_str}")
+            with col4:
+                st.markdown(f"**Recall:** {rec_str}")
+
+            st.markdown("---")
+
+            # Fetch test results for this run
+            try:
+                test_results = db.get_test_results(run_id=row['Run ID'])
+                if test_results:
+                    # Group by scenario
+                    scenarios = {}
+                    for result in test_results:
+                        scenario = result.get('scenario', 'unknown')
+                        if scenario not in scenarios:
+                            scenarios[scenario] = []
+                        scenarios[scenario].append(result)
+
+                    # Display by scenario
+                    for scenario, results in sorted(scenarios.items()):
+                        st.markdown(f"**Scenario: {scenario}** ({len(results)} test cases)")
+
+                        # Build results table
+                        table_data = []
+                        for r in results:
+                            prediction = r.get('prediction', '—')
+                            ground_truth = r.get('ground_truth', '—')
+                            correct = "✓" if r.get('correct') else "✗"
+                            confidence = r.get('confidence', 0)
+                            conf_str = f"{confidence:.2f}" if confidence else "—"
+
+                            table_data.append({
+                                "Test Case": r.get('test_case_id', '—'),
+                                "Prompt": r.get('prompt_id', '—'),
+                                "Prediction": prediction,
+                                "Ground Truth": ground_truth,
+                                "Correct": correct,
+                                "Confidence": conf_str
+                            })
+
+                        if table_data:
+                            results_df = pd.DataFrame(table_data)
+                            st.dataframe(results_df, use_container_width=True, hide_index=True)
+
+                        st.markdown("")
+                else:
+                    st.info("No detailed test results available for this run.")
+            except Exception as e:
+                st.warning(f"Could not load test results: {e}")
 
 
 # ============================================
