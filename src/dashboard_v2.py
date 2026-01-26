@@ -37,10 +37,10 @@ COLORS = {
     "light_gray": "#e8e8e8",     # Borders, dividers
     "medium_gray": "#8c8c8c",    # Secondary text
 
-    # Status (muted versions)
-    "good": "#5a9a9c",           # Teal - meets threshold
+    # Status - muted red/green for clear pass/fail
+    "good": "#4a8c6f",           # Muted forest green - passing/healthy
     "warning": "#c89f6f",        # Amber - needs attention
-    "poor": "#a65d57",           # Muted red - below threshold
+    "poor": "#b54a4a",           # Muted red - failing/critical
 }
 
 
@@ -182,7 +182,7 @@ def apply_brand_css():
     }}
 
     .badge-good {{
-        background: rgba(90, 154, 156, 0.1);
+        background: rgba(74, 140, 111, 0.12);
         color: {COLORS['good']};
     }}
 
@@ -192,7 +192,7 @@ def apply_brand_css():
     }}
 
     .badge-poor {{
-        background: rgba(166, 93, 87, 0.1);
+        background: rgba(181, 74, 74, 0.12);
         color: {COLORS['poor']};
     }}
 
@@ -999,11 +999,14 @@ def render_run_history_page(df: pd.DataFrame):
 
         # Determine overall status
         if f1 and f1 >= 0.75:
-            status = "Good"
+            status = "✓ Passing"
+            status_raw = "passing"
         elif f1 and f1 >= 0.60:
-            status = "Fair"
+            status = "○ Fair"
+            status_raw = "fair"
         else:
-            status = "Needs Work"
+            status = "✗ Failing"
+            status_raw = "failing"
 
         runs_data.append({
             "Run ID": run_id,
@@ -1012,27 +1015,51 @@ def render_run_history_page(df: pd.DataFrame):
             "F1": f1,
             "Precision": precision,
             "Recall": recall,
-            "Status": status
+            "Status": status,
+            "status_raw": status_raw
         })
 
     runs_df = pd.DataFrame(runs_data).sort_values("Date", ascending=False)
 
-    # Summary cards
-    col1, col2, col3 = st.columns(3)
+    # Summary cards with red/green
+    passing_runs = len(runs_df[runs_df["status_raw"] == "passing"])
+    failing_runs = len(runs_df[runs_df["status_raw"] == "failing"])
+
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         render_simple_metric("Total Runs", str(len(runs_df)))
     with col2:
-        good_runs = len(runs_df[runs_df["Status"] == "Good"])
-        render_simple_metric("Successful", str(good_runs))
+        st.markdown(f"""
+        <div class="metric-card status-good">
+            <span class="metric-label">Passing</span>
+            <div class="metric-value" style="color: {COLORS['good']};">{passing_runs}</div>
+        </div>
+        """, unsafe_allow_html=True)
     with col3:
+        st.markdown(f"""
+        <div class="metric-card status-poor">
+            <span class="metric-label">Failing</span>
+            <div class="metric-value" style="color: {COLORS['poor']};">{failing_runs}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with col4:
         if not runs_df.empty:
-            render_simple_metric("Latest Status", runs_df.iloc[0]["Status"])
+            latest = runs_df.iloc[0]
+            latest_status = latest["status_raw"]
+            color = COLORS['good'] if latest_status == "passing" else (COLORS['poor'] if latest_status == "failing" else COLORS['amber'])
+            st.markdown(f"""
+            <div class="metric-card">
+                <span class="metric-label">Latest</span>
+                <div class="metric-value" style="color: {color}; font-size: 1.25rem;">{latest["Status"]}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
     st.markdown("---")
 
-    # Runs table
+    # Runs table (exclude internal status_raw column)
+    display_cols = ["Run ID", "Date", "Time", "F1", "Precision", "Recall", "Status"]
     st.dataframe(
-        runs_df,
+        runs_df[display_cols],
         use_container_width=True,
         column_config={
             "Run ID": st.column_config.TextColumn("Run ID", width="medium"),
@@ -1045,6 +1072,243 @@ def render_run_history_page(df: pd.DataFrame):
         },
         hide_index=True
     )
+
+
+# ============================================
+# PAGE: COMPARE RUNS
+# ============================================
+
+def get_runs_with_metrics(df: pd.DataFrame) -> list:
+    """Get list of run_ids that have metrics data."""
+    if df.empty:
+        return []
+    return df.sort_values("timestamp", ascending=False)["run_id"].unique().tolist()
+
+
+def get_metrics_comparison(df: pd.DataFrame, run_id_1: str, run_id_2: str) -> pd.DataFrame:
+    """Compare metrics between two runs."""
+    if df.empty:
+        return pd.DataFrame()
+
+    m1 = df[df['run_id'] == run_id_1][['scenario', 'metric_name', 'metric_value']].copy()
+    m2 = df[df['run_id'] == run_id_2][['scenario', 'metric_name', 'metric_value']].copy()
+
+    merged = m1.merge(m2, on=['scenario', 'metric_name'], suffixes=('_baseline', '_compare'))
+    merged['delta'] = merged['metric_value_compare'] - merged['metric_value_baseline']
+    merged['delta_pct'] = merged.apply(
+        lambda r: ((r['metric_value_compare'] - r['metric_value_baseline']) / r['metric_value_baseline'] * 100)
+        if r['metric_value_baseline'] != 0 else 0,
+        axis=1
+    )
+    return merged
+
+
+def render_compare_runs_page(df: pd.DataFrame):
+    """Compare metrics between two evaluation runs."""
+
+    render_page_header(
+        "Compare Runs",
+        "Analyze performance differences between evaluation runs"
+    )
+
+    if df.empty:
+        st.info("No evaluation data available yet.")
+        return
+
+    # Get available runs
+    run_ids = get_runs_with_metrics(df)
+
+    if len(run_ids) < 2:
+        st.info(f"Need at least 2 runs to compare. Currently have {len(run_ids)} run(s).")
+        return
+
+    # Run selection
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown(f"**Baseline Run**")
+        baseline_run = st.selectbox(
+            "Select baseline",
+            run_ids,
+            index=min(1, len(run_ids)-1),
+            key="baseline_run",
+            label_visibility="collapsed"
+        )
+
+    with col2:
+        st.markdown(f"**Compare Run**")
+        compare_run = st.selectbox(
+            "Select comparison",
+            run_ids,
+            index=0,
+            key="compare_run",
+            label_visibility="collapsed"
+        )
+
+    if baseline_run == compare_run:
+        st.warning("Please select different runs to compare.")
+        return
+
+    # Get comparison data
+    comparison_df = get_metrics_comparison(df, baseline_run, compare_run)
+
+    if comparison_df.empty:
+        st.warning("Could not generate comparison data.")
+        return
+
+    # Summary stats
+    render_section_header("Summary")
+
+    improved = len(comparison_df[comparison_df["delta"] > 0.001])
+    declined = len(comparison_df[comparison_df["delta"] < -0.001])
+    unchanged = len(comparison_df) - improved - declined
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown(f"""
+        <div class="metric-card status-good">
+            <span class="metric-label">Improved</span>
+            <div class="metric-value" style="color: {COLORS['good']};">{improved}</div>
+            <div class="metric-interpretation">metrics increased</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown(f"""
+        <div class="metric-card status-poor">
+            <span class="metric-label">Declined</span>
+            <div class="metric-value" style="color: {COLORS['poor']};">{declined}</div>
+            <div class="metric-interpretation">metrics decreased</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col3:
+        st.markdown(f"""
+        <div class="metric-card">
+            <span class="metric-label">Unchanged</span>
+            <div class="metric-value">{unchanged}</div>
+            <div class="metric-interpretation">metrics stable</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # Detailed comparison
+    render_section_header("Detailed Comparison")
+
+    # Format the comparison table
+    display_df = comparison_df.copy()
+    display_df["Baseline"] = display_df["metric_value_baseline"].apply(lambda x: f"{x:.3f}")
+    display_df["Compare"] = display_df["metric_value_compare"].apply(lambda x: f"{x:.3f}")
+
+    def format_change(row):
+        delta = row["delta"]
+        pct = row["delta_pct"]
+        if delta > 0.001:
+            return f"↑ +{delta:.3f} (+{pct:.1f}%)"
+        elif delta < -0.001:
+            return f"↓ {delta:.3f} ({pct:.1f}%)"
+        else:
+            return "—"
+
+    display_df["Change"] = display_df.apply(format_change, axis=1)
+
+    st.dataframe(
+        display_df[["scenario", "metric_name", "Baseline", "Compare", "Change"]],
+        use_container_width=True,
+        column_config={
+            "scenario": st.column_config.TextColumn("Scenario"),
+            "metric_name": st.column_config.TextColumn("Metric"),
+            "Baseline": st.column_config.TextColumn(f"Baseline"),
+            "Compare": st.column_config.TextColumn(f"Compare"),
+            "Change": st.column_config.TextColumn("Change"),
+        },
+        hide_index=True
+    )
+
+    # Visual comparison chart
+    render_section_header("Visual Comparison")
+
+    scenarios = comparison_df["scenario"].unique()
+    if len(scenarios) > 0:
+        selected_scenario = st.selectbox("Select scenario", scenarios, key="compare_scenario")
+
+        scenario_data = comparison_df[comparison_df["scenario"] == selected_scenario]
+
+        fig = go.Figure()
+
+        fig.add_trace(go.Bar(
+            name="Baseline",
+            x=scenario_data["metric_name"],
+            y=scenario_data["metric_value_baseline"],
+            marker_color=COLORS["medium_gray"]
+        ))
+
+        fig.add_trace(go.Bar(
+            name="Compare",
+            x=scenario_data["metric_name"],
+            y=scenario_data["metric_value_compare"],
+            marker_color=COLORS["teal"]
+        ))
+
+        fig.update_layout(
+            title=f"Metrics Comparison: {selected_scenario}",
+            barmode="group",
+            height=400,
+            showlegend=True
+        )
+
+        apply_chart_theme(fig)
+        st.plotly_chart(fig, use_container_width=True)
+
+    # Insights
+    render_section_header("Insights")
+
+    # Check for significant changes
+    significant_declines = comparison_df[comparison_df["delta"] < -0.05]
+    significant_improvements = comparison_df[comparison_df["delta"] > 0.05]
+
+    if not significant_declines.empty:
+        st.markdown(f"""
+        <div class="metric-card status-poor">
+            <span class="metric-label">Significant Declines Detected</span>
+            <div style="margin-top: 0.75rem; color: {COLORS['charcoal']};">
+        """, unsafe_allow_html=True)
+
+        for _, row in significant_declines.iterrows():
+            st.markdown(f"• **{row['metric_name']}** ({row['scenario']}): {row['metric_value_baseline']:.3f} → {row['metric_value_compare']:.3f} ({row['delta_pct']:.1f}%)")
+
+        st.markdown("""
+            </div>
+            <div class="metric-context">
+                Consider reviewing recent changes to prompts, test data, or model configuration.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    if not significant_improvements.empty:
+        st.markdown(f"""
+        <div class="metric-card status-good">
+            <span class="metric-label">Significant Improvements</span>
+            <div style="margin-top: 0.75rem; color: {COLORS['charcoal']};">
+        """, unsafe_allow_html=True)
+
+        for _, row in significant_improvements.iterrows():
+            st.markdown(f"• **{row['metric_name']}** ({row['scenario']}): {row['metric_value_baseline']:.3f} → {row['metric_value_compare']:.3f} (+{row['delta_pct']:.1f}%)")
+
+        st.markdown("""
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    if significant_declines.empty and significant_improvements.empty:
+        st.markdown(f"""
+        <div class="metric-card">
+            <span class="metric-label">Stable Performance</span>
+            <div style="margin-top: 0.5rem; color: {COLORS['charcoal']};">
+                No significant changes detected between these runs. Performance is consistent.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
 
 # ============================================
@@ -1222,7 +1486,7 @@ def main():
         # Navigation
         page = st.radio(
             "Navigate",
-            ["Metrics Overview", "Trends", "Run History", "Understanding Metrics"],
+            ["Metrics Overview", "Trends", "Compare Runs", "Run History", "Understanding Metrics"],
             label_visibility="collapsed"
         )
 
@@ -1259,6 +1523,8 @@ def main():
         render_metrics_overview_page(df)
     elif page == "Trends":
         render_trends_page(df)
+    elif page == "Compare Runs":
+        render_compare_runs_page(df)
     elif page == "Run History":
         render_run_history_page(df)
     elif page == "Understanding Metrics":
