@@ -2221,6 +2221,9 @@ def main():
             <div style="font-size: 0.75rem; color: {COLORS['medium_gray']}; margin-top: 0.25rem;">
                 learn AI evaluation
             </div>
+            <div style="font-size: 0.7rem; margin-top: 0.25rem;">
+                <a href="https://rasar.ai" target="_blank" style="color: {COLORS['teal']};">rasar.ai</a>
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -2252,14 +2255,6 @@ def main():
                 st.caption(f"Test Results: {debug.get('test_results_count', 0)}")
             except Exception as e:
                 st.caption(f"Error: {e}")
-
-        st.markdown("---")
-
-        st.markdown(f"""
-        <div style="font-size: 0.8rem; color: {COLORS['medium_gray']};">
-            <a href="https://rasar.ai" target="_blank" style="color: {COLORS['teal']};">rasar.ai</a>
-        </div>
-        """, unsafe_allow_html=True)
 
     # Route to pages
     if page == "Metrics Overview":
