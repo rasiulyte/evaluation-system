@@ -1477,22 +1477,87 @@ def render_run_history_page(df: pd.DataFrame):
                                 if selected_case and selected_case != "Select a test case...":
                                     # Load test case from file
                                     test_case_data = load_test_case(selected_case)
+
+                                    # Find the LLM result for this test case
+                                    llm_result = next((r for r in results if r.get('test_case_id') == selected_case), None)
+
                                     if test_case_data:
                                         st.markdown(f"---")
                                         st.markdown(f"##### Test Case: `{selected_case}`")
 
-                                        col1, col2 = st.columns(2)
+                                        # Status row
+                                        col1, col2, col3 = st.columns(3)
                                         with col1:
-                                            st.markdown(f"**Label:** `{test_case_data.get('label', '—')}`")
+                                            expected_label = test_case_data.get('label', '—')
+                                            label_color = COLORS['good'] if expected_label == 'grounded' else COLORS['poor']
+                                            st.markdown(f"**Expected Label:** <span style='color: {label_color};'>`{expected_label}`</span>", unsafe_allow_html=True)
                                         with col2:
-                                            if test_case_data.get('failure_mode'):
-                                                st.markdown(f"**Failure Mode:** `{test_case_data.get('failure_mode')}`")
+                                            if llm_result:
+                                                prediction = llm_result.get('prediction', '—')
+                                                pred_color = COLORS['good'] if prediction == 'grounded' else COLORS['poor']
+                                                st.markdown(f"**LLM Prediction:** <span style='color: {pred_color};'>`{prediction}`</span>", unsafe_allow_html=True)
+                                        with col3:
+                                            if llm_result:
+                                                correct = llm_result.get('correct', False)
+                                                result_text = "✓ Correct" if correct else "✗ Wrong"
+                                                result_color = COLORS['good'] if correct else COLORS['poor']
+                                                st.markdown(f"**Result:** <span style='color: {result_color};'>{result_text}</span>", unsafe_allow_html=True)
 
-                                        st.markdown("**Context:**")
-                                        st.markdown(f"""<div style="background: {COLORS['light_gray']}; padding: 1rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1rem;">{test_case_data.get('context', '—')}</div>""", unsafe_allow_html=True)
+                                        if test_case_data.get('failure_mode'):
+                                            st.markdown(f"**Failure Mode:** `{test_case_data.get('failure_mode')}`")
 
-                                        st.markdown("**Response (to evaluate):**")
-                                        st.markdown(f"""<div style="background: {COLORS['light_gray']}; padding: 1rem; border-radius: 6px; font-size: 0.85rem;">{test_case_data.get('response', '—')}</div>""", unsafe_allow_html=True)
+                                        st.markdown("---")
+
+                                        # Two columns: Golden test case vs LLM response
+                                        col1, col2 = st.columns(2)
+
+                                        with col1:
+                                            st.markdown(f"**📋 Golden Test Case**")
+
+                                            st.markdown("**Context:**")
+                                            st.markdown(f"""<div style="background: {COLORS['light_gray']}; padding: 1rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1rem;">{test_case_data.get('context', '—')}</div>""", unsafe_allow_html=True)
+
+                                            st.markdown("**Response to Evaluate:**")
+                                            st.markdown(f"""<div style="background: {COLORS['light_gray']}; padding: 1rem; border-radius: 6px; font-size: 0.85rem;">{test_case_data.get('response', '—')}</div>""", unsafe_allow_html=True)
+
+                                            if test_case_data.get('reasoning'):
+                                                st.markdown("**Ground Truth Reasoning:**")
+                                                st.markdown(f"_{test_case_data.get('reasoning')}_")
+
+                                        with col2:
+                                            st.markdown(f"**🤖 LLM Response**")
+
+                                            if llm_result:
+                                                # Confidence
+                                                confidence = llm_result.get('confidence', 0)
+                                                conf_pct = confidence * 100 if confidence else 0
+                                                st.markdown(f"**Confidence:** `{conf_pct:.0f}%`")
+
+                                                # Parse and display LLM output
+                                                llm_output = llm_result.get('llm_output', '')
+
+                                                # Try to parse JSON for nicer display
+                                                try:
+                                                    import json
+                                                    llm_json = json.loads(llm_output)
+
+                                                    st.markdown("**Classification:**")
+                                                    classification = llm_json.get('classification', '—')
+                                                    class_color = COLORS['good'] if classification == 'grounded' else COLORS['poor']
+                                                    st.markdown(f"<span style='color: {class_color}; font-weight: bold;'>{classification}</span>", unsafe_allow_html=True)
+
+                                                    st.markdown("**LLM Reasoning:**")
+                                                    reasoning = llm_json.get('reasoning', '—')
+                                                    st.markdown(f"""<div style="background: {COLORS['light_gray']}; padding: 1rem; border-radius: 6px; font-size: 0.85rem; border-left: 4px solid {COLORS['teal']};">{reasoning}</div>""", unsafe_allow_html=True)
+                                                except:
+                                                    # Show raw output if not JSON
+                                                    st.markdown("**Raw LLM Output:**")
+                                                    st.markdown(f"""<div style="background: {COLORS['light_gray']}; padding: 1rem; border-radius: 6px; font-size: 0.85rem; border-left: 4px solid {COLORS['teal']}; white-space: pre-wrap;">{llm_output}</div>""", unsafe_allow_html=True)
+
+                                                # Additional metadata
+                                                st.markdown(f"<small style='color: {COLORS['medium_gray']};'>Model: {llm_result.get('model', '—')} | Duration: {llm_result.get('duration_ms', 0):.0f}ms</small>", unsafe_allow_html=True)
+                                            else:
+                                                st.info("No LLM response found for this test case.")
                                     else:
                                         st.warning(f"Could not load test case: {selected_case}")
 
@@ -2529,9 +2594,9 @@ def render_home_page():
 
         st.markdown(f"""
         <div class="metric-card" style="height: 100%; margin-top: 1rem;">
-            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">4. Learn Prompt Engineering</div>
+            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">4. Learn Failure Modes</div>
             <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
-                Explore <strong>Prompt Lab</strong> to understand hillclimbing and how prompts affect results.
+                Visit <strong>Failure Modes</strong> to understand the different ways AI can hallucinate.
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -2539,18 +2604,18 @@ def render_home_page():
     with col3:
         st.markdown(f"""
         <div class="metric-card" style="height: 100%;">
-            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">5. Understand the Theory</div>
+            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">5. Explore Prompt Lab</div>
             <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
-                Read <strong>Understanding Metrics</strong> or the <a href="https://github.com/rasiulyte/evaluation-system/blob/main/docs/METRICS.md" target="_blank" style="color: {COLORS['teal']};">Metrics Guide</a> on GitHub.
+                Learn hillclimbing and see how prompts affect results in <strong>Prompt Lab</strong>.
             </div>
         </div>
         """, unsafe_allow_html=True)
 
         st.markdown(f"""
         <div class="metric-card" style="height: 100%; margin-top: 1rem;">
-            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">6. Run Evaluations (Admin)</div>
+            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">6. Understand the Theory</div>
             <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
-                Admins can run new evaluations via <strong>Run Evaluation</strong> (requires password + API key).
+                Read <strong>Understanding Metrics</strong> or the <a href="https://github.com/rasiulyte/evaluation-system/blob/main/docs/METRICS.md" target="_blank" style="color: {COLORS['teal']};">Metrics Guide</a> on GitHub.
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -2601,6 +2666,99 @@ def render_home_page():
         </div>
         """, unsafe_allow_html=True)
 
+    # Evaluation workflow
+    render_section_header("How Evaluation Works")
+
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, {COLORS['navy']}08, {COLORS['teal']}08);
+                padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+        <p style="margin: 0 0 1rem 0; color: {COLORS['charcoal']};">
+            When you click <strong>Run Evaluation</strong>, here's exactly what happens behind the scenes:
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Workflow steps
+    workflow_steps = [
+        {
+            "num": "1",
+            "title": "Load Test Cases",
+            "desc": "The system loads test cases from <code>data/test_cases/</code>. Each test case has a <strong>context</strong> (source material), a <strong>response</strong> (text to evaluate), and an expected <strong>label</strong> (grounded or hallucination).",
+            "detail": "A random sample is selected based on the configured sample size (default: 20 cases)."
+        },
+        {
+            "num": "2",
+            "title": "Load Prompt Template",
+            "desc": "The selected prompt template (e.g., <code>v6_calibrated_confidence</code>) is loaded from <code>prompts/</code>. This template tells the LLM how to analyze the response.",
+            "detail": "The prompt includes instructions for classification and confidence calibration guidelines."
+        },
+        {
+            "num": "3",
+            "title": "Format & Send to LLM",
+            "desc": "For each test case, the context and response are inserted into the prompt template. The formatted prompt is sent to the LLM (e.g., GPT-4o-mini).",
+            "detail": "Example: \"Context: {context}\\n\\nResponse to analyze: {response}\\n\\nIs this grounded or hallucinated?\""
+        },
+        {
+            "num": "4",
+            "title": "Parse LLM Response",
+            "desc": "The LLM returns a JSON response with <code>classification</code>, <code>confidence</code>, and <code>reasoning</code>. The system parses this to extract the prediction.",
+            "detail": "Example output: {\"classification\": \"hallucinated\", \"confidence\": 0.85, \"reasoning\": \"The response adds information not in context...\"}"
+        },
+        {
+            "num": "5",
+            "title": "Compare to Ground Truth",
+            "desc": "Each LLM prediction is compared against the expected label from the test case. A prediction is <span style='color: {COLORS['good']};'>correct</span> if it matches, <span style='color: {COLORS['poor']};'>wrong</span> if it doesn't.",
+            "detail": "This comparison creates the raw data for calculating metrics."
+        },
+        {
+            "num": "6",
+            "title": "Calculate Metrics",
+            "desc": "Using all predictions vs ground truth labels, the system calculates metrics: F1, Precision, Recall, TNR, Accuracy, Cohen's Kappa, and correlation metrics (Spearman, etc.).",
+            "detail": "Calibration metrics (Bias, MAE, RMSE) are calculated from the confidence scores."
+        },
+        {
+            "num": "7",
+            "title": "Save Results",
+            "desc": "Everything is saved: individual test results (with LLM reasoning) go to <code>data/daily_runs/</code> and aggregated metrics go to the database for the dashboard.",
+            "detail": "Results are timestamped so you can track changes over time and compare runs."
+        }
+    ]
+
+    for i, step in enumerate(workflow_steps):
+        bg_color = f"{COLORS['teal']}08" if i % 2 == 0 else f"{COLORS['navy']}05"
+        st.markdown(f"""
+        <div style="display: flex; gap: 1rem; margin-bottom: 0.75rem; padding: 1rem; background: {bg_color}; border-radius: 8px; border-left: 4px solid {COLORS['teal']};">
+            <div style="background: {COLORS['teal']}; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0;">
+                {step['num']}
+            </div>
+            <div style="flex: 1;">
+                <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.25rem;">{step['title']}</div>
+                <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.5;">{step['desc']}</div>
+                <div style="color: {COLORS['medium_gray']}; font-size: 0.8rem; margin-top: 0.5rem; font-style: italic;">{step['detail']}</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # Visual diagram
+    st.markdown(f"""
+    <div class="metric-card" style="margin-top: 1.5rem; padding: 1.5rem; text-align: center;">
+        <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 1rem;">Data Flow Summary</div>
+        <div style="font-family: monospace; font-size: 0.85rem; color: {COLORS['charcoal']}; line-height: 2;">
+            <span style="background: {COLORS['light_gray']}; padding: 0.25rem 0.5rem; border-radius: 4px;">Test Cases</span>
+            <span style="color: {COLORS['teal']}; margin: 0 0.5rem;">→</span>
+            <span style="background: {COLORS['light_gray']}; padding: 0.25rem 0.5rem; border-radius: 4px;">+ Prompt</span>
+            <span style="color: {COLORS['teal']}; margin: 0 0.5rem;">→</span>
+            <span style="background: {COLORS['teal']}20; padding: 0.25rem 0.5rem; border-radius: 4px; border: 1px solid {COLORS['teal']};">LLM</span>
+            <span style="color: {COLORS['teal']}; margin: 0 0.5rem;">→</span>
+            <span style="background: {COLORS['light_gray']}; padding: 0.25rem 0.5rem; border-radius: 4px;">Predictions</span>
+            <span style="color: {COLORS['teal']}; margin: 0 0.5rem;">→</span>
+            <span style="background: {COLORS['light_gray']}; padding: 0.25rem 0.5rem; border-radius: 4px;">vs Ground Truth</span>
+            <span style="color: {COLORS['teal']}; margin: 0 0.5rem;">→</span>
+            <span style="background: {COLORS['good']}20; padding: 0.25rem 0.5rem; border-radius: 4px; border: 1px solid {COLORS['good']};">Metrics</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
     # Quick start
     render_section_header("Quick Start")
 
@@ -2611,8 +2769,8 @@ def render_home_page():
         <div class="metric-card status-good" style="padding: 1.25rem;">
             <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.5rem;">For Learning</div>
             <div style="color: {COLORS['charcoal']}; font-size: 0.9rem;">
-                Start with <strong>Test Cases</strong> to see real examples, then explore <strong>Prompt Lab</strong>
-                to understand how different prompts affect evaluation quality.
+                Start with <strong>Failure Modes</strong> to understand hallucination types, then browse
+                <strong>Test Cases</strong> for real examples and <strong>Prompt Lab</strong> for prompt engineering.
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -2750,6 +2908,332 @@ def render_test_cases_page():
             if case.get('explanation'):
                 st.markdown("**Explanation:**")
                 st.markdown(f"_{case.get('explanation')}_")
+
+
+# ============================================
+# PAGE: FAILURE MODES (Educational Guide)
+# ============================================
+
+def render_failure_modes_page():
+    """Page explaining each failure mode in simple, educational terms."""
+
+    render_page_header(
+        "Failure Modes",
+        "Understanding the different ways AI can hallucinate"
+    )
+
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, {COLORS['navy']}08, {COLORS['teal']}08);
+                padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+        <p style="margin: 0; color: {COLORS['charcoal']}; line-height: 1.7;">
+            <strong>What is a failure mode?</strong> It's a specific pattern or type of mistake that AI systems make
+            when generating responses. Understanding these patterns helps you design better evaluation tests
+            and build more reliable AI systems.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Quick reference table
+    st.markdown("### Quick Reference")
+
+    st.markdown(f"""
+    | Failure Mode | In Simple Words | Risk Level |
+    |-------------|-----------------|------------|
+    | **Fabrication** | Making things up from scratch | High |
+    | **Subtle Distortion** | Small changes that flip the meaning | High |
+    | **Fluent Hallucination** | Confident lies that sound true | Very High |
+    | **Partial Grounding** | Mixing truth with fiction | Medium-High |
+    | **Factual Addition** | Adding info not in the source | Low-Medium |
+    | **Valid Inference** | Logical conclusions from given facts | Low (usually OK) |
+    | **Verbatim Grounded** | Repeating exactly what was given | None (baseline) |
+    """)
+
+    st.markdown("---")
+
+    # Detailed explanations
+    st.markdown("### Detailed Explanations")
+
+    # FM2: Fabrication
+    with st.expander("**Fabrication** — Making Things Up", expanded=True):
+        st.markdown(f"""
+        **What it is:**
+        The AI invents information that has no basis in reality or directly contradicts the source material.
+        This is the most obvious type of hallucination.
+
+        **Simple Example:**
+        - **Context:** "Paris is the capital of France."
+        - **Hallucinated Response:** "Paris is the capital of Germany."
+
+        **Why it happens:**
+        - The model confuses similar concepts
+        - Training data had conflicting information
+        - The model is "filling in gaps" with plausible-sounding but wrong information
+
+        **How to spot it:**
+        - Claims that contradict basic facts
+        - Specific dates, numbers, or names that seem oddly precise
+        - Information that seems "too interesting" to be true
+
+        **Risk Level:** <span style="color: {COLORS['poor']}; font-weight: bold;">HIGH</span>
+        - Easy to detect with fact-checking
+        - Can cause serious misinformation if not caught
+        - Often involves verifiable facts that can be confirmed/denied
+        """, unsafe_allow_html=True)
+
+    # FM3: Subtle Distortion
+    with st.expander("**Subtle Distortion** — Small Changes, Big Impact", expanded=False):
+        st.markdown(f"""
+        **What it is:**
+        The AI makes small modifications to information that completely change its meaning.
+        These are often harder to catch than outright fabrications because they look "almost right."
+
+        **Simple Example:**
+        - **Context:** "The study found that 25% of participants improved."
+        - **Hallucinated Response:** "The study found that 75% of participants improved."
+
+        **Common Types:**
+        - **Number swaps:** 25% becomes 75%, or 500 becomes 50
+        - **Direction reversals:** "increased" becomes "decreased"
+        - **Qualifier changes:** "might help" becomes "will definitely help"
+        - **Time shifts:** 2019 becomes 1992
+
+        **Why it's dangerous:**
+        The response still "sounds right" because most of it IS right. A reader might not notice
+        that one crucial number or word has changed.
+
+        **How to spot it:**
+        - Compare numbers carefully against the source
+        - Watch for direction words (up/down, more/less, better/worse)
+        - Be suspicious of precise-sounding statistics
+
+        **Risk Level:** <span style="color: {COLORS['poor']}; font-weight: bold;">HIGH</span>
+        - Hard to detect because most of the text is accurate
+        - Can completely reverse the meaning of findings
+        - Particularly dangerous in medical, scientific, or financial contexts
+        """, unsafe_allow_html=True)
+
+    # FM6: Fluent Hallucination
+    with st.expander("**Fluent Hallucination** — Confident Lies", expanded=False):
+        st.markdown(f"""
+        **What it is:**
+        The AI produces well-written, authoritative-sounding text that is completely false.
+        These hallucinations are dangerous because they SOUND credible and professional.
+
+        **Simple Example:**
+        - **Context:** "Machine learning is a subset of artificial intelligence."
+        - **Hallucinated Response:** "Machine learning, pioneered by Alan Turing in the 1940s
+          with his groundbreaking work on computational intelligence, revolutionized how we process information."
+
+        (This sounds scholarly but is historically inaccurate — Turing worked on theory, not ML as we know it.)
+
+        **Why it's the most dangerous:**
+        - The writing quality creates false confidence
+        - Includes specific names, dates, and technical terms that add apparent credibility
+        - Readers often assume well-written = well-researched
+
+        **Red flags to watch for:**
+        - Overly specific attributions ("invented by X in year Y")
+        - Claims about discoveries, inventions, or "breakthroughs"
+        - Text that sounds like it came from a Wikipedia article you've never seen
+        - Information that would be notable if true (and easily findable)
+
+        **Risk Level:** <span style="color: {COLORS['poor']}; font-weight: bold;">VERY HIGH</span>
+        - Hardest to detect because it sounds authoritative
+        - Often passes human review if reviewers don't fact-check
+        - Can spread as "knowledge" if published
+        """, unsafe_allow_html=True)
+
+    # FM7: Partial Grounding
+    with st.expander("**Partial Grounding** — Mixing Truth with Fiction", expanded=False):
+        st.markdown(f"""
+        **What it is:**
+        The response starts with accurate information from the source, then smoothly
+        transitions into hallucinated content. The truth at the beginning builds trust
+        that makes the lies easier to miss.
+
+        **Simple Example:**
+        - **Context:** "The study involved 100 participants from North America."
+        - **Hallucinated Response:** "The study involved 100 participants from North America
+          who were selected for their exceptional psychic abilities."
+
+        The first part is true, the second part is completely made up.
+
+        **Why it's tricky:**
+        - The accurate opening creates credibility
+        - Readers may stop fact-checking once they verify the first part
+        - The transition from fact to fiction is often seamless
+
+        **How to spot it:**
+        - Read responses completely, not just the beginning
+        - Be extra suspicious of "and also..." additions
+        - Watch for claims that escalate in specificity or drama
+
+        **Risk Level:** <span style="color: {COLORS['warning']}; font-weight: bold;">MEDIUM-HIGH</span>
+        - Deceptive because the grounded portion builds trust
+        - Often caught by reading to the end of responses
+        - The hallucinated part is usually more dramatic/interesting than the source
+        """, unsafe_allow_html=True)
+
+    # FM1: Factual Addition
+    with st.expander("**Factual Addition** — Adding Extra (But True) Information", expanded=False):
+        st.markdown(f"""
+        **What it is:**
+        The AI adds information that wasn't in the source material, BUT the added
+        information is actually true general knowledge. This is the "gray area" of hallucination.
+
+        **Simple Example:**
+        - **Context:** "Python is a programming language used for data science."
+        - **Response:** "Python is a programming language used for data science,
+          particularly with libraries like NumPy and Pandas."
+
+        NumPy and Pandas ARE real Python libraries — but they weren't mentioned in the context.
+
+        **Is this a problem?**
+        It depends on your use case:
+        - **Strict faithfulness required:** This IS a hallucination (info not in source)
+        - **General accuracy acceptable:** This is fine (info is correct)
+
+        **When it's OK:**
+        - Casual Q&A where accuracy matters more than source-faithfulness
+        - When adding well-established common knowledge
+
+        **When it's NOT OK:**
+        - Summarizing specific documents (should only include what's there)
+        - Legal, medical, or compliance contexts
+        - When traceability to source is important
+
+        **Risk Level:** <span style="color: {COLORS['teal']}; font-weight: bold;">LOW-MEDIUM</span>
+        - Added information is factually correct
+        - May be appropriate depending on use case
+        - Still technically unfaithful to the source
+        """, unsafe_allow_html=True)
+
+    # FM4: Valid Inference
+    with st.expander("**Valid Inference** — Logical Conclusions (Usually OK)", expanded=False):
+        st.markdown(f"""
+        **What it is:**
+        The AI draws a logical conclusion from the given information. The conclusion
+        isn't stated explicitly in the source, but it FOLLOWS logically from what was said.
+
+        **Simple Example:**
+        - **Context:** "All mammals are vertebrates. Dogs are mammals."
+        - **Response:** "Dogs are vertebrates."
+
+        This conclusion isn't hallucination — it's basic logic (a syllogism).
+
+        **Why this is different from hallucination:**
+        - The conclusion is NECESSARILY TRUE given the premises
+        - No new information is invented
+        - The inference follows standard logical rules
+
+        **When it's acceptable:**
+        - Basic logical deductions (if A then B, A is true, therefore B)
+        - Mathematical calculations from given numbers
+        - Obvious implications ("it's raining" → "the ground is probably wet")
+
+        **When to be careful:**
+        - Inferences that require assumptions not stated
+        - Probabilistic reasoning presented as certainty
+        - Long chains of inference (each step adds uncertainty)
+
+        **Risk Level:** <span style="color: {COLORS['good']}; font-weight: bold;">LOW</span>
+        - Generally acceptable and expected
+        - Part of what makes AI useful
+        - Only problematic if the logic is flawed
+        """, unsafe_allow_html=True)
+
+    # FM5: Verbatim Grounded
+    with st.expander("**Verbatim Grounded** — Exact Repetition (Baseline)", expanded=False):
+        st.markdown(f"""
+        **What it is:**
+        The AI repeats or closely paraphrases exactly what was in the source material.
+        This is the "gold standard" for faithfulness — no hallucination at all.
+
+        **Simple Examples:**
+        - **Context:** "Water boils at 100 degrees Celsius."
+        - **Response:** "Water boils at 100 degrees Celsius." ✓
+
+        - **Context:** "The Earth orbits the Sun approximately every 365 days."
+        - **Response:** "The Earth takes about 365 days to orbit the Sun." ✓
+
+        **Why we test for this:**
+        - Establishes that the model CAN be faithful when it wants to
+        - Provides baseline for comparison
+        - Some use cases require strict verbatim accuracy
+
+        **Variations that are still grounded:**
+        - Word reordering ("A is B" → "B describes A")
+        - Synonym substitution ("approximately" → "about")
+        - Passive/active voice changes
+
+        **Risk Level:** <span style="color: {COLORS['good']}; font-weight: bold;">NONE</span>
+        - This is what you want
+        - No new information added
+        - Fully traceable to source
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # Summary section
+    st.markdown("### Designing Tests for Each Failure Mode")
+
+    st.markdown(f"""
+    When building test cases for your evaluation system, include examples from each failure mode:
+
+    <div style="background: {COLORS['light_gray']}; padding: 1.5rem; border-radius: 8px; margin-top: 1rem;">
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr style="border-bottom: 1px solid {COLORS['medium_gray']};">
+                <th style="text-align: left; padding: 0.5rem;">Failure Mode</th>
+                <th style="text-align: left; padding: 0.5rem;">What to Test</th>
+                <th style="text-align: left; padding: 0.5rem;">Expected Label</th>
+            </tr>
+            <tr>
+                <td style="padding: 0.5rem;"><code>fabrication</code></td>
+                <td style="padding: 0.5rem;">Completely false claims</td>
+                <td style="padding: 0.5rem;"><span style="color: {COLORS['poor']};">hallucination</span></td>
+            </tr>
+            <tr>
+                <td style="padding: 0.5rem;"><code>subtle_distortion</code></td>
+                <td style="padding: 0.5rem;">Small changes to numbers/direction</td>
+                <td style="padding: 0.5rem;"><span style="color: {COLORS['poor']};">hallucination</span></td>
+            </tr>
+            <tr>
+                <td style="padding: 0.5rem;"><code>fluent_hallucination</code></td>
+                <td style="padding: 0.5rem;">Well-written false claims</td>
+                <td style="padding: 0.5rem;"><span style="color: {COLORS['poor']};">hallucination</span></td>
+            </tr>
+            <tr>
+                <td style="padding: 0.5rem;"><code>partial_grounding</code></td>
+                <td style="padding: 0.5rem;">Mix of true + false</td>
+                <td style="padding: 0.5rem;"><span style="color: {COLORS['poor']};">hallucination</span></td>
+            </tr>
+            <tr>
+                <td style="padding: 0.5rem;"><code>factual_addition</code></td>
+                <td style="padding: 0.5rem;">True info not in source</td>
+                <td style="padding: 0.5rem;"><span style="color: {COLORS['teal']};">depends on strictness</span></td>
+            </tr>
+            <tr>
+                <td style="padding: 0.5rem;"><code>valid_inference</code></td>
+                <td style="padding: 0.5rem;">Logical deductions</td>
+                <td style="padding: 0.5rem;"><span style="color: {COLORS['good']};">grounded</span></td>
+            </tr>
+            <tr>
+                <td style="padding: 0.5rem;"><code>verbatim_grounded</code></td>
+                <td style="padding: 0.5rem;">Exact/close repetition</td>
+                <td style="padding: 0.5rem;"><span style="color: {COLORS['good']};">grounded</span></td>
+            </tr>
+        </table>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, {COLORS['teal']}10, {COLORS['navy']}05);
+                padding: 1rem; border-radius: 8px; margin-top: 2rem;">
+        <strong>Tip:</strong> A well-balanced test set includes cases from ALL failure modes.
+        This ensures your hallucination detector can catch different types of mistakes,
+        not just the obvious ones.
+    </div>
+    """, unsafe_allow_html=True)
 
 
 # ============================================
@@ -3255,7 +3739,7 @@ def main():
         st.markdown("---")
 
         # Navigation
-        pages = ["Getting Started", "Metrics Overview", "Trends", "Compare Runs", "Run History", "Test Cases", "Prompt Lab", "Run Evaluation", "Understanding Metrics"]
+        pages = ["Getting Started", "Metrics Overview", "Trends", "Compare Runs", "Run History", "Test Cases", "Failure Modes", "Prompt Lab", "Run Evaluation", "Understanding Metrics"]
 
         # Find current page index
         current_index = pages.index(st.session_state.current_page) if st.session_state.current_page in pages else 0
@@ -3305,6 +3789,8 @@ def main():
         render_run_history_page(df)
     elif page == "Test Cases":
         render_test_cases_page()
+    elif page == "Failure Modes":
+        render_failure_modes_page()
     elif page == "Prompt Lab":
         render_prompt_lab_page(df)
     elif page == "Run Evaluation":
