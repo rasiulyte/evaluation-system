@@ -1177,9 +1177,33 @@ def render_compare_runs_page(df: pd.DataFrame):
     # Summary stats
     render_section_header("Summary")
 
-    improved = len(comparison_df[comparison_df["delta"] > 0.001])
-    declined = len(comparison_df[comparison_df["delta"] < -0.001])
-    unchanged = len(comparison_df) - improved - declined
+    # Metrics where LOWER is better
+    lower_is_better_metrics = {"bias", "mae", "rmse"}
+
+    # Count improved/declined accounting for metric direction
+    improved = 0
+    declined = 0
+    unchanged = 0
+
+    for _, row in comparison_df.iterrows():
+        delta = row["delta"]
+        metric_name = row["metric_name"].lower()
+        is_lower_better = metric_name in lower_is_better_metrics
+
+        if abs(delta) <= 0.001:
+            unchanged += 1
+        elif delta > 0:
+            # Value increased
+            if is_lower_better:
+                declined += 1  # Increase in bias = bad
+            else:
+                improved += 1  # Increase in f1 = good
+        else:
+            # Value decreased
+            if is_lower_better:
+                improved += 1  # Decrease in bias = good
+            else:
+                declined += 1  # Decrease in f1 = bad
 
     col1, col2, col3 = st.columns(3)
 
@@ -1188,7 +1212,7 @@ def render_compare_runs_page(df: pd.DataFrame):
         <div class="metric-card status-good">
             <span class="metric-label">Improved</span>
             <div class="metric-value" style="color: {COLORS['good']};">{improved}</div>
-            <div class="metric-interpretation">metrics increased</div>
+            <div class="metric-interpretation">metrics got better</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -1197,7 +1221,7 @@ def render_compare_runs_page(df: pd.DataFrame):
         <div class="metric-card status-poor">
             <span class="metric-label">Declined</span>
             <div class="metric-value" style="color: {COLORS['poor']};">{declined}</div>
-            <div class="metric-interpretation">metrics decreased</div>
+            <div class="metric-interpretation">metrics got worse</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -1213,26 +1237,48 @@ def render_compare_runs_page(df: pd.DataFrame):
     # Detailed comparison
     render_section_header("Detailed Comparison")
 
+    # Metrics where LOWER is better (increase = bad, decrease = good)
+    lower_is_better = {"bias", "mae", "rmse"}
+
     # Display comparison as styled rows with colored changes
     for _, row in comparison_df.iterrows():
         delta = row["delta"]
         pct = row["delta_pct"]
         baseline = row["metric_value_baseline"]
         compare = row["metric_value_compare"]
+        metric_name = row["metric_name"].lower()
 
-        # Determine color and text for change
-        if delta > 0.001:
-            change_color = COLORS['good']
-            change_text = f"↑ +{delta:.3f} (+{pct:.1f}%)"
-            border_class = "status-good"
-        elif delta < -0.001:
-            change_color = COLORS['poor']
-            change_text = f"↓ {delta:.3f} ({pct:.1f}%)"
-            border_class = "status-poor"
-        else:
+        # Check if this metric is "lower is better"
+        is_lower_better = metric_name in lower_is_better
+
+        # Determine if this change is good or bad
+        if abs(delta) <= 0.001:
+            # No significant change
             change_color = COLORS['medium_gray']
             change_text = "— No change"
             border_class = ""
+        elif delta > 0:
+            # Value increased
+            if is_lower_better:
+                # Increase in bias/mae/rmse = BAD
+                change_color = COLORS['poor']
+                border_class = "status-poor"
+            else:
+                # Increase in f1/precision/recall = GOOD
+                change_color = COLORS['good']
+                border_class = "status-good"
+            change_text = f"↑ +{delta:.3f} (+{pct:.1f}%)"
+        else:
+            # Value decreased
+            if is_lower_better:
+                # Decrease in bias/mae/rmse = GOOD
+                change_color = COLORS['good']
+                border_class = "status-good"
+            else:
+                # Decrease in f1/precision/recall = BAD
+                change_color = COLORS['poor']
+                border_class = "status-poor"
+            change_text = f"↓ {delta:.3f} ({pct:.1f}%)"
 
         st.markdown(f"""
         <div class="metric-card {border_class}" style="margin-bottom: 0.5rem; padding: 1rem 1.25rem;">
@@ -1288,19 +1334,36 @@ def render_compare_runs_page(df: pd.DataFrame):
     # Insights
     render_section_header("Insights")
 
-    # Check for significant changes
-    significant_declines = comparison_df[comparison_df["delta"] < -0.05]
-    significant_improvements = comparison_df[comparison_df["delta"] > 0.05]
+    # Categorize significant changes accounting for metric direction
+    significant_improvements = []
+    significant_declines = []
 
-    if not significant_declines.empty:
+    for _, row in comparison_df.iterrows():
+        delta = row["delta"]
+        metric_name = row["metric_name"].lower()
+        is_lower_better = metric_name in lower_is_better_metrics
+
+        # Check if change is significant (>5%)
+        if abs(delta) < 0.05:
+            continue
+
+        is_improvement = (delta < 0 and is_lower_better) or (delta > 0 and not is_lower_better)
+
+        if is_improvement:
+            significant_improvements.append(row)
+        else:
+            significant_declines.append(row)
+
+    if significant_declines:
         st.markdown(f"""
         <div class="metric-card status-poor">
             <span class="metric-label">Significant Declines Detected</span>
             <div style="margin-top: 0.75rem; color: {COLORS['charcoal']};">
         """, unsafe_allow_html=True)
 
-        for _, row in significant_declines.iterrows():
-            st.markdown(f"• **{row['metric_name']}** ({row['scenario']}): {row['metric_value_baseline']:.3f} → {row['metric_value_compare']:.3f} ({row['delta_pct']:.1f}%)")
+        for row in significant_declines:
+            direction = "↑" if row['delta'] > 0 else "↓"
+            st.markdown(f"• **{row['metric_name']}** ({row['scenario']}): {row['metric_value_baseline']:.3f} → {row['metric_value_compare']:.3f} ({direction} {row['delta_pct']:.1f}%)")
 
         st.markdown("""
             </div>
@@ -1310,22 +1373,23 @@ def render_compare_runs_page(df: pd.DataFrame):
         </div>
         """, unsafe_allow_html=True)
 
-    if not significant_improvements.empty:
+    if significant_improvements:
         st.markdown(f"""
         <div class="metric-card status-good">
             <span class="metric-label">Significant Improvements</span>
             <div style="margin-top: 0.75rem; color: {COLORS['charcoal']};">
         """, unsafe_allow_html=True)
 
-        for _, row in significant_improvements.iterrows():
-            st.markdown(f"• **{row['metric_name']}** ({row['scenario']}): {row['metric_value_baseline']:.3f} → {row['metric_value_compare']:.3f} (+{row['delta_pct']:.1f}%)")
+        for row in significant_improvements:
+            direction = "↑" if row['delta'] > 0 else "↓"
+            st.markdown(f"• **{row['metric_name']}** ({row['scenario']}): {row['metric_value_baseline']:.3f} → {row['metric_value_compare']:.3f} ({direction} {row['delta_pct']:.1f}%)")
 
         st.markdown("""
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-    if significant_declines.empty and significant_improvements.empty:
+    if not significant_declines and not significant_improvements:
         st.markdown(f"""
         <div class="metric-card">
             <span class="metric-label">Stable Performance</span>
