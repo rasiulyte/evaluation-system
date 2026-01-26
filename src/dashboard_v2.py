@@ -906,6 +906,10 @@ def main():
             except Exception as e:
                 st.error(f"Debug error: {e}")
 
+        # Help documentation link
+        st.sidebar.markdown("---")
+        st.sidebar.markdown("📚 [User Guide & Documentation](https://github.com/rasiulyte/evaluation-system/blob/main/docs/USER_GUIDE.md)")
+
         # Run Evaluation page works without data
         if page == "🚀 Run Evaluation":
             render_run_evaluation_page()
