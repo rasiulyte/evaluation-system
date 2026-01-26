@@ -26,13 +26,13 @@ class Evaluator:
     Core evaluation engine that runs test cases through prompts and evaluates responses.
     """
 
-    def __init__(self, 
+    def __init__(self,
                  api_key: Optional[str] = None,
                  model: str = "gpt-4",
                  base_url: Optional[str] = None,
-                 test_cases_dir: str = "data/test_cases",
-                 prompts_dir: str = "prompts",
-                 results_dir: str = "data/results"):
+                 test_cases_dir: Optional[str] = None,
+                 prompts_dir: Optional[str] = None,
+                 results_dir: Optional[str] = None):
         """
         Initialize evaluator.
         
@@ -46,19 +46,21 @@ class Evaluator:
         """
         # Load environment variables from .env file if it exists
         load_dotenv()
-        
+
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model
         self.base_url = base_url
-        
+
         self.client = OpenAI(
             api_key=self.api_key,
             base_url=base_url
         ) if base_url else OpenAI(api_key=self.api_key)
-        
-        self.test_cases_dir = Path(test_cases_dir)
-        self.prompts_dir = Path(prompts_dir)
-        self.results_dir = Path(results_dir)
+
+        # Resolve paths relative to project root (parent of src/)
+        project_root = Path(__file__).parent.parent
+        self.test_cases_dir = Path(test_cases_dir) if test_cases_dir else project_root / "data" / "test_cases"
+        self.prompts_dir = Path(prompts_dir) if prompts_dir else project_root / "prompts"
+        self.results_dir = Path(results_dir) if results_dir else project_root / "data" / "results"
         
         self._load_test_cases()
         self._load_prompts()
@@ -171,39 +173,77 @@ class Evaluator:
     def _parse_response(self, llm_output: str, prompt_id: str) -> Tuple[str, float]:
         """
         Parse LLM response to extract classification and confidence.
-        
+
         Args:
             llm_output: Raw LLM output
             prompt_id: Prompt type (affects parsing strategy)
-            
+
         Returns:
             (prediction, confidence) where prediction is "hallucination"/"grounded"
                 and confidence is 0.0-1.0
         """
         output_lower = llm_output.lower()
-        
+
         if prompt_id == "v5_structured_output":
-            # Parse JSON response
-            try:
-                # Find JSON in output
-                json_match = re.search(r'\{.*\}', llm_output, re.DOTALL)
+            # Parse JSON response - try multiple strategies
+            json_data = None
+
+            # Strategy 1: Try to find JSON in markdown code block
+            code_block_match = re.search(r'```(?:json)?\s*(\{[\s\S]*?\})\s*```', llm_output)
+            if code_block_match:
+                try:
+                    json_data = json.loads(code_block_match.group(1))
+                except json.JSONDecodeError:
+                    pass
+
+            # Strategy 2: Find JSON object with non-greedy match
+            if json_data is None:
+                # Use a more careful regex that finds balanced braces
+                json_match = re.search(r'\{[^{}]*"classification"[^{}]*\}', llm_output, re.DOTALL)
                 if json_match:
-                    json_str = json_match.group()
-                    data = json.loads(json_str)
-                    prediction = data.get("classification", "").lower()
-                    confidence = data.get("confidence", 0.5)
-                    
-                    if prediction in ["hallucinated", "hallucination"]:
-                        prediction = "hallucination"
-                    elif prediction == "grounded":
+                    try:
+                        json_data = json.loads(json_match.group())
+                    except json.JSONDecodeError:
                         pass
-                    else:
-                        prediction = "unknown"
-                    
-                    return prediction, float(confidence)
-            except (json.JSONDecodeError, AttributeError):
-                pass
-        
+
+            # Strategy 3: Try the whole output as JSON
+            if json_data is None:
+                try:
+                    json_data = json.loads(llm_output.strip())
+                except json.JSONDecodeError:
+                    pass
+
+            # Strategy 4: Find any JSON object (greedy, as fallback)
+            if json_data is None:
+                json_match = re.search(r'\{[\s\S]*?\}(?=\s*$|\s*\n|$)', llm_output)
+                if json_match:
+                    try:
+                        json_data = json.loads(json_match.group())
+                    except json.JSONDecodeError:
+                        pass
+
+            # Process the JSON data if found
+            if json_data and isinstance(json_data, dict):
+                prediction = str(json_data.get("classification", "")).lower().strip()
+                confidence = json_data.get("confidence", 0.5)
+
+                # Normalize prediction value
+                if prediction in ["hallucinated", "hallucination"]:
+                    prediction = "hallucination"
+                elif prediction == "grounded":
+                    pass
+                else:
+                    prediction = "unknown"
+
+                # Ensure confidence is valid
+                try:
+                    confidence = float(confidence)
+                    confidence = max(0.0, min(1.0, confidence))
+                except (ValueError, TypeError):
+                    confidence = 0.5
+
+                return prediction, confidence
+
         # Default parsing: look for keywords
         if any(word in output_lower for word in ["hallucinated", "hallucination"]):
             prediction = "hallucination"
@@ -211,7 +251,7 @@ class Evaluator:
             prediction = "grounded"
         else:
             prediction = "unknown"
-        
+
         # Extract confidence if present
         confidence = 0.5
         confidence_match = re.search(r'confidence[:\s]+([0-9.]+)', output_lower)
@@ -222,7 +262,7 @@ class Evaluator:
                     confidence = confidence / 100.0
             except ValueError:
                 pass
-        
+
         return prediction, confidence
 
     def evaluate_batch(self,

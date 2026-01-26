@@ -1653,9 +1653,21 @@ def render_run_evaluation_page():
         else:
             # Actually run the evaluation
             try:
-                # Import orchestrator
+                # Import orchestrator with absolute path
                 import sys
-                sys.path.insert(0, "src")
+                import importlib
+                from pathlib import Path
+
+                # Use absolute path to src directory
+                src_dir = Path(__file__).parent
+                if str(src_dir) not in sys.path:
+                    sys.path.insert(0, str(src_dir))
+
+                # Force reload of modules to pick up code changes
+                import evaluator as eval_module
+                import orchestrator as orch_module
+                importlib.reload(eval_module)
+                importlib.reload(orch_module)
                 from orchestrator import EvaluationOrchestrator
 
                 with st.spinner("Running evaluation... This may take a few minutes."):
@@ -1663,14 +1675,21 @@ def render_run_evaluation_page():
                     progress_placeholder = st.empty()
                     results_placeholder = st.empty()
 
+                    # Debug: Show what we're about to run
+                    st.info(f"Starting evaluation: model={model}, sample_size={sample_size}, scenarios={selected_scenarios}")
+
                     # Run evaluation
-                    orchestrator = EvaluationOrchestrator()
-                    summary = orchestrator.run_daily_evaluation(
+                    orch_instance = EvaluationOrchestrator()
+                    summary = orch_instance.run_daily_evaluation(
                         scenarios=selected_scenarios,
                         model=model,
                         sample_size=sample_size,
                         dry_run=False
                     )
+
+                    # Debug: Show what we got back
+                    if summary:
+                        st.info(f"Run completed: {summary.run_id}, passed={summary.scenarios_passed}, failed={summary.scenarios_failed}")
 
                 if summary:
                     # Show results

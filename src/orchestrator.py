@@ -24,6 +24,17 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from evaluator import Evaluator
 from metrics import MetricsCalculator
 from database import db
+import logging
+
+# Set up file logging for debugging
+log_file = Path(__file__).parent.parent / "logs" / "orchestrator.log"
+log_file.parent.mkdir(exist_ok=True)
+logging.basicConfig(
+    filename=str(log_file),
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 class EvalScenario(Enum):
     HALLUCINATION_DETECTION = "hallucination_detection"
@@ -183,13 +194,21 @@ class MetricsDatabase:
 
 class EvaluationOrchestrator:
     """Main orchestrator for daily evaluation runs"""
-    def __init__(self, config_path: str = "config/settings.yaml"):
+    def __init__(self, config_path: str = None):
+        # Resolve config path relative to project root
+        if config_path is None:
+            project_root = Path(__file__).parent.parent
+            config_path = project_root / "config" / "settings.yaml"
         self.config = self._load_config(config_path)
     def _load_config(self, config_path):
+        config_path = Path(config_path)
+        if not config_path.exists():
+            raise FileNotFoundError(f"Config file not found: {config_path}")
         with open(config_path, "r") as f:
             return yaml.safe_load(f)
     def run_daily_evaluation(self, scenarios: List[str] = None, model: str = None, sample_size: int = None, dry_run: bool = False):
         run_id = f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        logger.info(f"=== Starting evaluation run: {run_id} ===")
         run_date = datetime.now().strftime('%Y-%m-%d')
         timestamp = datetime.now().isoformat()
         enabled_scenarios = scenarios or [k for k, v in self.config['scenarios'].items() if v.get('enabled', False)]
@@ -287,23 +306,46 @@ class EvaluationOrchestrator:
                 print(f"  Results: {saved_count} saved, {skipped_count} skipped, {error_count} errors")
                 all_test_case_results.extend(results)
 
-                # Calculate metrics
-                y_true = [r.get("ground_truth") for r in results if "ground_truth" in r and "prediction" in r]
-                y_pred = [r.get("prediction") for r in results if "ground_truth" in r and "prediction" in r]
+                # Calculate metrics - filter to only valid predictions
+                valid_labels = {"hallucination", "grounded"}
+                valid_results = [
+                    r for r in results
+                    if "ground_truth" in r
+                    and "prediction" in r
+                    and r.get("prediction") in valid_labels
+                    and r.get("ground_truth") in valid_labels
+                ]
+
+                y_true = [r.get("ground_truth") for r in valid_results]
+                y_pred = [r.get("prediction") for r in valid_results]
+
+                # Log filtering info
+                total_results = len([r for r in results if "ground_truth" in r and "prediction" in r])
+                filtered_count = total_results - len(valid_results)
+                if filtered_count > 0:
+                    print(f"  Filtered {filtered_count} invalid predictions (unknown/empty)")
 
                 # Extract confidence scores if available
                 y_conf = []
-                for r in results:
-                    if "ground_truth" in r and "prediction" in r:
-                        conf = r.get("confidence")
-                        if conf is not None:
+                for r in valid_results:
+                    conf = r.get("confidence")
+                    if conf is not None:
+                        try:
                             y_conf.append(float(conf))
-                        else:
+                        except (ValueError, TypeError):
                             y_conf.append(None)
+                    else:
+                        y_conf.append(None)
 
-                # Only use confidence if all values are present
+                # Only use confidence if all values are present and have variance
                 if y_conf and all(c is not None for c in y_conf):
-                    y_conf_valid = y_conf
+                    # Check if confidence values have variance (not all the same)
+                    unique_conf = set(y_conf)
+                    if len(unique_conf) > 1:
+                        y_conf_valid = y_conf
+                    else:
+                        print(f"  Warning: All confidence scores are identical ({y_conf[0]}), correlation metrics will be skipped")
+                        y_conf_valid = None
                 else:
                     y_conf_valid = None
 
@@ -353,7 +395,12 @@ class EvaluationOrchestrator:
                     }
 
             except Exception as e:
-                print(f"  Error running evaluation: {e}")
+                import traceback
+                error_msg = f"ERROR in {scenario}: {type(e).__name__}: {e}"
+                print(f"  {error_msg}")
+                traceback.print_exc()
+                logger.error(error_msg)
+                logger.error(traceback.format_exc())
                 metrics = {
                     'f1': MetricResult('f1', 0.0, threshold_min=0.75),
                     'tnr': MetricResult('tnr', 0.0, threshold_min=0.65),

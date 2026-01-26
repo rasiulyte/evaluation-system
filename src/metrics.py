@@ -323,19 +323,49 @@ class MetricsCalculator:
     def spearman_correlation(self) -> Optional[MetricResult]:
         """
         Spearman Correlation: Ranked correlation between variables.
-        
+
         Intent: Measure monotonic relationship when model outputs confidence scores
         When to use: When LLM outputs confidence; check if confidence correlates with correctness
         Target: >= 0.70
-        
-        Returns None if confidence scores not provided.
+
+        Returns None if confidence scores not provided or input is constant.
         """
         if self.y_conf is None:
             return None
-        
-        corr, pval = spearmanr(self.y_conf, self.y_true)
+
+        # Check for constant input (would cause undefined correlation)
+        if np.std(self.y_conf) == 0 or np.std(self.y_true) == 0:
+            return MetricResult(
+                name="spearman_correlation",
+                value=float('nan'),
+                intent="Monotonic relationship between confidence and correctness",
+                interpretation="Cannot compute: input values are constant (no variance)",
+                target="≥ 0.70",
+                meets_target=False,
+                category="correlation",
+                metadata={"error": "constant_input"}
+            )
+
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            corr, pval = spearmanr(self.y_conf, self.y_true)
+
+        # Handle NaN results
+        if np.isnan(corr):
+            return MetricResult(
+                name="spearman_correlation",
+                value=float('nan'),
+                intent="Monotonic relationship between confidence and correctness",
+                interpretation="Cannot compute: correlation undefined",
+                target="≥ 0.70",
+                meets_target=False,
+                category="correlation",
+                metadata={"error": "undefined"}
+            )
+
         value = abs(corr)  # Use absolute value for interpretation
-        
+
         interpretation = f"Correlation: {corr:.3f}, p-value: {pval:.4f}"
         if corr >= 0.70:
             interpretation += " (Strong monotonic relationship)"
@@ -343,10 +373,10 @@ class MetricsCalculator:
             interpretation += " (Moderate relationship)"
         else:
             interpretation += " (Weak relationship)"
-        
+
         target = "≥ 0.70"
         meets_target = abs(corr) >= 0.70
-        
+
         return MetricResult(
             name="spearman_correlation",
             value=value,
@@ -366,12 +396,42 @@ class MetricsCalculator:
         When to use: When assuming linear relationships; less robust than Spearman
         Target: >= 0.70
 
-        Returns None if confidence scores not provided.
+        Returns None if confidence scores not provided or input is constant.
         """
         if self.y_conf is None:
             return None
 
-        corr, pval = pearsonr(self.y_conf, self.y_true)
+        # Check for constant input (would cause undefined correlation)
+        if np.std(self.y_conf) == 0 or np.std(self.y_true) == 0:
+            return MetricResult(
+                name="pearson_correlation",
+                value=float('nan'),
+                intent="Linear relationship between confidence and correctness",
+                interpretation="Cannot compute: input values are constant (no variance)",
+                target="≥ 0.70",
+                meets_target=False,
+                category="correlation",
+                metadata={"error": "constant_input"}
+            )
+
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            corr, pval = pearsonr(self.y_conf, self.y_true)
+
+        # Handle NaN results
+        if np.isnan(corr):
+            return MetricResult(
+                name="pearson_correlation",
+                value=float('nan'),
+                intent="Linear relationship between confidence and correctness",
+                interpretation="Cannot compute: correlation undefined",
+                target="≥ 0.70",
+                meets_target=False,
+                category="correlation",
+                metadata={"error": "undefined"}
+            )
+
         value = abs(corr)
 
         interpretation = f"Correlation: {corr:.3f}, p-value: {pval:.4f}"
@@ -405,7 +465,7 @@ class MetricsCalculator:
                      preferred for ordinal data or when distribution is unknown
         Target: >= 0.60 (tau values tend to be lower than Spearman/Pearson)
 
-        Returns None if confidence scores not provided.
+        Returns None if confidence scores not provided or input is constant.
 
         Interpretation:
         - tau = 1.0: Perfect agreement (all pairs concordant)
@@ -415,7 +475,37 @@ class MetricsCalculator:
         if self.y_conf is None:
             return None
 
-        tau, pval = kendalltau(self.y_conf, self.y_true)
+        # Check for constant input (would cause undefined correlation)
+        if np.std(self.y_conf) == 0 or np.std(self.y_true) == 0:
+            return MetricResult(
+                name="kendalls_tau",
+                value=float('nan'),
+                intent="Ordinal association between confidence and correctness; robust to ties and outliers",
+                interpretation="Cannot compute: input values are constant (no variance)",
+                target="≥ 0.60",
+                meets_target=False,
+                category="correlation",
+                metadata={"error": "constant_input"}
+            )
+
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            tau, pval = kendalltau(self.y_conf, self.y_true)
+
+        # Handle NaN results
+        if np.isnan(tau):
+            return MetricResult(
+                name="kendalls_tau",
+                value=float('nan'),
+                intent="Ordinal association between confidence and correctness; robust to ties and outliers",
+                interpretation="Cannot compute: correlation undefined",
+                target="≥ 0.60",
+                meets_target=False,
+                category="correlation",
+                metadata={"error": "undefined"}
+            )
+
         value = abs(tau)
 
         interpretation = f"Tau: {tau:.3f}, p-value: {pval:.4f}"
