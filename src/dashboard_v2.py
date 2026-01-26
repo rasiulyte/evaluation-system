@@ -1706,6 +1706,9 @@ def render_slice_analysis_page(df: pd.DataFrame):
     failure_modes = run_data['failure_mode'].unique()
     failure_mode_stats = []
 
+    # Failure modes that test "grounded" cases (no hallucinations to detect)
+    grounded_failure_modes = {'factual_addition', 'valid_inference', 'verbatim_grounded'}
+
     for fm in sorted(failure_modes):
         if fm == 'unknown':
             continue
@@ -1714,7 +1717,10 @@ def render_slice_analysis_page(df: pd.DataFrame):
         correct = fm_data['correct'].sum() if 'correct' in fm_data.columns else 0
         accuracy = correct / total if total > 0 else 0
 
-        # Calculate more detailed metrics if we have enough data
+        # Check if this failure mode contains hallucination cases
+        is_grounded_mode = fm in grounded_failure_modes
+
+        # Calculate metrics based on ground truth and prediction
         if 'ground_truth' in fm_data.columns and 'prediction' in fm_data.columns:
             y_true = (fm_data['ground_truth'] == 'hallucination').astype(int)
             y_pred = (fm_data['prediction'] == 'hallucination').astype(int)
@@ -1722,12 +1728,24 @@ def render_slice_analysis_page(df: pd.DataFrame):
             tp = ((y_true == 1) & (y_pred == 1)).sum()
             fp = ((y_true == 0) & (y_pred == 1)).sum()
             fn = ((y_true == 1) & (y_pred == 0)).sum()
+            tn = ((y_true == 0) & (y_pred == 0)).sum()
 
-            precision = tp / (tp + fp) if (tp + fp) > 0 else 0
-            recall = tp / (tp + fn) if (tp + fn) > 0 else 0
-            f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
+            # For grounded failure modes, use TNR (True Negative Rate) as main metric
+            # For hallucination failure modes, use standard precision/recall/F1
+            if is_grounded_mode:
+                # These cases should all be classified as "grounded"
+                # TNR = TN / (TN + FP) - how well we correctly identify grounded content
+                tnr = tn / (tn + fp) if (tn + fp) > 0 else 0
+                precision = tnr  # For display consistency, show TNR
+                recall = tnr
+                f1 = tnr  # Use TNR as the "F1-equivalent" for grounded modes
+            else:
+                precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+                recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+                f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
         else:
             precision = recall = f1 = 0
+            is_grounded_mode = False
 
         failure_mode_stats.append({
             'Failure Mode': fm.replace('_', ' ').title(),
@@ -1736,7 +1754,8 @@ def render_slice_analysis_page(df: pd.DataFrame):
             'Accuracy': accuracy,
             'Precision': precision,
             'Recall': recall,
-            'F1': f1
+            'F1': f1,
+            'is_grounded_mode': is_grounded_mode
         })
 
     if failure_mode_stats:
@@ -1746,26 +1765,37 @@ def render_slice_analysis_page(df: pd.DataFrame):
         cols = st.columns(3)
         for i, row in fm_df.iterrows():
             with cols[i % 3]:
-                # Determine status color
-                f1_val = row['F1']
-                if f1_val >= 0.75:
+                # Determine status color based on accuracy (universal metric)
+                acc_val = row['Accuracy']
+                if acc_val >= 0.75:
                     status_class = "status-good"
                     status_color = COLORS['good']
-                elif f1_val >= 0.60:
+                elif acc_val >= 0.60:
                     status_class = "status-warning"
                     status_color = COLORS['amber']
                 else:
                     status_class = "status-poor"
                     status_color = COLORS['poor']
 
+                # Use appropriate metric label based on failure mode type
+                is_grounded = row.get('is_grounded_mode', False)
+                metric_label = "TNR" if is_grounded else "F1"
+                metric_value = row['F1']  # F1 holds TNR for grounded modes
+
+                # Add note for grounded modes
+                mode_note = "(tests grounded)" if is_grounded else "(tests hallucination)"
+
                 st.markdown(f"""
                 <div class="metric-card {status_class}" style="padding: 1rem; margin-bottom: 0.75rem;">
-                    <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.5rem; font-size: 0.9rem;">
+                    <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.25rem; font-size: 0.9rem;">
                         {row['Failure Mode']}
                     </div>
+                    <div style="font-size: 0.7rem; color: {COLORS['medium_gray']}; margin-bottom: 0.5rem;">
+                        {mode_note}
+                    </div>
                     <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                        <span style="font-size: 1.5rem; font-weight: 600; color: {status_color};">{row['F1']:.0%}</span>
-                        <span style="font-size: 0.8rem; color: {COLORS['medium_gray']};">F1</span>
+                        <span style="font-size: 1.5rem; font-weight: 600; color: {status_color};">{metric_value:.0%}</span>
+                        <span style="font-size: 0.8rem; color: {COLORS['medium_gray']};">{metric_label}</span>
                     </div>
                     <div style="font-size: 0.75rem; color: {COLORS['medium_gray']}; margin-top: 0.5rem;">
                         {row['Cases']} cases · {row['Correct']}/{row['Cases']} correct
@@ -1776,11 +1806,23 @@ def render_slice_analysis_page(df: pd.DataFrame):
         # Summary table
         with st.expander("View detailed table"):
             display_df = fm_df.copy()
+            # Rename columns based on mode type
+            display_df['Type'] = display_df['is_grounded_mode'].apply(lambda x: 'Grounded' if x else 'Hallucination')
             display_df['Accuracy'] = display_df['Accuracy'].apply(lambda x: f"{x:.1%}")
-            display_df['Precision'] = display_df['Precision'].apply(lambda x: f"{x:.1%}")
-            display_df['Recall'] = display_df['Recall'].apply(lambda x: f"{x:.1%}")
-            display_df['F1'] = display_df['F1'].apply(lambda x: f"{x:.1%}")
+            display_df['Score'] = display_df.apply(
+                lambda row: f"{row['F1']:.1%} (TNR)" if row['is_grounded_mode'] else f"{row['F1']:.1%} (F1)",
+                axis=1
+            )
+            # Select columns for display
+            display_df = display_df[['Failure Mode', 'Type', 'Cases', 'Correct', 'Accuracy', 'Score']]
             st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+        # Explanation
+        st.caption("""
+        **Note**: Failure modes test different things:
+        - **Grounded modes** (Factual Addition, Valid Inference, Verbatim Grounded): All cases should be classified as "grounded". TNR measures how well we avoid false positives.
+        - **Hallucination modes** (Fabrication, Subtle Distortion, Fluent Hallucination, Partial Grounding): All cases should be classified as "hallucination". F1 measures detection accuracy.
+        """)
 
     st.markdown("---")
 
