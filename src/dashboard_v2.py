@@ -2222,6 +2222,11 @@ def render_guide_page():
         they're often wrong.
 
         **Target:** ≥ 0.75 for production use
+
+        **⚠️ Risks:**
+        - Can be artificially high if the model is too conservative (flags almost nothing)
+        - A model that only flags the most obvious cases will have high precision but miss subtle hallucinations
+        - Doesn't tell you how many hallucinations you're missing — always pair with Recall
         """)
 
     with st.expander("**Recall** — Catch Rate", expanded=True):
@@ -2234,6 +2239,11 @@ def render_guide_page():
         applications where missing a hallucination could cause real harm (medical, legal, financial).
 
         **Target:** ≥ 0.75 for most applications, higher for safety-critical
+
+        **⚠️ Risks:**
+        - Can be gamed by flagging everything as hallucination (100% recall but useless)
+        - High recall with low precision means lots of false alarms — users will ignore warnings
+        - Optimizing only for recall can make the system overly aggressive
         """)
 
     with st.expander("**F1 Score** — Balanced Performance", expanded=True):
@@ -2246,6 +2256,12 @@ def render_guide_page():
         only precision or only recall. It's the primary metric for overall detection quality.
 
         **Target:** ≥ 0.75 indicates production-ready performance
+
+        **⚠️ Risks:**
+        - Assumes precision and recall are equally important — they may not be in your use case
+        - Doesn't account for class imbalance (if 95% of data is grounded, F1 can be misleading)
+        - Two models with same F1 can have very different precision/recall trade-offs
+        - For safety-critical apps, you may need to prioritize recall over F1
         """)
 
     st.markdown("---")
@@ -2268,6 +2284,12 @@ def render_guide_page():
         - 0.41-0.60: Moderate
         - 0.21-0.40: Fair
         - 0.00-0.20: Slight
+
+        **⚠️ Risks:**
+        - Can be negative if model performs worse than random chance
+        - Sensitive to prevalence — same performance looks different with different class distributions
+        - Low Kappa doesn't always mean bad performance — it depends on baseline difficulty
+        - Can be unstable with small sample sizes
         """)
 
     st.markdown("---")
@@ -2288,6 +2310,12 @@ def render_guide_page():
         correlation measures. Good for small sample sizes.
 
         **Target:** ≥ 0.60 (Tau values are inherently smaller than Pearson/Spearman)
+
+        **⚠️ Risks:**
+        - Values are inherently lower than Spearman/Pearson — don't compare directly
+        - Can be misleading if confidence scores cluster at extremes (all 0.9+ or all 0.1-)
+        - Requires variance in both confidence and correctness — fails with constant predictions
+        - Doesn't tell you if confidence values are calibrated, only if rankings are correct
         """)
 
     with st.expander("**Pearson Correlation** — Linear Relationship"):
@@ -2298,6 +2326,130 @@ def render_guide_page():
         Sensitive to outliers.
 
         **Target:** ≥ 0.70
+
+        **⚠️ Risks:**
+        - Assumes linear relationship — may miss valid non-linear calibration
+        - Very sensitive to outliers — a few extreme values can distort results
+        - Can be undefined if all predictions have same confidence (zero variance)
+        - High Pearson doesn't mean well-calibrated — could have consistent bias
+        """)
+
+    with st.expander("**Spearman Correlation** — Rank-Order Relationship"):
+        st.markdown(f"""
+        **Question answered:** Do higher confidence predictions tend to be more correct?
+
+        **Intuition:** Like Pearson but uses ranks instead of raw values. More robust to outliers
+        and doesn't assume linearity.
+
+        **Target:** ≥ 0.60
+
+        **⚠️ Risks:**
+        - Only measures monotonic relationships — doesn't require linear calibration
+        - Can be high even if absolute confidence values are wrong (just needs correct ordering)
+        - Sensitive to ties — many identical confidence values reduce reliability
+        - Doesn't tell you if 80% confidence actually means 80% correct
+        """)
+
+    st.markdown("---")
+
+    # Additional Classification Metrics
+    render_section_header("Additional Classification Metrics")
+
+    with st.expander("**TNR (True Negative Rate / Specificity)** — Protecting Good Content"):
+        st.markdown(f"""
+        **Formula:** TN / (TN + FP)
+
+        **Question answered:** Of all grounded content, how much did we correctly accept?
+
+        **Intuition:** High TNR means good content flows through freely. Low TNR means you're
+        blocking legitimate content, frustrating users.
+
+        **Target:** ≥ 0.65
+
+        **⚠️ Risks:**
+        - Can be artificially high if the system rarely flags anything
+        - Doesn't tell you how many hallucinations you're catching
+        - Easy to achieve high TNR by being permissive — always pair with Recall
+        - In imbalanced datasets, TNR can be misleading about overall performance
+        """)
+
+    with st.expander("**Accuracy** — Overall Correctness"):
+        st.markdown(f"""
+        **Formula:** (TP + TN) / (TP + TN + FP + FN)
+
+        **Question answered:** What percentage of all predictions were correct?
+
+        **Intuition:** Simple and intuitive, but can be deeply misleading.
+
+        **Target:** ≥ 0.75
+
+        **⚠️ Risks:**
+        - **MAJOR RISK:** Extremely misleading with imbalanced data
+        - If 95% of content is grounded, predicting "grounded" always gives 95% accuracy!
+        - Hides poor performance on the minority class (usually hallucinations)
+        - Should almost never be your primary metric — use F1 or Kappa instead
+        - Only meaningful when classes are roughly balanced
+        """)
+
+    st.markdown("---")
+
+    # Calibration Metrics
+    render_section_header("Calibration Metrics")
+
+    st.markdown("""
+    These metrics measure how **accurate** the confidence scores are, not just their ranking.
+    """)
+
+    with st.expander("**Bias** — Systematic Over/Under-Prediction"):
+        st.markdown(f"""
+        **Formula:** Mean(Predicted) - Mean(Actual)
+
+        **Question answered:** Does the model systematically over-flag or under-flag hallucinations?
+
+        **Intuition:** Positive bias = too aggressive (flags too much). Negative bias = too lenient (misses too much).
+
+        **Target:** |bias| ≤ 0.15
+
+        **⚠️ Risks:**
+        - Zero bias doesn't mean good predictions — errors could cancel out
+        - Can hide large errors if they're symmetric around zero
+        - Sensitive to class distribution — recalculate when data changes
+        - Doesn't tell you about individual prediction quality
+        """)
+
+    with st.expander("**MAE (Mean Absolute Error)** — Average Confidence Error"):
+        st.markdown(f"""
+        **Formula:** Mean(|Confidence - Actual|)
+
+        **Question answered:** On average, how far off are the confidence scores?
+
+        **Intuition:** Lower is better. MAE of 0.2 means confidence is typically off by 20%.
+
+        **Target:** < 0.20
+
+        **⚠️ Risks:**
+        - Treats all errors equally — a 0.1 error and a 0.9 error average to 0.5
+        - Doesn't penalize large errors more than small ones
+        - Can be low even with a few catastrophically wrong predictions
+        - Sensitive to confidence score distribution
+        """)
+
+    with st.expander("**RMSE (Root Mean Squared Error)** — Penalizes Large Errors"):
+        st.markdown(f"""
+        **Formula:** √(Mean((Confidence - Actual)²))
+
+        **Question answered:** How bad are the worst confidence errors?
+
+        **Intuition:** Like MAE but penalizes large errors more heavily. A few big mistakes
+        hurt RMSE more than many small ones.
+
+        **Target:** < 0.25
+
+        **⚠️ Risks:**
+        - More sensitive to outliers than MAE — one bad prediction can dominate
+        - Harder to interpret than MAE (squared then rooted)
+        - Can improve by removing outliers rather than fixing them
+        - Should be compared alongside MAE — large gap suggests outlier issues
         """)
 
     st.markdown("---")
