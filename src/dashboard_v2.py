@@ -503,27 +503,37 @@ def apply_brand_css():
 
     /* ===== SIDEBAR NAVIGATION ===== */
 
-    /* Navigation buttons - styled as links */
+    /* Navigation buttons - styled as clickable links */
     [data-testid="stSidebar"] .stButton:not(:first-of-type) > button {{
-        background-color: transparent !important;
-        color: {COLORS['charcoal']} !important;
+        background-color: {COLORS['light_gray']}60 !important;
+        color: {COLORS['navy']} !important;
         border: none !important;
-        border-radius: 6px !important;
-        padding: 0.5rem 0.75rem !important;
+        border-left: 3px solid transparent !important;
+        border-radius: 0 6px 6px 0 !important;
+        padding: 0.6rem 0.75rem 0.6rem 0.75rem !important;
+        margin: 2px 0 !important;
         font-size: 0.875rem !important;
-        font-weight: 400 !important;
+        font-weight: 450 !important;
         text-align: left !important;
         justify-content: flex-start !important;
         transition: all 0.15s ease !important;
+        cursor: pointer !important;
     }}
 
     [data-testid="stSidebar"] .stButton:not(:first-of-type) > button:hover {{
-        background-color: {COLORS['teal']}10 !important;
+        background-color: {COLORS['teal']}18 !important;
         color: {COLORS['teal']} !important;
+        border-left: 3px solid {COLORS['teal']} !important;
+        padding-left: 0.75rem !important;
     }}
 
     [data-testid="stSidebar"] .stButton:not(:first-of-type) > button:focus {{
         box-shadow: none !important;
+    }}
+
+    /* Active nav item indicator (when text starts with ●) */
+    [data-testid="stSidebar"] .stButton:not(:first-of-type) > button p {{
+        margin: 0 !important;
     }}
 
     /* ===== DATAFRAMES ===== */
