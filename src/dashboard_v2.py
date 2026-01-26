@@ -1595,23 +1595,25 @@ def render_compare_runs_page(df: pd.DataFrame):
             change_text = f"↓ {delta:.3f} ({pct:.1f}%)"
 
         # Show scenario label only when viewing all scenarios
-        scenario_label = f'<span style="color: {COLORS["medium_gray"]}; font-size: 0.8rem; margin-left: 0.75rem;">{row["scenario"]}</span>' if selected_detail_scenario == "All Scenarios" else ""
+        if selected_detail_scenario == "All Scenarios":
+            scenario_label = f' <span style="color: {COLORS["medium_gray"]}; font-size: 0.8rem;">({row["scenario"]})</span>'
+        else:
+            scenario_label = ""
 
-        st.markdown(f"""
-        <div class="metric-card {border_class}" style="margin-bottom: 0.5rem; padding: 1rem 1.25rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <span style="color: {COLORS['navy']}; font-weight: 500;">{row['metric_name']}</span>
-                    {scenario_label}
-                </div>
-                <span style="color: {change_color}; font-weight: 500; font-size: 0.9rem;">{change_text}</span>
-            </div>
-            <div style="display: flex; gap: 2rem; margin-top: 0.5rem; font-size: 0.85rem;">
-                <span style="color: {COLORS['medium_gray']};">Baseline: <strong style="color: {COLORS['charcoal']}; font-family: monospace;">{baseline:.3f}</strong></span>
-                <span style="color: {COLORS['medium_gray']};">Compare: <strong style="color: {COLORS['charcoal']}; font-family: monospace;">{compare:.3f}</strong></span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        # Build HTML without multi-line f-string to avoid parsing issues
+        card_html = (
+            f'<div class="metric-card {border_class}" style="margin-bottom: 0.5rem; padding: 1rem 1.25rem;">'
+            f'<div style="display: flex; justify-content: space-between; align-items: center;">'
+            f'<div><span style="color: {COLORS["navy"]}; font-weight: 500;">{row["metric_name"]}</span>{scenario_label}</div>'
+            f'<span style="color: {change_color}; font-weight: 500; font-size: 0.9rem;">{change_text}</span>'
+            f'</div>'
+            f'<div style="display: flex; gap: 2rem; margin-top: 0.5rem; font-size: 0.85rem;">'
+            f'<span style="color: {COLORS["medium_gray"]};">Baseline: <strong style="color: {COLORS["charcoal"]}; font-family: monospace;">{baseline:.3f}</strong></span>'
+            f'<span style="color: {COLORS["medium_gray"]};">Compare: <strong style="color: {COLORS["charcoal"]}; font-family: monospace;">{compare:.3f}</strong></span>'
+            f'</div>'
+            f'</div>'
+        )
+        st.markdown(card_html, unsafe_allow_html=True)
 
     # Visual comparison chart
     render_section_header("Visual Comparison")
