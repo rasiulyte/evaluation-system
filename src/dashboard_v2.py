@@ -2221,7 +2221,7 @@ def render_guide_page():
 # ============================================
 
 def render_home_page():
-    """Home page explaining the dashboard."""
+    """Getting Started page explaining the dashboard."""
 
     render_page_header(
         "Welcome to Eval Lab",
@@ -2369,13 +2369,13 @@ def main():
 
     # Initialize session state for navigation
     if "current_page" not in st.session_state:
-        st.session_state.current_page = "Home"
+        st.session_state.current_page = "Getting Started"
 
     # Sidebar
     with st.sidebar:
-        # Clickable logo that goes to Home
+        # Clickable logo that goes to Getting Started
         if st.button("◈ Eval Lab", key="logo_btn", use_container_width=True):
-            st.session_state.current_page = "Home"
+            st.session_state.current_page = "Getting Started"
             st.rerun()
 
         st.markdown(f"""
@@ -2392,7 +2392,7 @@ def main():
         st.markdown("---")
 
         # Navigation
-        pages = ["Home", "Metrics Overview", "Trends", "Compare Runs", "Run History", "Run Evaluation", "Understanding Metrics"]
+        pages = ["Getting Started", "Metrics Overview", "Trends", "Compare Runs", "Run History", "Run Evaluation", "Understanding Metrics"]
 
         # Find current page index
         current_index = pages.index(st.session_state.current_page) if st.session_state.current_page in pages else 0
@@ -2430,7 +2430,7 @@ def main():
                 st.caption(f"Error: {e}")
 
     # Route to pages
-    if page == "Home":
+    if page == "Getting Started":
         render_home_page()
     elif page == "Metrics Overview":
         render_metrics_overview_page(df)
