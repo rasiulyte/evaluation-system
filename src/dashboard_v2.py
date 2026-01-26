@@ -238,9 +238,9 @@ def apply_brand_css():
     /* ===== BUTTONS ===== */
 
     .stButton > button {{
-        background-color: {COLORS['navy']};
-        color: white;
-        border: none;
+        background-color: {COLORS['navy']} !important;
+        color: white !important;
+        border: none !important;
         border-radius: 6px;
         padding: 0.5rem 1.25rem;
         font-weight: 500;
@@ -248,14 +248,29 @@ def apply_brand_css():
     }}
 
     .stButton > button:hover {{
-        background-color: #3d5266;
+        background-color: #3d5266 !important;
+        color: white !important;
+    }}
+
+    /* Primary button - teal for action */
+    .stButton > button[kind="primary"],
+    .stButton > button[data-testid="baseButton-primary"] {{
+        background-color: {COLORS['teal']} !important;
+        color: white !important;
+        border: none !important;
+    }}
+
+    .stButton > button[kind="primary"]:hover,
+    .stButton > button[data-testid="baseButton-primary"]:hover {{
+        background-color: #4a8a8c !important;
+        color: white !important;
     }}
 
     /* Secondary button style */
     .stButton > button[kind="secondary"] {{
-        background-color: white;
-        color: {COLORS['navy']};
-        border: 1px solid {COLORS['light_gray']};
+        background-color: white !important;
+        color: {COLORS['navy']} !important;
+        border: 1px solid {COLORS['light_gray']} !important;
     }}
 
     /* ===== DATAFRAMES ===== */
