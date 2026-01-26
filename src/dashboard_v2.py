@@ -1549,7 +1549,7 @@ def render_compare_runs_page(df: pd.DataFrame):
     filtered_comparison["_metric_order"] = filtered_comparison["metric_name"].map(
         lambda x: metric_order.get(x, 99)
     )
-    filtered_comparison = filtered_comparison.sort_values(["scenario", "_metric_order"])
+    filtered_comparison = filtered_comparison.sort_values(["scenario", "_metric_order"]).drop(columns=["_metric_order"])
 
     # Metrics where LOWER is better (increase = bad, decrease = good)
     lower_is_better = {"bias", "mae", "rmse"}
