@@ -2235,8 +2235,8 @@ def render_home_page():
         </div>
         <div style="color: {COLORS['charcoal']}; line-height: 1.7;">
             Eval Lab is an interactive environment for learning how to evaluate AI systems,
-            specifically focused on <strong>hallucination detection</strong>. Run experiments,
-            explore metrics, and build intuition for what makes an AI system reliable.
+            specifically focused on <strong>hallucination detection</strong>. Explore real evaluation results,
+            understand metrics, and build intuition for what makes an AI system reliable.
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -2249,20 +2249,20 @@ def render_home_page():
     with col1:
         st.markdown(f"""
         <div class="metric-card" style="height: 100%;">
-            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">1. Run Evaluation</div>
+            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">1. Explore Metrics</div>
             <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
-                Start by running an evaluation. The system tests an LLM's ability to detect
-                hallucinations in AI-generated responses. You'll need an admin password and OpenAI API key.
+                Start with <strong>Metrics Overview</strong> to see evaluation results. Each metric includes
+                interpretation guides and mental models to help you understand what the numbers mean.
             </div>
         </div>
         """, unsafe_allow_html=True)
 
         st.markdown(f"""
         <div class="metric-card" style="height: 100%; margin-top: 1rem;">
-            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">2. Explore Metrics</div>
+            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">2. Compare & Analyze</div>
             <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
-                View results in <strong>Metrics Overview</strong>. Each metric has interpretation
-                guides and mental models to help you understand what the numbers mean.
+                Use <strong>Compare Runs</strong> to see how metrics differ between evaluations.
+                Use <strong>Trends</strong> to track how performance changes over time.
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -2270,21 +2270,20 @@ def render_home_page():
     with col2:
         st.markdown(f"""
         <div class="metric-card" style="height: 100%;">
-            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">3. Track Progress</div>
+            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">3. Learn the Theory</div>
             <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
-                Use <strong>Trends</strong> to see how metrics change over time. Use
-                <strong>Compare Runs</strong> to analyze differences between evaluations.
+                Visit <strong>Understanding Metrics</strong> for detailed explanations. See the
+                <a href="https://github.com/rasiulyte/evaluation-system/blob/main/docs/METRICS.md" target="_blank" style="color: {COLORS['teal']};">Metrics Guide</a> on GitHub for the complete reference.
             </div>
         </div>
         """, unsafe_allow_html=True)
 
         st.markdown(f"""
         <div class="metric-card" style="height: 100%; margin-top: 1rem;">
-            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">4. Learn More</div>
+            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">4. Run Your Own (Optional)</div>
             <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
-                Visit <strong>Understanding Metrics</strong> for explanations. For the complete reference with
-                interpretation scales and mental models, see the
-                <a href="https://github.com/rasiulyte/evaluation-system/blob/main/docs/METRICS.md" target="_blank" style="color: {COLORS['teal']};">Metrics Guide</a> on GitHub.
+                Admins can run new evaluations via <strong>Run Evaluation</strong>.
+                Requires authentication and an OpenAI API key.
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -2341,9 +2340,8 @@ def render_home_page():
     st.markdown(f"""
     <div class="metric-card status-good" style="padding: 1.25rem;">
         <div style="color: {COLORS['charcoal']};">
-            <strong>Ready to begin?</strong> Navigate to <strong>Run Evaluation</strong> in the sidebar
-            to run your first evaluation, or explore <strong>Understanding Metrics</strong> to learn
-            about what each metric measures.
+            <strong>Ready to begin?</strong> Head to <strong>Metrics Overview</strong> to explore
+            evaluation results, or visit <strong>Understanding Metrics</strong> to learn what each metric measures.
         </div>
     </div>
     """, unsafe_allow_html=True)
