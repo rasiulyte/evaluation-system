@@ -2571,6 +2571,291 @@ def render_test_cases_page():
 
 
 # ============================================
+# PAGE: PROMPT LAB (Hillclimbing)
+# ============================================
+
+def load_all_prompts() -> dict:
+    """Load all prompt templates from the prompts directory."""
+    from pathlib import Path
+
+    project_root = Path(__file__).parent.parent
+    prompts_dir = project_root / "prompts"
+
+    prompts = {}
+    if not prompts_dir.exists():
+        return prompts
+
+    for txt_file in sorted(prompts_dir.glob("*.txt")):
+        try:
+            with open(txt_file, "r") as f:
+                prompts[txt_file.stem] = f.read()
+        except Exception:
+            continue
+
+    return prompts
+
+
+def get_metrics_by_prompt(df: pd.DataFrame) -> pd.DataFrame:
+    """Get aggregated metrics grouped by prompt_id from test results."""
+    try:
+        # Get all test results
+        test_results = db.get_test_results()
+        if not test_results:
+            return pd.DataFrame()
+
+        results_df = pd.DataFrame(test_results)
+        if 'prompt_id' not in results_df.columns:
+            return pd.DataFrame()
+
+        # Calculate metrics per prompt
+        prompt_metrics = []
+        for prompt_id in results_df['prompt_id'].unique():
+            prompt_data = results_df[results_df['prompt_id'] == prompt_id]
+
+            # Calculate basic metrics
+            total = len(prompt_data)
+            correct = prompt_data['correct'].sum() if 'correct' in prompt_data.columns else 0
+            accuracy = correct / total if total > 0 else 0
+
+            # Calculate average confidence
+            avg_confidence = prompt_data['confidence'].mean() if 'confidence' in prompt_data.columns else 0
+
+            prompt_metrics.append({
+                'prompt_id': prompt_id,
+                'total_cases': total,
+                'correct': correct,
+                'accuracy': accuracy,
+                'avg_confidence': avg_confidence
+            })
+
+        return pd.DataFrame(prompt_metrics)
+    except Exception:
+        return pd.DataFrame()
+
+
+def render_prompt_lab_page(df: pd.DataFrame):
+    """Page for understanding and comparing prompts (hillclimbing)."""
+
+    render_page_header(
+        "Prompt Lab",
+        "Understand how prompt engineering affects evaluation quality"
+    )
+
+    # Educational intro
+    st.markdown(f"""
+    <div class="metric-card" style="padding: 1.5rem; margin-bottom: 1.5rem;">
+        <div style="font-size: 1.1rem; color: {COLORS['navy']}; margin-bottom: 1rem; font-weight: 500;">
+            What is Hillclimbing?
+        </div>
+        <div style="color: {COLORS['charcoal']}; line-height: 1.7;">
+            <strong>Hillclimbing</strong> is an iterative optimization technique where you make small changes to a prompt
+            and measure if the results improve. Like climbing a hill in fog — you take a step, check if you went up,
+            and keep going in the direction that improves your metrics.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # The process
+    render_section_header("The Hillclimbing Process")
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.markdown(f"""
+        <div class="metric-card" style="text-align: center; padding: 1.25rem;">
+            <div style="font-size: 1.5rem; color: {COLORS['teal']}; margin-bottom: 0.5rem;">1</div>
+            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.5rem;">Baseline</div>
+            <div style="font-size: 0.85rem; color: {COLORS['charcoal']};">Run evaluation with current prompt</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown(f"""
+        <div class="metric-card" style="text-align: center; padding: 1.25rem;">
+            <div style="font-size: 1.5rem; color: {COLORS['teal']}; margin-bottom: 0.5rem;">2</div>
+            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.5rem;">Modify</div>
+            <div style="font-size: 0.85rem; color: {COLORS['charcoal']};">Make a targeted change to the prompt</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col3:
+        st.markdown(f"""
+        <div class="metric-card" style="text-align: center; padding: 1.25rem;">
+            <div style="font-size: 1.5rem; color: {COLORS['teal']}; margin-bottom: 0.5rem;">3</div>
+            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.5rem;">Measure</div>
+            <div style="font-size: 0.85rem; color: {COLORS['charcoal']};">Run evaluation with new prompt</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col4:
+        st.markdown(f"""
+        <div class="metric-card" style="text-align: center; padding: 1.25rem;">
+            <div style="font-size: 1.5rem; color: {COLORS['teal']}; margin-bottom: 0.5rem;">4</div>
+            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.5rem;">Compare</div>
+            <div style="font-size: 0.85rem; color: {COLORS['charcoal']};">Keep the change if metrics improve</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # Available prompts
+    render_section_header("Available Prompts")
+
+    prompts = load_all_prompts()
+
+    if not prompts:
+        st.info("No prompts found in prompts/ directory")
+    else:
+        st.markdown(f"**{len(prompts)} prompts available** — click to view content")
+
+        for prompt_id, content in prompts.items():
+            # Determine prompt characteristics
+            has_calibration = "calibration" in content.lower() or "confidence" in content.lower() and "0.95" in content
+            has_json = "json" in content.lower()
+            has_examples = "example" in content.lower()
+
+            tags = []
+            if has_json:
+                tags.append("structured output")
+            if has_calibration:
+                tags.append("calibrated confidence")
+            if has_examples:
+                tags.append("few-shot")
+
+            tag_str = " · ".join(tags) if tags else "basic"
+
+            with st.expander(f"**{prompt_id}** — _{tag_str}_"):
+                st.code(content, language=None)
+
+    st.markdown("---")
+
+    # Example comparison: v5 vs v6
+    render_section_header("Case Study: v5 vs v6")
+
+    st.markdown(f"""
+    <div class="metric-card" style="margin-bottom: 1rem;">
+        <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">The Problem with v5</div>
+        <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
+            <code>v5_structured_output</code> tells the model to output confidence between 0.0-1.0, but doesn't explain
+            <strong>what each value means</strong>. The model picks arbitrary numbers, so confidence doesn't predict correctness.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown(f"""
+    <div class="metric-card status-good" style="margin-bottom: 1rem;">
+        <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">The v6 Solution</div>
+        <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
+            <code>v6_calibrated_confidence</code> adds explicit calibration guidelines:
+            <ul style="margin-top: 0.5rem; margin-bottom: 0;">
+                <li><strong>0.95-1.0:</strong> Direct quotes or paraphrases</li>
+                <li><strong>0.80-0.94:</strong> Clearly supported with minor inference</li>
+                <li><strong>0.60-0.79:</strong> Moderate inference required</li>
+                <li><strong>0.40-0.59:</strong> Ambiguous evidence</li>
+                <li><strong>0.20-0.39:</strong> Likely adds info not in context</li>
+                <li><strong>0.00-0.19:</strong> Contradicts or fabricates</li>
+            </ul>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Results comparison
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown(f"""
+        <div class="metric-card status-poor">
+            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.5rem;">v5 Results</div>
+            <div style="font-size: 0.9rem; color: {COLORS['charcoal']};">
+                <strong>Spearman Correlation: ~0.26</strong><br>
+                <span style="color: {COLORS['medium_gray']};">Confidence is nearly random — doesn't predict correctness</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown(f"""
+        <div class="metric-card status-good">
+            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.5rem;">v6 Results</div>
+            <div style="font-size: 0.9rem; color: {COLORS['charcoal']};">
+                <strong>Spearman Correlation: ~0.84</strong><br>
+                <span style="color: {COLORS['medium_gray']};">Confidence is meaningful — high confidence = more likely correct</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # How to interpret
+    render_section_header("Interpreting Hillclimbing Results")
+
+    st.markdown(f"""
+    <div class="metric-card">
+        <div style="color: {COLORS['charcoal']}; line-height: 1.8;">
+            <strong>When comparing prompts, look for:</strong>
+            <table style="width: 100%; margin-top: 1rem; font-size: 0.9rem;">
+                <tr>
+                    <td style="padding: 0.5rem 0;"><strong>Metric</strong></td>
+                    <td style="padding: 0.5rem 0;"><strong>What Improvement Means</strong></td>
+                </tr>
+                <tr style="border-top: 1px solid {COLORS['light_gray']};">
+                    <td style="padding: 0.5rem 0;">F1 Score ↑</td>
+                    <td style="padding: 0.5rem 0;">Better balance of catching hallucinations without false alarms</td>
+                </tr>
+                <tr style="border-top: 1px solid {COLORS['light_gray']};">
+                    <td style="padding: 0.5rem 0;">Spearman ↑</td>
+                    <td style="padding: 0.5rem 0;">Confidence scores are more meaningful/trustworthy</td>
+                </tr>
+                <tr style="border-top: 1px solid {COLORS['light_gray']};">
+                    <td style="padding: 0.5rem 0;">Bias → 0</td>
+                    <td style="padding: 0.5rem 0;">System is more balanced (not too aggressive or lenient)</td>
+                </tr>
+                <tr style="border-top: 1px solid {COLORS['light_gray']};">
+                    <td style="padding: 0.5rem 0;">MAE ↓</td>
+                    <td style="padding: 0.5rem 0;">Confidence values are better calibrated to actual correctness</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # Tips
+    render_section_header("Hillclimbing Tips")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div style="font-weight: 500; color: {COLORS['good']}; margin-bottom: 0.5rem;">✓ Do</div>
+            <ul style="color: {COLORS['charcoal']}; font-size: 0.9rem; margin: 0; padding-left: 1.25rem;">
+                <li>Change one thing at a time</li>
+                <li>Run on the same test cases</li>
+                <li>Use enough samples (20+)</li>
+                <li>Track which changes helped</li>
+                <li>Consider multiple metrics</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div style="font-weight: 500; color: {COLORS['poor']}; margin-bottom: 0.5rem;">✗ Don't</div>
+            <ul style="color: {COLORS['charcoal']}; font-size: 0.9rem; margin: 0; padding-left: 1.25rem;">
+                <li>Change multiple things at once</li>
+                <li>Use different test cases</li>
+                <li>Optimize for just one metric</li>
+                <li>Ignore confidence calibration</li>
+                <li>Stop after first improvement</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+
+# ============================================
 # MAIN APPLICATION
 # ============================================
 
@@ -2613,7 +2898,7 @@ def main():
         st.markdown("---")
 
         # Navigation
-        pages = ["Getting Started", "Metrics Overview", "Trends", "Compare Runs", "Run History", "Test Cases", "Run Evaluation", "Understanding Metrics"]
+        pages = ["Getting Started", "Metrics Overview", "Trends", "Compare Runs", "Run History", "Test Cases", "Prompt Lab", "Run Evaluation", "Understanding Metrics"]
 
         # Find current page index
         current_index = pages.index(st.session_state.current_page) if st.session_state.current_page in pages else 0
@@ -2663,6 +2948,8 @@ def main():
         render_run_history_page(df)
     elif page == "Test Cases":
         render_test_cases_page()
+    elif page == "Prompt Lab":
+        render_prompt_lab_page(df)
     elif page == "Run Evaluation":
         render_run_evaluation_page()
     elif page == "Understanding Metrics":
