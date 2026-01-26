@@ -1674,49 +1674,42 @@ def render_compare_runs_page(df: pd.DataFrame):
             significant_declines.append(row)
 
     if significant_declines:
-        st.markdown(f"""
-        <div class="metric-card status-poor">
-            <span class="metric-label">Significant Declines Detected</span>
-            <div style="margin-top: 0.75rem; color: {COLORS['charcoal']};">
-        """, unsafe_allow_html=True)
-
+        decline_items = ""
         for row in significant_declines:
             direction = "↑" if row['delta'] > 0 else "↓"
-            st.markdown(f"• **{row['metric_name']}** ({row['scenario']}): {row['metric_value_baseline']:.3f} → {row['metric_value_compare']:.3f} ({direction} {row['delta_pct']:.1f}%)")
+            decline_items += f'<div style="margin-bottom: 0.25rem;">• <strong>{row["metric_name"]}</strong> ({row["scenario"]}): {row["metric_value_baseline"]:.3f} → {row["metric_value_compare"]:.3f} ({direction} {row["delta_pct"]:.1f}%)</div>'
 
-        st.markdown("""
-            </div>
-            <div class="metric-context">
-                Consider reviewing recent changes to prompts, test data, or model configuration.
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        decline_html = (
+            f'<div class="metric-card status-poor">'
+            f'<span class="metric-label">Significant Declines Detected</span>'
+            f'<div style="margin-top: 0.75rem; color: {COLORS["charcoal"]};">{decline_items}</div>'
+            f'<div class="metric-context">Consider reviewing recent changes to prompts, test data, or model configuration.</div>'
+            f'</div>'
+        )
+        st.markdown(decline_html, unsafe_allow_html=True)
 
     if significant_improvements:
-        st.markdown(f"""
-        <div class="metric-card status-good">
-            <span class="metric-label">Significant Improvements</span>
-            <div style="margin-top: 0.75rem; color: {COLORS['charcoal']};">
-        """, unsafe_allow_html=True)
-
+        improvement_items = ""
         for row in significant_improvements:
             direction = "↑" if row['delta'] > 0 else "↓"
-            st.markdown(f"• **{row['metric_name']}** ({row['scenario']}): {row['metric_value_baseline']:.3f} → {row['metric_value_compare']:.3f} ({direction} {row['delta_pct']:.1f}%)")
+            improvement_items += f'<div style="margin-bottom: 0.25rem;">• <strong>{row["metric_name"]}</strong> ({row["scenario"]}): {row["metric_value_baseline"]:.3f} → {row["metric_value_compare"]:.3f} ({direction} {row["delta_pct"]:.1f}%)</div>'
 
-        st.markdown("""
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        improvement_html = (
+            f'<div class="metric-card status-good">'
+            f'<span class="metric-label">Significant Improvements</span>'
+            f'<div style="margin-top: 0.75rem; color: {COLORS["charcoal"]};">{improvement_items}</div>'
+            f'</div>'
+        )
+        st.markdown(improvement_html, unsafe_allow_html=True)
 
     if not significant_declines and not significant_improvements:
-        st.markdown(f"""
-        <div class="metric-card">
-            <span class="metric-label">Stable Performance</span>
-            <div style="margin-top: 0.5rem; color: {COLORS['charcoal']};">
-                No significant changes detected between these runs. Performance is consistent.
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        stable_html = (
+            f'<div class="metric-card">'
+            f'<span class="metric-label">Stable Performance</span>'
+            f'<div style="margin-top: 0.5rem; color: {COLORS["charcoal"]};">No significant changes detected between these runs. Performance is consistent.</div>'
+            f'</div>'
+        )
+        st.markdown(stable_html, unsafe_allow_html=True)
 
 
 # ============================================
