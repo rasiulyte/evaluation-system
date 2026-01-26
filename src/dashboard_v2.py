@@ -1455,11 +1455,24 @@ def render_run_evaluation_page():
         st.error("Could not load config/settings.yaml. Make sure the file exists.")
         return
 
-    # Check for API key
+    # Check for API key - check both env and Streamlit secrets
     import os
     api_key = os.getenv("OPENAI_API_KEY")
+
+    # Try to get from Streamlit secrets if not in env
     if not api_key:
-        st.warning("⚠️ OPENAI_API_KEY not found in environment. Evaluation will fail without it.")
+        try:
+            api_key = st.secrets.get("OPENAI_API_KEY")
+            if api_key:
+                # Set it in environment so orchestrator can use it
+                os.environ["OPENAI_API_KEY"] = api_key
+        except Exception:
+            pass
+
+    if not api_key:
+        st.error("⚠️ OPENAI_API_KEY not found. Add it to Streamlit secrets or environment variables.")
+        st.caption("On Streamlit Cloud: Go to App Settings → Secrets and add OPENAI_API_KEY")
+        return
 
     # Configuration section
     render_section_header("Configuration")
