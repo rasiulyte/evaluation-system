@@ -739,7 +739,7 @@ def render_footer():
     """Render the footer."""
     st.markdown(f"""
     <div class="footer">
-        <p>Built for thoughtful AI evaluation</p>
+        <p>A sandbox for learning AI evaluation</p>
         <p><a href="https://rasar.ai" target="_blank">rasar.ai</a></p>
     </div>
     """, unsafe_allow_html=True)
@@ -2199,7 +2199,7 @@ def render_guide_page():
 
 def main():
     st.set_page_config(
-        page_title="AI Evaluation · rasar.ai",
+        page_title="Eval Lab · rasar.ai",
         page_icon="◈",
         layout="wide",
         initial_sidebar_state="expanded"
@@ -2216,10 +2216,10 @@ def main():
         st.markdown(f"""
         <div style="padding: 1rem 0 1.5rem 0;">
             <div style="font-size: 1.1rem; font-weight: 500; color: {COLORS['navy']};">
-                ◈ AI Evaluation
+                ◈ Eval Lab
             </div>
             <div style="font-size: 0.75rem; color: {COLORS['medium_gray']}; margin-top: 0.25rem;">
-                rasar.ai
+                learn AI evaluation
             </div>
         </div>
         """, unsafe_allow_html=True)
