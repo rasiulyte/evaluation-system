@@ -28,7 +28,8 @@ class Database:
     
     def _get_connection(self):
         if self.use_postgres:
-            return psycopg2.connect(DATABASE_URL)
+            # Supabase requires SSL
+            return psycopg2.connect(DATABASE_URL, sslmode='require')
         else:
             os.makedirs("data", exist_ok=True)
             return sqlite3.connect("data/metrics.db")
