@@ -291,26 +291,64 @@ class EvaluationOrchestrator:
                 y_true = [r.get("ground_truth") for r in results if "ground_truth" in r and "prediction" in r]
                 y_pred = [r.get("prediction") for r in results if "ground_truth" in r and "prediction" in r]
 
+                # Extract confidence scores if available
+                y_conf = []
+                for r in results:
+                    if "ground_truth" in r and "prediction" in r:
+                        conf = r.get("confidence")
+                        if conf is not None:
+                            y_conf.append(float(conf))
+                        else:
+                            y_conf.append(None)
+
+                # Only use confidence if all values are present
+                if y_conf and all(c is not None for c in y_conf):
+                    y_conf_valid = y_conf
+                else:
+                    y_conf_valid = None
+
                 if y_true and y_pred:
-                    calc = MetricsCalculator(y_true, y_pred)
+                    calc = MetricsCalculator(y_true, y_pred, y_conf=y_conf_valid)
                     calc_metrics = calc.all_metrics()
 
-                    # Convert to our MetricResult format
+                    # Convert to our MetricResult format - include ALL available metrics
                     metrics = {
+                        # Classification metrics
                         'f1': MetricResult('f1', calc_metrics['f1'].value, threshold_min=0.75),
                         'tnr': MetricResult('tnr', calc_metrics['tnr'].value, threshold_min=0.65),
-                        'bias': MetricResult('bias', abs(calc_metrics['bias'].value), threshold_max=0.15),
                         'accuracy': MetricResult('accuracy', calc_metrics['accuracy'].value, threshold_min=0.70),
                         'precision': MetricResult('precision', calc_metrics['precision'].value, threshold_min=0.70),
                         'recall': MetricResult('recall', calc_metrics['recall'].value, threshold_min=0.70),
+                        # Agreement metrics
+                        'cohens_kappa': MetricResult('cohens_kappa', calc_metrics['cohens_kappa'].value, threshold_min=0.60),
+                        # Error metrics
+                        'bias': MetricResult('bias', abs(calc_metrics['bias'].value), threshold_max=0.15),
                     }
 
-                    print(f"  Results: F1={metrics['f1'].value:.3f}, TNR={metrics['tnr'].value:.3f}, Bias={metrics['bias'].value:.3f}")
+                    # Add correlation metrics if confidence scores were available
+                    if 'spearman' in calc_metrics:
+                        metrics['spearman'] = MetricResult('spearman', calc_metrics['spearman'].value, threshold_min=0.60)
+                    if 'pearson' in calc_metrics:
+                        metrics['pearson'] = MetricResult('pearson', calc_metrics['pearson'].value, threshold_min=0.60)
+                    if 'kendalls_tau' in calc_metrics:
+                        metrics['kendalls_tau'] = MetricResult('kendalls_tau', calc_metrics['kendalls_tau'].value, threshold_min=0.50)
+                    if 'mae' in calc_metrics:
+                        metrics['mae'] = MetricResult('mae', calc_metrics['mae'].value, threshold_max=0.20)
+                    if 'rmse' in calc_metrics:
+                        metrics['rmse'] = MetricResult('rmse', calc_metrics['rmse'].value, threshold_max=0.25)
+
+                    print(f"  Results: F1={metrics['f1'].value:.3f}, TNR={metrics['tnr'].value:.3f}, Kappa={metrics['cohens_kappa'].value:.3f}")
+                    if y_conf_valid:
+                        print(f"  Correlation metrics available (confidence scores found)")
                 else:
                     print(f"  Warning: No valid predictions for {scenario}")
                     metrics = {
                         'f1': MetricResult('f1', 0.0, threshold_min=0.75),
                         'tnr': MetricResult('tnr', 0.0, threshold_min=0.65),
+                        'accuracy': MetricResult('accuracy', 0.0, threshold_min=0.70),
+                        'precision': MetricResult('precision', 0.0, threshold_min=0.70),
+                        'recall': MetricResult('recall', 0.0, threshold_min=0.70),
+                        'cohens_kappa': MetricResult('cohens_kappa', 0.0, threshold_min=0.60),
                         'bias': MetricResult('bias', 0.0, threshold_max=0.15),
                     }
 
@@ -319,6 +357,10 @@ class EvaluationOrchestrator:
                 metrics = {
                     'f1': MetricResult('f1', 0.0, threshold_min=0.75),
                     'tnr': MetricResult('tnr', 0.0, threshold_min=0.65),
+                    'accuracy': MetricResult('accuracy', 0.0, threshold_min=0.70),
+                    'precision': MetricResult('precision', 0.0, threshold_min=0.70),
+                    'recall': MetricResult('recall', 0.0, threshold_min=0.70),
+                    'cohens_kappa': MetricResult('cohens_kappa', 0.0, threshold_min=0.60),
                     'bias': MetricResult('bias', 0.0, threshold_max=0.15),
                 }
 
