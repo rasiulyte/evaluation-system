@@ -7,7 +7,7 @@ Each metric has documented intent, interpretation guide, and target values.
 Metrics are organized by category:
 - Agreement: Accuracy, Cohen's Kappa
 - Classification: Precision, Recall, F1, TNR (Specificity)
-- Correlation: Spearman, Pearson (when scores provided)
+- Correlation: Spearman, Pearson, Kendall's Tau (when confidence scores provided)
 - Error: MAE, Bias, RMSE (when scores provided)
 - Consistency: Variance across runs, Self-consistency rate
 """
@@ -15,7 +15,7 @@ Metrics are organized by category:
 from dataclasses import dataclass, field, asdict
 from typing import List, Dict, Optional, Tuple
 import numpy as np
-from scipy.stats import spearmanr, pearsonr
+from scipy.stats import spearmanr, pearsonr, kendalltau
 from sklearn.metrics import (
     accuracy_score, 
     precision_score, 
@@ -361,19 +361,19 @@ class MetricsCalculator:
     def pearson_correlation(self) -> Optional[MetricResult]:
         """
         Pearson Correlation: Linear relationship between variables.
-        
+
         Intent: Linear relationship between variables
         When to use: When assuming linear relationships; less robust than Spearman
         Target: >= 0.70
-        
+
         Returns None if confidence scores not provided.
         """
         if self.y_conf is None:
             return None
-        
+
         corr, pval = pearsonr(self.y_conf, self.y_true)
         value = abs(corr)
-        
+
         interpretation = f"Correlation: {corr:.3f}, p-value: {pval:.4f}"
         if corr >= 0.70:
             interpretation += " (Strong linear relationship)"
@@ -381,10 +381,10 @@ class MetricsCalculator:
             interpretation += " (Moderate relationship)"
         else:
             interpretation += " (Weak relationship)"
-        
+
         target = "≥ 0.70"
         meets_target = abs(corr) >= 0.70
-        
+
         return MetricResult(
             name="pearson_correlation",
             value=value,
@@ -394,6 +394,52 @@ class MetricsCalculator:
             meets_target=meets_target,
             category="correlation",
             metadata={"p_value": pval, "raw_correlation": corr}
+        )
+
+    def kendalls_tau(self) -> Optional[MetricResult]:
+        """
+        Kendall's Tau: Rank correlation based on concordant/discordant pairs.
+
+        Intent: Measure ordinal association between confidence and correctness
+        When to use: More robust than Spearman for small samples or many ties;
+                     preferred for ordinal data or when distribution is unknown
+        Target: >= 0.60 (tau values tend to be lower than Spearman/Pearson)
+
+        Returns None if confidence scores not provided.
+
+        Interpretation:
+        - tau = 1.0: Perfect agreement (all pairs concordant)
+        - tau = 0.0: No association
+        - tau = -1.0: Perfect disagreement (all pairs discordant)
+        """
+        if self.y_conf is None:
+            return None
+
+        tau, pval = kendalltau(self.y_conf, self.y_true)
+        value = abs(tau)
+
+        interpretation = f"Tau: {tau:.3f}, p-value: {pval:.4f}"
+        if abs(tau) >= 0.70:
+            interpretation += " (Strong ordinal association)"
+        elif abs(tau) >= 0.50:
+            interpretation += " (Moderate ordinal association)"
+        elif abs(tau) >= 0.30:
+            interpretation += " (Weak ordinal association)"
+        else:
+            interpretation += " (Very weak or no association)"
+
+        target = "≥ 0.60"
+        meets_target = abs(tau) >= 0.60
+
+        return MetricResult(
+            name="kendalls_tau",
+            value=value,
+            intent="Ordinal association between confidence and correctness; robust to ties and outliers",
+            interpretation=interpretation,
+            target=target,
+            meets_target=meets_target,
+            category="correlation",
+            metadata={"p_value": pval, "raw_tau": tau}
         )
 
     # ========== ERROR METRICS ==========
@@ -604,18 +650,21 @@ class MetricsCalculator:
         if self.y_conf is not None:
             spearman = self.spearman_correlation()
             pearson = self.pearson_correlation()
+            kendall = self.kendalls_tau()
             mae = self.mean_absolute_error()
             rmse = self.root_mean_squared_error()
-            
+
             if spearman:
                 metrics["spearman"] = spearman
             if pearson:
                 metrics["pearson"] = pearson
+            if kendall:
+                metrics["kendalls_tau"] = kendall
             if mae:
                 metrics["mae"] = mae
             if rmse:
                 metrics["rmse"] = rmse
-        
+
         return metrics
 
     def primary_metrics(self) -> Dict[str, MetricResult]:
