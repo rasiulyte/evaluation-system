@@ -2448,6 +2448,129 @@ def render_home_page():
 
 
 # ============================================
+# PAGE: TEST CASES
+# ============================================
+
+def load_all_test_cases() -> list:
+    """Load all test cases from the test_cases directory."""
+    import json
+    from pathlib import Path
+
+    project_root = Path(__file__).parent.parent
+    test_cases_dir = project_root / "data" / "test_cases"
+
+    all_cases = []
+    if not test_cases_dir.exists():
+        return all_cases
+
+    for json_file in sorted(test_cases_dir.glob("*.json")):
+        try:
+            with open(json_file, "r") as f:
+                cases = json.load(f)
+                for case in cases:
+                    case['_source_file'] = json_file.name
+                    all_cases.append(case)
+        except Exception:
+            continue
+
+    return all_cases
+
+
+def render_test_cases_page():
+    """Page to browse all test cases."""
+
+    render_page_header(
+        "Test Cases",
+        "Browse all test cases used for evaluation"
+    )
+
+    # Load all test cases
+    all_cases = load_all_test_cases()
+
+    if not all_cases:
+        st.info("No test cases found in data/test_cases/")
+        return
+
+    # Summary
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        render_simple_metric("Total Cases", str(len(all_cases)))
+    with col2:
+        hallucination_count = len([c for c in all_cases if c.get('label') == 'hallucination'])
+        render_simple_metric("Hallucinations", str(hallucination_count))
+    with col3:
+        grounded_count = len([c for c in all_cases if c.get('label') == 'grounded'])
+        render_simple_metric("Grounded", str(grounded_count))
+
+    st.markdown("---")
+
+    # Filters
+    col1, col2 = st.columns(2)
+
+    with col1:
+        labels = sorted(set(c.get('label', 'unknown') for c in all_cases))
+        selected_label = st.selectbox("Filter by Label", ["All"] + labels, key="tc_label_filter")
+
+    with col2:
+        failure_modes = sorted(set(c.get('failure_mode', '') for c in all_cases if c.get('failure_mode')))
+        selected_fm = st.selectbox("Filter by Failure Mode", ["All"] + failure_modes, key="tc_fm_filter")
+
+    # Apply filters
+    filtered_cases = all_cases
+    if selected_label != "All":
+        filtered_cases = [c for c in filtered_cases if c.get('label') == selected_label]
+    if selected_fm != "All":
+        filtered_cases = [c for c in filtered_cases if c.get('failure_mode') == selected_fm]
+
+    st.markdown(f"**Showing {len(filtered_cases)} test cases**")
+
+    # Display test cases
+    for case in filtered_cases:
+        case_id = case.get('id', 'unknown')
+        label = case.get('label', '—')
+        failure_mode = case.get('failure_mode', '')
+
+        # Color based on label
+        if label == 'hallucination':
+            label_color = COLORS['poor']
+            status_class = "status-poor"
+        elif label == 'grounded':
+            label_color = COLORS['good']
+            status_class = "status-good"
+        else:
+            label_color = COLORS['medium_gray']
+            status_class = ""
+
+        with st.expander(f"**{case_id}** — {label}" + (f" — {failure_mode}" if failure_mode else "")):
+            # Metadata row
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.markdown(f"**Label:** <span style='color: {label_color};'>{label}</span>", unsafe_allow_html=True)
+            with col2:
+                if failure_mode:
+                    st.markdown(f"**Failure Mode:** `{failure_mode}`")
+            with col3:
+                st.markdown(f"**Source:** `{case.get('_source_file', '—')}`")
+
+            st.markdown("---")
+
+            # Context
+            st.markdown("**Context** (source material):")
+            context = case.get('context', '—')
+            st.markdown(f"""<div style="background: {COLORS['light_gray']}; padding: 1rem; border-radius: 6px; font-size: 0.9rem; margin-bottom: 1rem; white-space: pre-wrap;">{context}</div>""", unsafe_allow_html=True)
+
+            # Response
+            st.markdown("**Response** (text to evaluate for hallucinations):")
+            response = case.get('response', '—')
+            st.markdown(f"""<div style="background: {COLORS['light_gray']}; padding: 1rem; border-radius: 6px; font-size: 0.9rem; border-left: 4px solid {label_color}; white-space: pre-wrap;">{response}</div>""", unsafe_allow_html=True)
+
+            # Explanation if available
+            if case.get('explanation'):
+                st.markdown("**Explanation:**")
+                st.markdown(f"_{case.get('explanation')}_")
+
+
+# ============================================
 # MAIN APPLICATION
 # ============================================
 
@@ -2490,7 +2613,7 @@ def main():
         st.markdown("---")
 
         # Navigation
-        pages = ["Getting Started", "Metrics Overview", "Trends", "Compare Runs", "Run History", "Run Evaluation", "Understanding Metrics"]
+        pages = ["Getting Started", "Metrics Overview", "Trends", "Compare Runs", "Run History", "Test Cases", "Run Evaluation", "Understanding Metrics"]
 
         # Find current page index
         current_index = pages.index(st.session_state.current_page) if st.session_state.current_page in pages else 0
@@ -2538,6 +2661,8 @@ def main():
         render_compare_runs_page(df)
     elif page == "Run History":
         render_run_history_page(df)
+    elif page == "Test Cases":
+        render_test_cases_page()
     elif page == "Run Evaluation":
         render_run_evaluation_page()
     elif page == "Understanding Metrics":
