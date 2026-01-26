@@ -1056,85 +1056,40 @@ def render_run_history_page(df: pd.DataFrame):
 
     st.markdown("---")
 
-    # Runs table with colored status
-    def get_status_html(status_raw):
-        if status_raw == "passing":
-            return f'<span style="color: {COLORS["good"]}; font-weight: 500;">✓ Passing</span>'
-        elif status_raw == "failing":
-            return f'<span style="color: {COLORS["poor"]}; font-weight: 500;">✗ Failing</span>'
-        else:
-            return f'<span style="color: {COLORS["amber"]}; font-weight: 500;">○ Fair</span>'
-
-    # Build HTML table
-    table_html = f"""
-    <style>
-        .runs-table {{
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.9rem;
-        }}
-        .runs-table th {{
-            text-align: left;
-            padding: 0.75rem 1rem;
-            border-bottom: 2px solid {COLORS['light_gray']};
-            color: {COLORS['medium_gray']};
-            font-weight: 500;
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-        }}
-        .runs-table td {{
-            padding: 0.75rem 1rem;
-            border-bottom: 1px solid {COLORS['light_gray']};
-            color: {COLORS['charcoal']};
-        }}
-        .runs-table tr:hover {{
-            background-color: rgba(90, 154, 156, 0.05);
-        }}
-        .runs-table .mono {{
-            font-family: 'JetBrains Mono', 'SF Mono', monospace;
-            font-size: 0.85rem;
-        }}
-    </style>
-    <table class="runs-table">
-        <thead>
-            <tr>
-                <th>Run ID</th>
-                <th>Date</th>
-                <th>Time</th>
-                <th>F1</th>
-                <th>Precision</th>
-                <th>Recall</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-    """
-
+    # Display each run as a card with colored status
     for _, row in runs_df.iterrows():
+        status_raw = row['status_raw']
+        if status_raw == "passing":
+            status_class = "status-good"
+            status_color = COLORS['good']
+            status_text = "✓ Passing"
+        elif status_raw == "failing":
+            status_class = "status-poor"
+            status_color = COLORS['poor']
+            status_text = "✗ Failing"
+        else:
+            status_class = "status-warning"
+            status_color = COLORS['amber']
+            status_text = "○ Fair"
+
         f1_str = f"{row['F1']:.3f}" if row['F1'] is not None else "—"
         prec_str = f"{row['Precision']:.3f}" if row['Precision'] is not None else "—"
         rec_str = f"{row['Recall']:.3f}" if row['Recall'] is not None else "—"
-        status_html = get_status_html(row['status_raw'])
 
-        table_html += f"""
-            <tr>
-                <td class="mono">{row['Run ID']}</td>
-                <td>{row['Date']}</td>
-                <td>{row['Time']}</td>
-                <td class="mono">{f1_str}</td>
-                <td class="mono">{prec_str}</td>
-                <td class="mono">{rec_str}</td>
-                <td>{status_html}</td>
-            </tr>
-        """
-
-    table_html += """
-        </tbody>
-    </table>
-    """
-
-    st.markdown(table_html, unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class="metric-card {status_class}" style="margin-bottom: 0.75rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <span style="font-family: monospace; font-size: 0.85rem; color: {COLORS['navy']};">{row['Run ID']}</span>
+                <span style="color: {status_color}; font-weight: 500;">{status_text}</span>
+            </div>
+            <div style="display: flex; gap: 2rem; font-size: 0.85rem; color: {COLORS['medium_gray']};">
+                <span>{row['Date']} {row['Time']}</span>
+                <span>F1: <strong style="color: {COLORS['charcoal']};">{f1_str}</strong></span>
+                <span>Precision: <strong style="color: {COLORS['charcoal']};">{prec_str}</strong></span>
+                <span>Recall: <strong style="color: {COLORS['charcoal']};">{rec_str}</strong></span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
 
 # ============================================
