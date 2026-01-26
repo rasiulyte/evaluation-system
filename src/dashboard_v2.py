@@ -842,6 +842,7 @@ def render_metrics_overview_page(df: pd.DataFrame):
             """, unsafe_allow_html=True)
 
     # --- SECTION 3: Correlation Metrics ---
+    import math
     correlation_metrics = [m for m in ["kendalls_tau", "spearman", "pearson"] if m in metrics]
 
     if correlation_metrics:
@@ -850,20 +851,41 @@ def render_metrics_overview_page(df: pd.DataFrame):
             "How well confidence scores predict actual correctness"
         )
 
-        cols = st.columns(len(correlation_metrics))
-        for i, metric_key in enumerate(correlation_metrics):
-            info = METRIC_INFO.get(metric_key, {})
-            value = metrics[metric_key]["value"]
+        # Check if correlation values are valid (not NaN)
+        valid_correlation_metrics = []
+        for m in correlation_metrics:
+            val = metrics[m]["value"]
+            if val is not None and not (isinstance(val, float) and math.isnan(val)):
+                valid_correlation_metrics.append(m)
 
-            with cols[i]:
-                render_metric_card(
-                    name=info.get("name", metric_key),
-                    value=value,
-                    interpretation=info.get("interpretation", lambda v: "")(value),
-                    context=info.get("context", ""),
-                    thresholds=info.get("thresholds", {}),
-                    format_str=".3f"
-                )
+        if valid_correlation_metrics:
+            cols = st.columns(len(valid_correlation_metrics))
+            for i, metric_key in enumerate(valid_correlation_metrics):
+                info = METRIC_INFO.get(metric_key, {})
+                value = metrics[metric_key]["value"]
+
+                with cols[i]:
+                    render_metric_card(
+                        name=info.get("name", metric_key),
+                        value=value,
+                        interpretation=info.get("interpretation", lambda v: "")(value),
+                        context=info.get("context", ""),
+                        thresholds=info.get("thresholds", {}),
+                        format_str=".3f"
+                    )
+        else:
+            st.markdown(f"""
+            <div class="metric-card" style="padding: 1rem;">
+                <span class="metric-label">Correlation Metrics Unavailable</span>
+                <div style="margin-top: 0.5rem; color: {COLORS['charcoal']};">
+                    Correlation metrics require variable confidence scores from the LLM.
+                </div>
+                <div style="margin-top: 0.5rem; font-size: 0.85rem; color: {COLORS['medium_gray']};">
+                    <strong>To enable:</strong> Use the <code>v5_structured_output</code> prompt, which asks the LLM
+                    to return confidence scores in JSON format.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
     # --- SECTION 4: Error Metrics ---
     error_metrics = [m for m in ["bias", "mae", "rmse"] if m in metrics]
@@ -874,20 +896,31 @@ def render_metrics_overview_page(df: pd.DataFrame):
             "Systematic biases and calibration quality"
         )
 
-        cols = st.columns(len(error_metrics))
-        for i, metric_key in enumerate(error_metrics):
-            info = METRIC_INFO.get(metric_key, {})
-            value = metrics[metric_key]["value"]
+        # Check for valid values
+        valid_error_metrics = []
+        for m in error_metrics:
+            val = metrics[m]["value"]
+            # bias is always valid, mae/rmse might be NaN or 0.5 (default)
+            if m == "bias":
+                valid_error_metrics.append(m)
+            elif val is not None and not (isinstance(val, float) and math.isnan(val)):
+                valid_error_metrics.append(m)
 
-            with cols[i]:
-                render_metric_card(
-                    name=info.get("name", metric_key),
-                    value=value,
-                    interpretation=info.get("interpretation", lambda v: "")(value),
-                    context=info.get("context", ""),
-                    thresholds=info.get("thresholds", {}),
-                    format_str=".3f"
-                )
+        if valid_error_metrics:
+            cols = st.columns(len(valid_error_metrics))
+            for i, metric_key in enumerate(valid_error_metrics):
+                info = METRIC_INFO.get(metric_key, {})
+                value = metrics[metric_key]["value"]
+
+                with cols[i]:
+                    render_metric_card(
+                        name=info.get("name", metric_key),
+                        value=value,
+                        interpretation=info.get("interpretation", lambda v: "")(value),
+                        context=info.get("context", ""),
+                        thresholds=info.get("thresholds", {}),
+                        format_str=".3f"
+                    )
 
 
 # ============================================
