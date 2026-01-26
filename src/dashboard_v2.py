@@ -1554,16 +1554,42 @@ def render_compare_runs_page(df: pd.DataFrame):
     # Metrics where LOWER is better (increase = bad, decrease = good)
     lower_is_better = {"bias", "mae", "rmse"}
 
+    # Define metric categories for grouping
+    metric_categories = {
+        "f1": "Classification", "precision": "Classification", "recall": "Classification",
+        "tnr": "Classification", "accuracy": "Classification",
+        "cohens_kappa": "Agreement",
+        "spearman": "Correlation", "pearson": "Correlation", "kendalls_tau": "Correlation",
+        "bias": "Calibration", "mae": "Calibration", "rmse": "Calibration"
+    }
+
+    # Track current category and scenario to show headers
+    current_category = None
+    current_scenario = None
+
     # Display comparison as styled rows with colored changes
     for _, row in filtered_comparison.iterrows():
+        metric_name_lower = row["metric_name"].lower()
+        category = metric_categories.get(metric_name_lower, "Other")
+        scenario = row["scenario"]
+
+        # Show scenario header when viewing all scenarios and scenario changes
+        if selected_detail_scenario == "All Scenarios" and scenario != current_scenario:
+            current_scenario = scenario
+            current_category = None  # Reset category for new scenario
+            st.markdown(f'<div style="margin-top: 1.5rem; margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 2px solid {COLORS["navy"]}; font-weight: 600; color: {COLORS["navy"]};">{scenario}</div>', unsafe_allow_html=True)
+
+        # Show category header when category changes
+        if category != current_category:
+            current_category = category
+            st.markdown(f'<div style="margin-top: 0.75rem; margin-bottom: 0.5rem; font-size: 0.8rem; font-weight: 500; color: {COLORS["medium_gray"]}; text-transform: uppercase; letter-spacing: 0.05em;">{category}</div>', unsafe_allow_html=True)
         delta = row["delta"]
         pct = row["delta_pct"]
         baseline = row["metric_value_baseline"]
         compare = row["metric_value_compare"]
-        metric_name = row["metric_name"].lower()
 
         # Check if this metric is "lower is better"
-        is_lower_better = metric_name in lower_is_better
+        is_lower_better = metric_name_lower in lower_is_better
 
         # Determine if this change is good or bad
         if abs(delta) <= 0.001:
@@ -1594,17 +1620,11 @@ def render_compare_runs_page(df: pd.DataFrame):
                 border_class = "status-poor"
             change_text = f"↓ {delta:.3f} ({pct:.1f}%)"
 
-        # Show scenario label only when viewing all scenarios
-        if selected_detail_scenario == "All Scenarios":
-            scenario_label = f' <span style="color: {COLORS["medium_gray"]}; font-size: 0.8rem;">({row["scenario"]})</span>'
-        else:
-            scenario_label = ""
-
         # Build HTML without multi-line f-string to avoid parsing issues
         card_html = (
-            f'<div class="metric-card {border_class}" style="margin-bottom: 0.5rem; padding: 1rem 1.25rem;">'
+            f'<div class="metric-card {border_class}" style="margin-bottom: 0.5rem; padding: 0.75rem 1rem;">'
             f'<div style="display: flex; justify-content: space-between; align-items: center;">'
-            f'<div><span style="color: {COLORS["navy"]}; font-weight: 500;">{row["metric_name"]}</span>{scenario_label}</div>'
+            f'<div><span style="color: {COLORS["navy"]}; font-weight: 500;">{row["metric_name"]}</span></div>'
             f'<span style="color: {change_color}; font-weight: 500; font-size: 0.9rem;">{change_text}</span>'
             f'</div>'
             f'<div style="display: flex; gap: 2rem; margin-top: 0.5rem; font-size: 0.85rem;">'
