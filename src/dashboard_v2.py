@@ -476,27 +476,54 @@ def apply_brand_css():
         border: 1px solid {COLORS['light_gray']} !important;
     }}
 
-    /* Logo button - styled as text, left aligned */
+    /* Logo button - styled as text, left aligned, LARGER */
     [data-testid="stSidebar"] .stButton:first-of-type {{
         text-align: left !important;
+        margin-bottom: 0.25rem !important;
     }}
 
     [data-testid="stSidebar"] .stButton:first-of-type > button {{
         background-color: transparent !important;
         color: {COLORS['navy']} !important;
         border: none !important;
-        padding: 0.5rem 0 !important;
-        font-size: 1.1rem !important;
-        font-weight: 500 !important;
+        padding: 0.75rem 0 !important;
+        font-size: 1.35rem !important;
+        font-weight: 600 !important;
         text-align: left !important;
         justify-content: flex-start !important;
         width: auto !important;
         min-width: 0 !important;
+        letter-spacing: -0.01em !important;
     }}
 
     [data-testid="stSidebar"] .stButton:first-of-type > button:hover {{
         background-color: transparent !important;
         color: {COLORS['teal']} !important;
+    }}
+
+    /* ===== SIDEBAR NAVIGATION ===== */
+
+    /* Navigation buttons - styled as links */
+    [data-testid="stSidebar"] .stButton:not(:first-of-type) > button {{
+        background-color: transparent !important;
+        color: {COLORS['charcoal']} !important;
+        border: none !important;
+        border-radius: 6px !important;
+        padding: 0.5rem 0.75rem !important;
+        font-size: 0.875rem !important;
+        font-weight: 400 !important;
+        text-align: left !important;
+        justify-content: flex-start !important;
+        transition: all 0.15s ease !important;
+    }}
+
+    [data-testid="stSidebar"] .stButton:not(:first-of-type) > button:hover {{
+        background-color: {COLORS['teal']}10 !important;
+        color: {COLORS['teal']} !important;
+    }}
+
+    [data-testid="stSidebar"] .stButton:not(:first-of-type) > button:focus {{
+        box-shadow: none !important;
     }}
 
     /* ===== DATAFRAMES ===== */
@@ -3748,17 +3775,17 @@ def main():
 
     # Sidebar
     with st.sidebar:
-        # Clickable logo that goes to Getting Started
+        # Logo - clickable, styled via CSS
         if st.button("◈ LLM-as-Judge", key="logo_btn", use_container_width=True):
             st.session_state.current_page = "Getting Started"
             st.rerun()
 
         st.markdown(f"""
-        <div style="padding: 0 0 1rem 0; margin-top: -0.5rem;">
-            <div style="font-size: 0.75rem; color: {COLORS['medium_gray']};">
-                hallucination detection
+        <div style="padding: 0 0 0.75rem 0; margin-top: -0.5rem;">
+            <div style="font-size: 0.8rem; color: {COLORS['medium_gray']};">
+                Hallucination Detection
             </div>
-            <div style="font-size: 0.7rem; margin-top: 0.25rem;">
+            <div style="font-size: 0.75rem; margin-top: 0.25rem;">
                 <a href="https://rasar.ai" target="_blank" style="color: {COLORS['teal']};">rasar.ai</a>
             </div>
         </div>
@@ -3766,23 +3793,52 @@ def main():
 
         st.markdown("---")
 
-        # Navigation
-        pages = ["Getting Started", "Metrics Overview", "Trends", "Compare Runs", "Run History", "Test Cases", "Failure Modes", "Prompt Lab", "Run Evaluation", "Understanding Metrics"]
+        # Grouped Navigation
+        # Define page groups
+        nav_groups = {
+            "LEARN": {
+                "icon": "📚",
+                "pages": ["Getting Started", "Failure Modes", "Prompt Lab", "Understanding Metrics"]
+            },
+            "ANALYZE": {
+                "icon": "📊",
+                "pages": ["Metrics Overview", "Trends", "Compare Runs", "Run History", "Test Cases"]
+            },
+            "RUN": {
+                "icon": "▶️",
+                "pages": ["Run Evaluation"]
+            }
+        }
 
-        # Find current page index
-        current_index = pages.index(st.session_state.current_page) if st.session_state.current_page in pages else 0
+        # Build flat list for routing
+        all_pages = []
+        for group_data in nav_groups.values():
+            all_pages.extend(group_data["pages"])
 
-        page = st.radio(
-            "Navigate",
-            pages,
-            index=current_index,
-            label_visibility="collapsed",
-            key="nav_radio"
-        )
+        # Render grouped navigation
+        for group_name, group_data in nav_groups.items():
+            st.markdown(f"""
+            <div style="font-size: 0.7rem; font-weight: 600; color: {COLORS['medium_gray']};
+                        letter-spacing: 0.05rem; margin: 0.75rem 0 0.4rem 0;">
+                {group_data['icon']} {group_name}
+            </div>
+            """, unsafe_allow_html=True)
 
-        # Update session state when radio changes
-        if page != st.session_state.current_page:
-            st.session_state.current_page = page
+            for page_name in group_data["pages"]:
+                # Add visual indicator for active page
+                is_active = st.session_state.current_page == page_name
+                display_name = f"● {page_name}" if is_active else page_name
+
+                # Create clickable page link
+                if st.button(
+                    display_name,
+                    key=f"nav_{page_name}",
+                    use_container_width=True,
+                ):
+                    st.session_state.current_page = page_name
+                    st.rerun()
+
+        page = st.session_state.current_page
 
         st.markdown("---")
 
