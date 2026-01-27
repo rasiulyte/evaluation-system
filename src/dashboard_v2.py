@@ -7,7 +7,7 @@ Technical depth without pretension. Quality over flash.
 """
 
 # Version for debugging - update this when making changes
-DASHBOARD_VERSION = "1.2.1"
+DASHBOARD_VERSION = "1.3.0"
 
 import pandas as pd
 import streamlit as st
@@ -650,13 +650,59 @@ def apply_brand_css():
 
     /* ===== RESPONSIVE ===== */
 
+    /* Tablet */
+    @media (max-width: 1024px) {{
+        .main .block-container {{
+            padding: 1.5rem 2rem;
+        }}
+
+        .metric-card {{
+            padding: 0.875rem;
+        }}
+    }}
+
+    /* Mobile */
     @media (max-width: 768px) {{
         .main .block-container {{
-            padding: 1rem 1.5rem;
+            padding: 1rem 1rem;
         }}
 
         .metric-value {{
             font-size: 1.5rem;
+        }}
+
+        .metric-card {{
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+        }}
+
+        .section-header {{
+            font-size: 1.25rem;
+        }}
+
+        .page-header h1 {{
+            font-size: 1.5rem;
+        }}
+
+        /* Stack columns on mobile */
+        [data-testid="column"] {{
+            width: 100% !important;
+            flex: 1 1 100% !important;
+        }}
+    }}
+
+    /* Small mobile */
+    @media (max-width: 480px) {{
+        .main .block-container {{
+            padding: 0.75rem 0.5rem;
+        }}
+
+        .metric-value {{
+            font-size: 1.25rem;
+        }}
+
+        .metric-label {{
+            font-size: 0.65rem;
         }}
     }}
     </style>
@@ -1082,7 +1128,7 @@ def render_metrics_overview_page(df: pd.DataFrame):
     )
 
     if df.empty:
-        st.info("No evaluation data yet. Run an evaluation to see metrics here.")
+        st.info("No evaluation data yet. Go to **Run Evaluation** in the sidebar to run your first evaluation.")
         return
 
     # Get scenario selector
@@ -1397,7 +1443,7 @@ def render_run_history_page(df: pd.DataFrame):
     )
 
     if df.empty:
-        st.info("No runs recorded yet.")
+        st.info("No runs recorded yet. Go to **Run Evaluation** to create your first run.")
         return
 
     # Fetch daily runs for cost info (cached)
@@ -1456,31 +1502,28 @@ def render_run_history_page(df: pd.DataFrame):
     total_cost = runs_df["cost"].sum() if "cost" in runs_df.columns else 0.0
     total_tokens = runs_df["tokens"].sum() if "tokens" in runs_df.columns else 0
 
-    col1, col2, col3, col4, col5 = st.columns(5)
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         render_simple_metric("Total Runs", str(len(runs_df)))
     with col2:
         st.markdown(f"""
-        <div class="metric-card status-good">
-            <span class="metric-label">Passing</span>
-            <div class="metric-value" style="color: {COLORS['good']};">{passing_runs}</div>
+        <div class="metric-card">
+            <span class="metric-label">Pass / Fail</span>
+            <div class="metric-value">
+                <span style="color: {COLORS['good']};">{passing_runs}</span>
+                <span style="color: {COLORS['medium_gray']}; font-size: 1rem;"> / </span>
+                <span style="color: {COLORS['poor']};">{failing_runs}</span>
+            </div>
         </div>
         """, unsafe_allow_html=True)
     with col3:
-        st.markdown(f"""
-        <div class="metric-card status-poor">
-            <span class="metric-label">Failing</span>
-            <div class="metric-value" style="color: {COLORS['poor']};">{failing_runs}</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with col4:
         st.markdown(f"""
         <div class="metric-card">
             <span class="metric-label">Total Cost</span>
             <div class="metric-value" style="color: {COLORS['teal']}; font-size: 1.25rem;">${total_cost:.4f}</div>
         </div>
         """, unsafe_allow_html=True)
-    with col5:
+    with col4:
         st.markdown(f"""
         <div class="metric-card">
             <span class="metric-label">Total Tokens</span>
@@ -1710,7 +1753,7 @@ def render_slice_analysis_page(df: pd.DataFrame):
     try:
         test_results = db.get_test_results()
         if not test_results:
-            st.info("No test results available. Run an evaluation first.")
+            st.info("No test results available. Go to **Run Evaluation** to generate test results.")
             return
 
         results_df = pd.DataFrame(test_results)
@@ -2784,10 +2827,20 @@ def render_run_evaluation_page():
                             </div>
                             """, unsafe_allow_html=True)
 
-                    st.success("✓ Results saved to database. View them in Metrics Overview or Trends.")
+                    st.success("✓ Results saved to database!")
+                    st.markdown(f"""
+                    <div class="metric-card" style="margin-top: 1rem; padding: 1rem;">
+                        <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.5rem;">Next Steps</div>
+                        <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.8;">
+                            • Go to <strong>Metrics Overview</strong> to see detailed results<br>
+                            • Go to <strong>Run History</strong> to browse all runs<br>
+                            • Go to <strong>Compare Runs</strong> to compare with previous evaluations
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
 
                 else:
-                    st.error("Evaluation failed. Check the logs for details.")
+                    st.error("Evaluation failed. Please check your API key and try again.")
 
             except Exception as e:
                 st.error(f"Error running evaluation: {str(e)}")
@@ -3484,32 +3537,45 @@ def render_home_page():
         </div>
         """, unsafe_allow_html=True)
 
-    # Quick start
-    render_section_header("Quick Start")
+    # Quick start checklist
+    render_section_header("Quick Start Checklist")
 
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.markdown(f"""
-        <div class="metric-card status-good" style="padding: 1.25rem;">
-            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.5rem;">For Learning</div>
-            <div style="color: {COLORS['charcoal']}; font-size: 0.9rem;">
-                Start with <strong>Failure Modes</strong> to understand hallucination types, then browse
-                <strong>Test Cases</strong> for real examples and <strong>Prompt Lab</strong> for prompt engineering.
-            </div>
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, {COLORS['teal']}08, {COLORS['navy']}05);
+                padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;">
+        <div style="font-size: 0.95rem; color: {COLORS['charcoal']}; margin-bottom: 1rem;">
+            New here? Follow these steps to get started:
         </div>
-        """, unsafe_allow_html=True)
+    </div>
+    """, unsafe_allow_html=True)
 
-    with col2:
-        st.markdown(f"""
-        <div class="metric-card" style="padding: 1.25rem;">
-            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.5rem;">For Analysis</div>
-            <div style="color: {COLORS['charcoal']}; font-size: 0.9rem;">
-                Go to <strong>Metrics Overview</strong> to see results, then use <strong>Compare Runs</strong>
-                to analyze differences between evaluation runs.
+    checklist_items = [
+        {"step": "1", "title": "Learn the basics", "desc": "Read <strong>Failure Modes</strong> to understand how AI hallucinations happen", "page": "Failure Modes"},
+        {"step": "2", "title": "Explore test cases", "desc": "Browse <strong>Test Cases</strong> to see real examples of grounded vs hallucinated responses", "page": "Test Cases"},
+        {"step": "3", "title": "Run an evaluation", "desc": "Go to <strong>Run Evaluation</strong> to test the LLM judge on sample data", "page": "Run Evaluation"},
+        {"step": "4", "title": "Analyze results", "desc": "Check <strong>Metrics Overview</strong> to see how well the judge performed", "page": "Metrics Overview"},
+    ]
+
+    for item in checklist_items:
+        col1, col2 = st.columns([0.92, 0.08])
+        with col1:
+            st.markdown(f"""
+            <div class="metric-card" style="padding: 1rem; margin-bottom: 0.5rem;">
+                <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                    <div style="background: {COLORS['teal']}; color: white; width: 24px; height: 24px;
+                                border-radius: 50%; display: flex; align-items: center; justify-content: center;
+                                font-size: 0.8rem; font-weight: bold; flex-shrink: 0;">{item['step']}</div>
+                    <div>
+                        <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.25rem;">{item['title']}</div>
+                        <div style="color: {COLORS['charcoal']}; font-size: 0.85rem;">{item['desc']}</div>
+                    </div>
+                </div>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
+        with col2:
+            if st.button("Go →", key=f"checklist_{item['step']}", use_container_width=True):
+                st.session_state.current_page = item['page']
+                st.rerun()
 
     # Audio Overview (at bottom)
     st.markdown("<div style='margin-top: 2rem;'></div>", unsafe_allow_html=True)
