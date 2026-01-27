@@ -7,7 +7,7 @@ Technical depth without pretension. Quality over flash.
 """
 
 # Version for debugging - update this when making changes
-DASHBOARD_VERSION = "1.4.0"
+DASHBOARD_VERSION = "1.4.1"
 
 import pandas as pd
 import streamlit as st
@@ -15,7 +15,6 @@ import plotly.graph_objects as go
 import plotly.express as px
 import json
 from pathlib import Path
-from datetime import datetime, timezone, timedelta
 
 # Import database abstraction
 import sys
@@ -52,40 +51,25 @@ COLORS = {
 # TIMEZONE HELPERS
 # ============================================
 
-# PST is UTC-8 (or UTC-7 during daylight saving)
-PST_OFFSET = timedelta(hours=-8)
-
 def to_pst(timestamp_str: str) -> tuple:
     """
-    Convert ISO timestamp string to PST date and time strings.
+    Format timestamp for display. Timestamps are stored in local time.
 
     Args:
         timestamp_str: ISO format timestamp (e.g., "2026-01-26T19:00:50.965936")
 
     Returns:
-        (date_str, time_str) in PST timezone
+        (date_str, time_str) for display
     """
     if not timestamp_str or len(timestamp_str) < 10:
         return ("—", "—")
 
     try:
-        # Parse the timestamp (assuming UTC or local)
-        if "T" in timestamp_str:
-            dt = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
-        else:
-            dt = datetime.fromisoformat(timestamp_str)
-
-        # If naive datetime, assume UTC
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-
-        # Convert to PST
-        pst_dt = dt + PST_OFFSET
-
-        return (pst_dt.strftime("%Y-%m-%d"), pst_dt.strftime("%H:%M"))
+        date_str = timestamp_str[:10]
+        time_str = timestamp_str[11:16] if len(timestamp_str) > 16 else "—"
+        return (date_str, time_str)
     except Exception:
-        # Fallback to simple string parsing
-        return (timestamp_str[:10], timestamp_str[11:16] if len(timestamp_str) > 11 else "—")
+        return ("—", "—")
 
 
 # ============================================
@@ -1210,7 +1194,7 @@ def render_metrics_overview_page(df: pd.DataFrame):
     latest_run = scenario_df.sort_values("timestamp", ascending=False).iloc[0]
 
     run_date, run_time = to_pst(latest_run['timestamp'])
-    st.caption(f"Latest run: {latest_run['run_id']} · {run_date} {run_time} PST")
+    st.caption(f"Latest run: {latest_run['run_id']} · {run_date} {run_time}")
 
     # Show available metrics (debug info)
     available_metrics = list(metrics.keys())
@@ -1541,13 +1525,13 @@ def render_run_history_page(df: pd.DataFrame):
             status = "✗ Failing"
             status_raw = "failing"
 
-        # Convert timestamp to PST
-        date_pst, time_pst = to_pst(timestamp)
+        # Format timestamp for display
+        date_str, time_str = to_pst(timestamp)
 
         runs_data.append({
             "Run ID": run_id,
-            "Date": date_pst,
-            "Time": time_pst + " PST",
+            "Date": date_str,
+            "Time": time_str,
             "F1": f1,
             "Precision": precision,
             "Recall": recall,
