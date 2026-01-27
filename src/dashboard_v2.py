@@ -3183,7 +3183,7 @@ def render_home_page():
     """Getting Started page explaining the dashboard."""
 
     render_page_header(
-        "Welcome to Eval Lab",
+        "Getting Started",
         "A sandbox for learning LLM-as-Judge evaluation"
     )
 
