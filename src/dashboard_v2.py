@@ -7,7 +7,7 @@ Technical depth without pretension. Quality over flash.
 """
 
 # Version for debugging - update this when making changes
-DASHBOARD_VERSION = "1.4.1"
+DASHBOARD_VERSION = "1.4.2"
 
 import pandas as pd
 import streamlit as st
@@ -51,25 +51,33 @@ COLORS = {
 # TIMEZONE HELPERS
 # ============================================
 
+from datetime import datetime, timedelta
+
 def to_pst(timestamp_str: str) -> tuple:
     """
-    Format timestamp for display. Timestamps are stored in local time.
+    Convert UTC timestamp to PST for display.
+    Streamlit Cloud stores timestamps in UTC, subtract 8 hours for PST.
 
     Args:
-        timestamp_str: ISO format timestamp (e.g., "2026-01-26T19:00:50.965936")
+        timestamp_str: ISO format timestamp in UTC (e.g., "2026-01-27T03:14:37")
 
     Returns:
-        (date_str, time_str) for display
+        (date_str, time_str) in PST
     """
     if not timestamp_str or len(timestamp_str) < 10:
         return ("—", "—")
 
     try:
-        date_str = timestamp_str[:10]
-        time_str = timestamp_str[11:16] if len(timestamp_str) > 16 else "—"
-        return (date_str, time_str)
+        # Parse the timestamp
+        dt = datetime.fromisoformat(timestamp_str.split('.')[0])  # Remove microseconds
+
+        # Convert UTC to PST (subtract 8 hours)
+        pst_dt = dt - timedelta(hours=8)
+
+        return (pst_dt.strftime("%Y-%m-%d"), pst_dt.strftime("%H:%M"))
     except Exception:
-        return ("—", "—")
+        # Fallback to raw string parsing
+        return (timestamp_str[:10], timestamp_str[11:16] if len(timestamp_str) > 16 else "—")
 
 
 # ============================================
