@@ -96,103 +96,10 @@ class DailyRunSummary:
     total_tokens: int = 0
     total_cost_usd: float = 0.0
 
-class MetricsDatabase:
-    """SQLite storage for metrics history"""
-    def __init__(self, db_path: str = "data/metrics.db"):
-        self.db_path = db_path
-        self._init_db()
-    def _init_db(self):
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
-        c.executescript("""
-        CREATE TABLE IF NOT EXISTS daily_runs (
-            run_id TEXT PRIMARY KEY,
-            run_date TEXT,
-            timestamp TEXT,
-            scenarios_run INTEGER,
-            scenarios_passed INTEGER,
-            scenarios_failed INTEGER,
-            overall_status TEXT,
-            alerts TEXT,
-            hillclimb_suggestions TEXT
-        );
-        CREATE TABLE IF NOT EXISTS scenario_results (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            run_id TEXT,
-            scenario TEXT,
-            timestamp TEXT,
-            prompt_version TEXT,
-            model TEXT,
-            sample_size INTEGER,
-            duration_seconds REAL,
-            status TEXT,
-            metadata TEXT,
-            FOREIGN KEY (run_id) REFERENCES daily_runs(run_id)
-        );
-        CREATE TABLE IF NOT EXISTS metrics (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            run_id TEXT,
-            scenario TEXT,
-            timestamp TEXT,
-            metric_name TEXT,
-            metric_value REAL,
-            threshold_min REAL,
-            threshold_max REAL,
-            unit TEXT,
-            status TEXT,
-            FOREIGN KEY (run_id) REFERENCES daily_runs(run_id)
-        );
-        CREATE TABLE IF NOT EXISTS experiments (
-            experiment_id TEXT PRIMARY KEY,
-            scenario TEXT,
-            baseline_run_id TEXT,
-            experiment_run_id TEXT,
-            hypothesis TEXT,
-            changes TEXT,
-            status TEXT,
-            conclusion TEXT,
-            created_at TEXT,
-            completed_at TEXT
-        );
-        CREATE INDEX IF NOT EXISTS idx_metrics_scenario ON metrics(scenario);
-        CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON metrics(timestamp);
-        CREATE INDEX IF NOT EXISTS idx_scenario_results_run ON scenario_results(run_id);
-        """)
-        conn.commit()
-        conn.close()
-    def save_daily_run(self, summary: DailyRunSummary):
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
-        c.execute("""
-            INSERT OR REPLACE INTO daily_runs (run_id, run_date, timestamp, scenarios_run, scenarios_passed, scenarios_failed, overall_status, alerts, hillclimb_suggestions)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            summary.run_id, summary.run_date, summary.timestamp, summary.scenarios_run, summary.scenarios_passed, summary.scenarios_failed, summary.overall_status.value,
-            json.dumps(summary.alerts), json.dumps(summary.hillclimb_suggestions)
-        ))
-        conn.commit()
-        conn.close()
 
-    def save_metrics(self, run_id: str, scenario: str, timestamp: str, metrics: Dict[str, 'MetricResult']):
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
-        for metric in metrics.values():
-            c.execute('''
-                INSERT INTO metrics (run_id, scenario, timestamp, metric_name, metric_value, threshold_min, threshold_max, unit, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                run_id,
-                scenario,
-                timestamp,
-                metric.name,
-                metric.value,
-                metric.threshold_min,
-                metric.threshold_max,
-                metric.unit,
-                metric.status.value
-            ))
-        conn.commit()
-        conn.close()
+# NOTE: The old MetricsDatabase class was removed - it was dead code with an outdated schema
+# All database operations now go through the shared 'db' instance from database.py
+
 
 class EvaluationOrchestrator:
     """Main orchestrator for daily evaluation runs"""
