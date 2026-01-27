@@ -7,7 +7,7 @@ Technical depth without pretension. Quality over flash.
 """
 
 # Version for debugging - update this when making changes
-DASHBOARD_VERSION = "1.4.2"
+DASHBOARD_VERSION = "1.4.3"
 
 import pandas as pd
 import streamlit as st
@@ -1604,8 +1604,8 @@ def render_run_history_page(df: pd.DataFrame):
         f1_str = f"{row['F1']:.3f}" if row['F1'] is not None else "—"
         prec_str = f"{row['Precision']:.3f}" if row['Precision'] is not None else "—"
         rec_str = f"{row['Recall']:.3f}" if row['Recall'] is not None else "—"
-        cost_str = f"${row['cost']:.4f}" if row['cost'] > 0 else "—"
-        tokens_str = f"{row['tokens']:,}" if row['tokens'] > 0 else "—"
+        cost_str = f"${row['cost']:.4f}"  # Always show cost, even if $0.0000
+        tokens_str = f"{row['tokens']:,}" if row['tokens'] > 0 else "0"
 
         # Create expander for each run
         with st.expander(f"**{row['Run ID']}** — {row['Date']} {row['Time']} — F1: {f1_str} — Cost: {cost_str}"):
@@ -1621,6 +1621,10 @@ def render_run_history_page(df: pd.DataFrame):
                 st.markdown(f"**Recall:** {rec_str}")
             with col5:
                 st.markdown(f"**Tokens:** {tokens_str}")
+
+            # Show note if cost is zero
+            if row['cost'] == 0:
+                st.caption("💡 Cost is $0 because this run was recorded before cost tracking was added.")
 
             st.markdown("---")
 
