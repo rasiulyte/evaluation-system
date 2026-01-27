@@ -3187,27 +3187,6 @@ def render_home_page():
         "A sandbox for learning LLM-as-Judge evaluation"
     )
 
-    # Audio Overview
-    st.markdown(f"""
-    <div class="metric-card" style="padding: 1.25rem; margin-bottom: 1.5rem;">
-        <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">
-            🎧 Audio Overview
-        </div>
-        <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; margin-bottom: 0.75rem;">
-            New here? Listen to a quick introduction to how AI judges catch hallucinations.
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Audio player
-    audio_path = Path(__file__).parent.parent / "assets" / "How_AI_Judges_Catch_Hallucinations.m4a"
-    if audio_path.exists():
-        st.audio(str(audio_path), format="audio/m4a")
-    else:
-        st.info("Audio overview not available.")
-
-    st.markdown("<div style='margin-bottom: 1.5rem;'></div>", unsafe_allow_html=True)
-
     st.markdown(f"""
     <div class="metric-card" style="padding: 1.5rem; margin-bottom: 1.5rem;">
         <div style="font-size: 1.1rem; color: {COLORS['navy']}; margin-bottom: 1rem; font-weight: 500;">
@@ -3476,6 +3455,24 @@ def render_home_page():
             </div>
         </div>
         """, unsafe_allow_html=True)
+
+    # Audio Overview (at bottom)
+    st.markdown("<div style='margin-top: 2rem;'></div>", unsafe_allow_html=True)
+    render_section_header("Audio Overview")
+
+    st.markdown(f"""
+    <div class="metric-card" style="padding: 1.25rem; margin-bottom: 1rem;">
+        <div style="color: {COLORS['charcoal']}; font-size: 0.95rem; line-height: 1.6;">
+            🎧 Prefer listening? Here's a quick audio introduction to how AI judges catch hallucinations.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    audio_path = Path(__file__).parent.parent / "assets" / "How_AI_Judges_Catch_Hallucinations.m4a"
+    if audio_path.exists():
+        st.audio(str(audio_path), format="audio/m4a")
+    else:
+        st.info("Audio overview not available.")
 
 
 # ============================================
