@@ -7,7 +7,7 @@ Technical depth without pretension. Quality over flash.
 """
 
 # Version for debugging - update this when making changes
-DASHBOARD_VERSION = "1.3.1"
+DASHBOARD_VERSION = "1.4.0"
 
 import pandas as pd
 import streamlit as st
@@ -15,6 +15,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 import json
 from pathlib import Path
+from datetime import datetime, timezone, timedelta
 
 # Import database abstraction
 import sys
@@ -45,6 +46,46 @@ COLORS = {
     "warning": "#c89f6f",        # Amber - needs attention
     "poor": "#b54a4a",           # Muted red - failing/critical
 }
+
+
+# ============================================
+# TIMEZONE HELPERS
+# ============================================
+
+# PST is UTC-8 (or UTC-7 during daylight saving)
+PST_OFFSET = timedelta(hours=-8)
+
+def to_pst(timestamp_str: str) -> tuple:
+    """
+    Convert ISO timestamp string to PST date and time strings.
+
+    Args:
+        timestamp_str: ISO format timestamp (e.g., "2026-01-26T19:00:50.965936")
+
+    Returns:
+        (date_str, time_str) in PST timezone
+    """
+    if not timestamp_str or len(timestamp_str) < 10:
+        return ("—", "—")
+
+    try:
+        # Parse the timestamp (assuming UTC or local)
+        if "T" in timestamp_str:
+            dt = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+        else:
+            dt = datetime.fromisoformat(timestamp_str)
+
+        # If naive datetime, assume UTC
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+
+        # Convert to PST
+        pst_dt = dt + PST_OFFSET
+
+        return (pst_dt.strftime("%Y-%m-%d"), pst_dt.strftime("%H:%M"))
+    except Exception:
+        # Fallback to simple string parsing
+        return (timestamp_str[:10], timestamp_str[11:16] if len(timestamp_str) > 11 else "—")
 
 
 # ============================================
@@ -1168,7 +1209,8 @@ def render_metrics_overview_page(df: pd.DataFrame):
     scenario_df = df[df["scenario"] == selected_scenario]
     latest_run = scenario_df.sort_values("timestamp", ascending=False).iloc[0]
 
-    st.caption(f"Latest run: {latest_run['run_id']} · {latest_run['timestamp'][:16]}")
+    run_date, run_time = to_pst(latest_run['timestamp'])
+    st.caption(f"Latest run: {latest_run['run_id']} · {run_date} {run_time} PST")
 
     # Show available metrics (debug info)
     available_metrics = list(metrics.keys())
@@ -1499,10 +1541,13 @@ def render_run_history_page(df: pd.DataFrame):
             status = "✗ Failing"
             status_raw = "failing"
 
+        # Convert timestamp to PST
+        date_pst, time_pst = to_pst(timestamp)
+
         runs_data.append({
             "Run ID": run_id,
-            "Date": timestamp[:10],
-            "Time": timestamp[11:16] if len(timestamp) > 11 else "",
+            "Date": date_pst,
+            "Time": time_pst + " PST",
             "F1": f1,
             "Precision": precision,
             "Recall": recall,
@@ -4879,10 +4924,11 @@ def main():
         if not df.empty:
             total_runs = df["run_id"].nunique()
             latest_run = df.sort_values("timestamp", ascending=False).iloc[0]
+            latest_date, _ = to_pst(latest_run['timestamp'])
             st.markdown(f"""
             <div style="font-size: 13px; color: #6b7280; line-height: 1.6;">
                 <div><strong>{total_runs}</strong> evaluation runs</div>
-                <div style="margin-top: 4px;">Latest: {latest_run['timestamp'][:10]}</div>
+                <div style="margin-top: 4px;">Latest: {latest_date}</div>
             </div>
             """, unsafe_allow_html=True)
 
