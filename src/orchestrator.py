@@ -220,6 +220,8 @@ class EvaluationOrchestrator:
         alerts = []
         hillclimb_suggestions = []
         all_test_case_results = []
+        all_metrics_to_save = []  # Collect all metrics, save at end
+        all_test_results_to_save = []  # Collect all test results, save at end
         total_tokens = 0
         total_cost_usd = 0.0
 
@@ -275,39 +277,31 @@ class EvaluationOrchestrator:
                     test_case_ids=test_case_ids
                 )
 
-                # Add scenario info to results and save to database
-                saved_count = 0
-                skipped_count = 0
+                # Add scenario info to results (defer DB save until end)
+                valid_count = 0
                 error_count = 0
                 for r in results:
                     r['scenario'] = scenario
                     pred = r.get('prediction')
-                    # Save all results that have a prediction key (including 'unknown')
                     if 'prediction' in r and pred not in [None, '']:
-                        try:
-                            db.save_test_result(
-                                run_id=run_id,
-                                scenario=scenario,
-                                test_case_id=r.get('test_case_id', ''),
-                                prompt_id=r.get('prompt_id', ''),
-                                ground_truth=r.get('ground_truth', ''),
-                                prediction=pred,
-                                confidence=float(r.get('confidence', 0.0)),
-                                correct=bool(r.get('correct', False)),
-                                llm_output=r.get('llm_output', ''),
-                                timestamp=r.get('timestamp', timestamp)
-                            )
-                            saved_count += 1
-                        except Exception as save_err:
-                            error_count += 1
-                            print(f"  DB Error for {r.get('test_case_id')}: {save_err}")
+                        valid_count += 1
+                        # Collect for batch save at end
+                        all_test_results_to_save.append({
+                            'run_id': run_id,
+                            'scenario': scenario,
+                            'test_case_id': r.get('test_case_id', ''),
+                            'prompt_id': r.get('prompt_id', ''),
+                            'ground_truth': r.get('ground_truth', ''),
+                            'prediction': pred,
+                            'confidence': float(r.get('confidence', 0.0)),
+                            'correct': bool(r.get('correct', False)),
+                            'llm_output': r.get('llm_output', ''),
+                            'timestamp': r.get('timestamp', timestamp)
+                        })
                     elif 'error' in r:
                         error_count += 1
                         print(f"  API Error for {r.get('test_case_id')}: {r.get('error')}")
-                    else:
-                        skipped_count += 1
-                        print(f"  Skipped {r.get('test_case_id')}: prediction='{pred}'")
-                print(f"  Results: {saved_count} saved, {skipped_count} skipped, {error_count} errors")
+                print(f"  Results: {valid_count} valid, {error_count} errors")
 
                 # Accumulate token usage and cost
                 for r in results:
@@ -445,19 +439,19 @@ class EvaluationOrchestrator:
             if status == HealthStatus.CRITICAL:
                 hillclimb_suggestions.append(f"Improve {scenario}: focus on {', '.join(failed_metrics)}")
 
-            # Save metrics to DB (convert numpy types to Python floats)
+            # Collect metrics for batch save at end (convert numpy types to Python floats)
             for metric in metrics.values():
-                db.save_metric(
-                    run_id=run_id,
-                    scenario=scenario,
-                    timestamp=timestamp,
-                    metric_name=metric.name,
-                    metric_value=float(metric.value),
-                    threshold_min=float(metric.threshold_min) if metric.threshold_min is not None else None,
-                    threshold_max=float(metric.threshold_max) if metric.threshold_max is not None else None,
-                    unit=metric.unit,
-                    status=metric.status.value
-                )
+                all_metrics_to_save.append({
+                    'run_id': run_id,
+                    'scenario': scenario,
+                    'timestamp': timestamp,
+                    'metric_name': metric.name,
+                    'metric_value': float(metric.value),
+                    'threshold_min': float(metric.threshold_min) if metric.threshold_min is not None else None,
+                    'threshold_max': float(metric.threshold_max) if metric.threshold_max is not None else None,
+                    'unit': metric.unit,
+                    'status': metric.status.value
+                })
 
             scenario_results.append(ScenarioResult(
                 scenario=scenario,
@@ -495,6 +489,23 @@ class EvaluationOrchestrator:
             total_cost_usd=total_cost_usd
         )
 
+        # ====== BATCH SAVE ALL RESULTS AT END ======
+        # Only save after ALL scenarios complete successfully
+        print(f"\n  Saving {len(all_test_results_to_save)} test results to database...")
+        for tr in all_test_results_to_save:
+            try:
+                db.save_test_result(**tr)
+            except Exception as e:
+                print(f"    Error saving test result: {e}")
+
+        print(f"  Saving {len(all_metrics_to_save)} metrics to database...")
+        for m in all_metrics_to_save:
+            try:
+                db.save_metric(**m)
+            except Exception as e:
+                print(f"    Error saving metric: {e}")
+
+        print(f"  Saving daily run summary...")
         db.save_daily_run(
             run_id=summary.run_id,
             run_date=summary.run_date,
