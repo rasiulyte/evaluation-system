@@ -21,10 +21,6 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 
-# Version marker for debugging
-EVALUATOR_VERSION = "1.1.0-cost-tracking"
-print(f"[EVALUATOR] Loading version {EVALUATOR_VERSION}")
-
 # Pricing per 1M tokens (as of January 2025)
 MODEL_PRICING = {
     "gpt-4o-mini": {"input": 0.15, "output": 0.60},
@@ -158,9 +154,6 @@ class Evaluator:
             input_tokens = usage.prompt_tokens if usage else 0
             output_tokens = usage.completion_tokens if usage else 0
             total_tokens = usage.total_tokens if usage else 0
-
-            # Debug: print token info
-            print(f"    [TOKEN DEBUG] {test_case_id}: {input_tokens} in, {output_tokens} out, {total_tokens} total")
 
             # Calculate cost
             cost = self._calculate_cost(input_tokens, output_tokens)

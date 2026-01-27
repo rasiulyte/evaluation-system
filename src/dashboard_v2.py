@@ -7,7 +7,7 @@ Technical depth without pretension. Quality over flash.
 """
 
 # Version for debugging - update this when making changes
-DASHBOARD_VERSION = "1.1.0-cost-tracking"
+DASHBOARD_VERSION = "1.2.0"
 
 import pandas as pd
 import streamlit as st
@@ -865,6 +865,7 @@ def load_test_case(test_case_id: str) -> dict:
     return None
 
 
+@st.cache_data(ttl=60)  # Cache for 60 seconds
 def load_metrics() -> pd.DataFrame:
     """Load metrics from database."""
     try:
@@ -876,6 +877,17 @@ def load_metrics() -> pd.DataFrame:
         return pd.DataFrame()
 
 
+@st.cache_data(ttl=60)  # Cache for 60 seconds
+def load_daily_runs() -> dict:
+    """Load daily runs from database as a dict keyed by run_id."""
+    try:
+        runs = db.get_daily_runs()
+        return {r['run_id']: r for r in runs} if runs else {}
+    except Exception:
+        return {}
+
+
+@st.cache_data(ttl=60)  # Cache for 60 seconds
 def load_test_results(scenario: str = None, run_id: str = None) -> pd.DataFrame:
     """Load test results from database."""
     try:
@@ -1388,8 +1400,8 @@ def render_run_history_page(df: pd.DataFrame):
         st.info("No runs recorded yet.")
         return
 
-    # Fetch daily runs for cost info
-    daily_runs = {r['run_id']: r for r in db.get_daily_runs()}
+    # Fetch daily runs for cost info (cached)
+    daily_runs = load_daily_runs()
 
     # Build runs summary
     runs_data = []
@@ -3516,6 +3528,7 @@ def render_home_page():
 # PAGE: TEST CASES
 # ============================================
 
+@st.cache_data(ttl=300)  # Cache for 5 minutes
 def load_all_test_cases() -> list:
     """Load all test cases from the test_cases directory."""
     import json
@@ -3974,6 +3987,7 @@ def render_failure_modes_page():
 # PAGE: PROMPT LAB (Hillclimbing)
 # ============================================
 
+@st.cache_data(ttl=300)  # Cache for 5 minutes
 def load_all_prompts() -> dict:
     """Load all prompt templates from the prompts directory."""
     from pathlib import Path
@@ -3995,6 +4009,7 @@ def load_all_prompts() -> dict:
     return prompts
 
 
+@st.cache_data(ttl=60)  # Cache for 60 seconds
 def get_metrics_by_prompt(df: pd.DataFrame) -> pd.DataFrame:
     """Get aggregated metrics grouped by prompt_id from test results."""
     try:
