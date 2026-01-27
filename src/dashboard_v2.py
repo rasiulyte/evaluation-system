@@ -7,7 +7,7 @@ Technical depth without pretension. Quality over flash.
 """
 
 # Version for debugging - update this when making changes
-DASHBOARD_VERSION = "1.3.1"
+DASHBOARD_VERSION = "1.4.0"
 
 import pandas as pd
 import streamlit as st
@@ -1165,7 +1165,7 @@ def render_metrics_overview_page(df: pd.DataFrame):
     scenario_df = df[df["scenario"] == selected_scenario]
     latest_run = scenario_df.sort_values("timestamp", ascending=False).iloc[0]
 
-    st.caption(f"Latest run: {latest_run['run_id']} · {latest_run['timestamp'][:16]}")
+    st.caption(f"Latest run: {latest_run['run_id']} Â· {latest_run['timestamp'][:16]}")
 
     # Show available metrics (debug info)
     available_metrics = list(metrics.keys())
@@ -1173,7 +1173,7 @@ def render_metrics_overview_page(df: pd.DataFrame):
     missing_metrics = [m for m in expected_metrics if m not in available_metrics]
 
     if missing_metrics:
-        with st.expander(f"ℹ️ {len(missing_metrics)} metrics not available", expanded=False):
+        with st.expander(f"â„¹ï¸ {len(missing_metrics)} metrics not available", expanded=False):
             st.caption(f"**Available:** {', '.join(available_metrics)}")
             st.caption(f"**Missing:** {', '.join(missing_metrics)}")
             st.caption("Missing metrics may require running a new evaluation with the updated orchestrator.")
@@ -1413,7 +1413,7 @@ def render_trends_page(df: pd.DataFrame):
     )
 
     apply_chart_theme(fig)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     # Summary statistics
     render_section_header("Summary Statistics")
@@ -1487,13 +1487,13 @@ def render_run_history_page(df: pd.DataFrame):
 
         # Determine overall status
         if f1 and f1 >= 0.75:
-            status = "✓ Passing"
+            status = "âœ“ Passing"
             status_raw = "passing"
         elif f1 and f1 >= 0.60:
-            status = "○ Fair"
+            status = "â—‹ Fair"
             status_raw = "fair"
         else:
-            status = "✗ Failing"
+            status = "âœ— Failing"
             status_raw = "failing"
 
         runs_data.append({
@@ -1553,22 +1553,22 @@ def render_run_history_page(df: pd.DataFrame):
         status_raw = row['status_raw']
         if status_raw == "passing":
             status_color = COLORS['good']
-            status_text = "✓ Passing"
+            status_text = "âœ“ Passing"
         elif status_raw == "failing":
             status_color = COLORS['poor']
-            status_text = "✗ Failing"
+            status_text = "âœ— Failing"
         else:
             status_color = COLORS['amber']
-            status_text = "○ Fair"
+            status_text = "â—‹ Fair"
 
-        f1_str = f"{row['F1']:.3f}" if row['F1'] is not None else "—"
-        prec_str = f"{row['Precision']:.3f}" if row['Precision'] is not None else "—"
-        rec_str = f"{row['Recall']:.3f}" if row['Recall'] is not None else "—"
+        f1_str = f"{row['F1']:.3f}" if row['F1'] is not None else "â€”"
+        prec_str = f"{row['Precision']:.3f}" if row['Precision'] is not None else "â€”"
+        rec_str = f"{row['Recall']:.3f}" if row['Recall'] is not None else "â€”"
         cost_str = f"${row['cost']:.4f}"  # Always show cost, even if $0.0000
         tokens_str = f"{row['tokens']:,}" if row['tokens'] > 0 else "0"
 
         # Create expander for each run
-        with st.expander(f"**{row['Run ID']}** — {row['Date']} {row['Time']} — F1: {f1_str} — Cost: {cost_str}"):
+        with st.expander(f"**{row['Run ID']}** â€” {row['Date']} {row['Time']} â€” F1: {f1_str} â€” Cost: {cost_str}"):
             # Summary row
             col1, col2, col3, col4, col5 = st.columns(5)
             with col1:
@@ -1603,15 +1603,15 @@ def render_run_history_page(df: pd.DataFrame):
                         # Build results table
                         table_data = []
                         for r in results:
-                            prediction = r.get('prediction', '—')
-                            ground_truth = r.get('ground_truth', '—')
-                            correct = "✓" if r.get('correct') else "✗"
+                            prediction = r.get('prediction', 'â€”')
+                            ground_truth = r.get('ground_truth', 'â€”')
+                            correct = "âœ“" if r.get('correct') else "âœ—"
                             confidence = r.get('confidence', 0)
-                            conf_str = f"{confidence:.2f}" if confidence else "—"
+                            conf_str = f"{confidence:.2f}" if confidence else "â€”"
 
                             table_data.append({
-                                "Test Case": r.get('test_case_id', '—'),
-                                "Prompt": r.get('prompt_id', '—'),
+                                "Test Case": r.get('test_case_id', 'â€”'),
+                                "Prompt": r.get('prompt_id', 'â€”'),
                                 "Prediction": prediction,
                                 "Ground Truth": ground_truth,
                                 "Correct": correct,
@@ -1620,7 +1620,7 @@ def render_run_history_page(df: pd.DataFrame):
 
                         if table_data:
                             table_df = pd.DataFrame(table_data)
-                            st.dataframe(table_df, use_container_width=True, hide_index=True)
+                            st.dataframe(table_df, width="stretch", hide_index=True)
 
                             # Allow viewing individual test cases
                             test_case_ids = [r.get('test_case_id') for r in results if r.get('test_case_id')]
@@ -1645,18 +1645,18 @@ def render_run_history_page(df: pd.DataFrame):
                                         # Status row
                                         col1, col2, col3 = st.columns(3)
                                         with col1:
-                                            expected_label = test_case_data.get('label', '—')
+                                            expected_label = test_case_data.get('label', 'â€”')
                                             label_color = COLORS['good'] if expected_label == 'grounded' else COLORS['poor']
                                             st.markdown(f"**Expected Label:** <span style='color: {label_color};'>`{expected_label}`</span>", unsafe_allow_html=True)
                                         with col2:
                                             if llm_result:
-                                                pred = llm_result.get('prediction', '—')
+                                                pred = llm_result.get('prediction', 'â€”')
                                                 pred_color = COLORS['good'] if pred == 'grounded' else COLORS['poor']
                                                 st.markdown(f"**LLM Prediction:** <span style='color: {pred_color};'>`{pred}`</span>", unsafe_allow_html=True)
                                         with col3:
                                             if llm_result:
                                                 is_correct = llm_result.get('correct', False)
-                                                result_text = "✓ Correct" if is_correct else "✗ Wrong"
+                                                result_text = "âœ“ Correct" if is_correct else "âœ— Wrong"
                                                 result_color = COLORS['good'] if is_correct else COLORS['poor']
                                                 st.markdown(f"**Result:** <span style='color: {result_color};'>{result_text}</span>", unsafe_allow_html=True)
 
@@ -1667,11 +1667,11 @@ def render_run_history_page(df: pd.DataFrame):
 
                                         # Context and Response
                                         st.markdown("**Context:**")
-                                        context_text = test_case_data.get('context', '—')
+                                        context_text = test_case_data.get('context', 'â€”')
                                         st.markdown(f"""<div style="background: {COLORS['light_gray']}; padding: 1rem; border-radius: 6px; font-size: 0.85rem;">{context_text}</div>""", unsafe_allow_html=True)
 
                                         st.markdown("**Response:**")
-                                        response_text = test_case_data.get('response', '—')
+                                        response_text = test_case_data.get('response', 'â€”')
                                         st.markdown(f"""<div style="background: {COLORS['light_gray']}; padding: 1rem; border-radius: 6px; font-size: 0.85rem;">{response_text}</div>""", unsafe_allow_html=True)
 
                                         # LLM's analysis
@@ -1693,12 +1693,12 @@ def render_run_history_page(df: pd.DataFrame):
                                                 llm_json = json.loads(llm_output)
 
                                                 st.markdown("**Classification:**")
-                                                classification = llm_json.get('classification', '—')
+                                                classification = llm_json.get('classification', 'â€”')
                                                 class_color = COLORS['good'] if classification == 'grounded' else COLORS['poor']
                                                 st.markdown(f"<span style='color: {class_color}; font-weight: bold;'>{classification}</span>", unsafe_allow_html=True)
 
                                                 st.markdown("**LLM Reasoning:**")
-                                                reasoning = llm_json.get('reasoning', '—')
+                                                reasoning = llm_json.get('reasoning', 'â€”')
                                                 st.markdown(f"""<div style="background: {COLORS['light_gray']}; padding: 1rem; border-radius: 6px; font-size: 0.85rem; border-left: 4px solid {COLORS['teal']};">{reasoning}</div>""", unsafe_allow_html=True)
                                             except:
                                                 # Show raw output if not JSON
@@ -1706,7 +1706,7 @@ def render_run_history_page(df: pd.DataFrame):
                                                 st.markdown(f"""<div style="background: {COLORS['light_gray']}; padding: 1rem; border-radius: 6px; font-size: 0.85rem; border-left: 4px solid {COLORS['teal']}; white-space: pre-wrap;">{llm_output}</div>""", unsafe_allow_html=True)
 
                                             # Additional metadata
-                                            st.markdown(f"<small style='color: {COLORS['medium_gray']};'>Model: {llm_result.get('model', '—')} | Duration: {llm_result.get('duration_ms', 0):.0f}ms</small>", unsafe_allow_html=True)
+                                            st.markdown(f"<small style='color: {COLORS['medium_gray']};'>Model: {llm_result.get('model', 'â€”')} | Duration: {llm_result.get('duration_ms', 0):.0f}ms</small>", unsafe_allow_html=True)
                                         else:
                                             st.info("No LLM response found for this test case.")
                                     else:
@@ -1747,7 +1747,7 @@ def render_slice_analysis_page(df: pd.DataFrame):
     <div style="margin-bottom: 1rem;">
         <a href="https://github.com/rasiulyte/evaluation-system/blob/main/docs/SLICE_ANALYSIS.md" target="_blank"
            style="color: {COLORS['teal']}; text-decoration: none; font-size: 0.9rem;">
-            📄 View full documentation on GitHub →
+            ðŸ“„ View full documentation on GitHub â†’
         </a>
     </div>
     """, unsafe_allow_html=True)
@@ -1924,7 +1924,7 @@ def render_slice_analysis_page(df: pd.DataFrame):
                         <span style="font-size: 0.8rem; color: {COLORS['medium_gray']};">{metric_label}</span>
                     </div>
                     <div style="font-size: 0.75rem; color: {COLORS['medium_gray']}; margin-top: 0.5rem;">
-                        {row['Cases']} cases · {row['Correct']}/{row['Cases']} correct
+                        {row['Cases']} cases Â· {row['Correct']}/{row['Cases']} correct
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -1941,7 +1941,7 @@ def render_slice_analysis_page(df: pd.DataFrame):
             )
             # Select columns for display
             display_df = display_df[['Failure Mode', 'Type', 'Cases', 'Correct', 'Accuracy', 'Score']]
-            st.dataframe(display_df, use_container_width=True, hide_index=True)
+            st.dataframe(display_df, width="stretch", hide_index=True)
 
         # Beginner-friendly explanation
         st.markdown(f"""
@@ -2012,7 +2012,7 @@ def render_slice_analysis_page(df: pd.DataFrame):
                     status_color = COLORS['poor']
 
                 # Icon based on difficulty
-                diff_icon = "🟢" if row['Difficulty'] == 'Easy' else ("🟡" if row['Difficulty'] == 'Medium' else "🔴")
+                diff_icon = "ðŸŸ¢" if row['Difficulty'] == 'Easy' else ("ðŸŸ¡" if row['Difficulty'] == 'Medium' else "ðŸ”´")
 
                 st.markdown(f"""
                 <div class="metric-card" style="padding: 1rem; text-align: center;">
@@ -2119,14 +2119,14 @@ def render_slice_analysis_page(df: pd.DataFrame):
 
         if worst_fm['F1'] < 0.70:
             insights.append({
-                'icon': '⚠️',
+                'icon': 'âš ï¸',
                 'title': f"Struggles with {worst_fm['Failure Mode']}",
-                'detail': f"Only {worst_fm['F1']:.0%} accuracy. This is an area to improve — consider adding more examples of this type to your prompt."
+                'detail': f"Only {worst_fm['F1']:.0%} accuracy. This is an area to improve â€” consider adding more examples of this type to your prompt."
             })
 
         if best_fm['F1'] > 0.85:
             insights.append({
-                'icon': '✓',
+                'icon': 'âœ“',
                 'title': f"Good at {best_fm['Failure Mode']}",
                 'detail': f"{best_fm['F1']:.0%} accuracy shows the model handles this type well."
             })
@@ -2134,7 +2134,7 @@ def render_slice_analysis_page(df: pd.DataFrame):
         gap = best_fm['F1'] - worst_fm['F1']
         if gap > 0.20:
             insights.append({
-                'icon': '📊',
+                'icon': 'ðŸ“Š',
                 'title': f"Uneven performance ({gap:.0%} gap)",
                 'detail': f"Big difference between best ({best_fm['Failure Mode']}) and worst ({worst_fm['Failure Mode']}) areas. Focus on improving weak spots."
             })
@@ -2148,20 +2148,20 @@ def render_slice_analysis_page(df: pd.DataFrame):
             drop = easy_acc - hard_acc
             if drop > 0.15:
                 insights.append({
-                    'icon': '📉',
+                    'icon': 'ðŸ“‰',
                     'title': f"Drops {drop:.0%} on hard cases",
                     'detail': "Performance falls significantly on tricky cases. This is somewhat expected, but large drops may indicate the model needs better reasoning guidance."
                 })
             elif drop < 0.05:
                 insights.append({
-                    'icon': '✓',
+                    'icon': 'âœ“',
                     'title': "Consistent across difficulty levels",
-                    'detail': "The model performs similarly on easy and hard cases — good sign of robust performance."
+                    'detail': "The model performs similarly on easy and hard cases â€” good sign of robust performance."
                 })
 
     if not insights:
         insights.append({
-            'icon': '✓',
+            'icon': 'âœ“',
             'title': "Balanced performance",
             'detail': "No major issues detected. Performance is relatively consistent across all categories."
         })
@@ -2339,7 +2339,7 @@ def render_compare_runs_page(df: pd.DataFrame):
     else:
         filtered_comparison = comparison_df[comparison_df["scenario"] == selected_detail_scenario].copy()
 
-    # Define metric ordering (classification → agreement → correlation → error)
+    # Define metric ordering (classification â†’ agreement â†’ correlation â†’ error)
     metric_order = {
         "f1": 1, "precision": 2, "recall": 3, "tnr": 4, "accuracy": 5,
         "cohens_kappa": 6,
@@ -2395,7 +2395,7 @@ def render_compare_runs_page(df: pd.DataFrame):
         if abs(delta) <= 0.001:
             # No significant change
             change_color = COLORS['medium_gray']
-            change_text = "— No change"
+            change_text = "â€” No change"
             border_class = ""
         elif delta > 0:
             # Value increased
@@ -2407,7 +2407,7 @@ def render_compare_runs_page(df: pd.DataFrame):
                 # Increase in f1/precision/recall = GOOD
                 change_color = COLORS['good']
                 border_class = "status-good"
-            change_text = f"↑ +{delta:.3f} (+{pct:.1f}%)"
+            change_text = f"â†‘ +{delta:.3f} (+{pct:.1f}%)"
         else:
             # Value decreased
             if is_lower_better:
@@ -2418,7 +2418,7 @@ def render_compare_runs_page(df: pd.DataFrame):
                 # Decrease in f1/precision/recall = BAD
                 change_color = COLORS['poor']
                 border_class = "status-poor"
-            change_text = f"↓ {delta:.3f} ({pct:.1f}%)"
+            change_text = f"â†“ {delta:.3f} ({pct:.1f}%)"
 
         # Build HTML without multi-line f-string to avoid parsing issues
         card_html = (
@@ -2468,7 +2468,7 @@ def render_compare_runs_page(df: pd.DataFrame):
         )
 
         apply_chart_theme(fig)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
     # Insights
     render_section_header("Insights")
@@ -2497,9 +2497,9 @@ def render_compare_runs_page(df: pd.DataFrame):
     if significant_declines:
         decline_items = ""
         for row in significant_declines:
-            direction = "↑" if row['delta'] > 0 else "↓"
+            direction = "â†‘" if row['delta'] > 0 else "â†“"
             scenario_text = f' ({row["scenario"]})' if selected_detail_scenario == "All Scenarios" else ""
-            decline_items += f'<div style="margin-bottom: 0.25rem;">• <strong>{row["metric_name"]}</strong>{scenario_text}: {row["metric_value_baseline"]:.3f} → {row["metric_value_compare"]:.3f} ({direction} {row["delta_pct"]:.1f}%)</div>'
+            decline_items += f'<div style="margin-bottom: 0.25rem;">â€¢ <strong>{row["metric_name"]}</strong>{scenario_text}: {row["metric_value_baseline"]:.3f} â†’ {row["metric_value_compare"]:.3f} ({direction} {row["delta_pct"]:.1f}%)</div>'
 
         decline_html = (
             f'<div class="metric-card status-poor">'
@@ -2513,9 +2513,9 @@ def render_compare_runs_page(df: pd.DataFrame):
     if significant_improvements:
         improvement_items = ""
         for row in significant_improvements:
-            direction = "↑" if row['delta'] > 0 else "↓"
+            direction = "â†‘" if row['delta'] > 0 else "â†“"
             scenario_text = f' ({row["scenario"]})' if selected_detail_scenario == "All Scenarios" else ""
-            improvement_items += f'<div style="margin-bottom: 0.25rem;">• <strong>{row["metric_name"]}</strong>{scenario_text}: {row["metric_value_baseline"]:.3f} → {row["metric_value_compare"]:.3f} ({direction} {row["delta_pct"]:.1f}%)</div>'
+            improvement_items += f'<div style="margin-bottom: 0.25rem;">â€¢ <strong>{row["metric_name"]}</strong>{scenario_text}: {row["metric_value_baseline"]:.3f} â†’ {row["metric_value_compare"]:.3f} ({direction} {row["delta_pct"]:.1f}%)</div>'
 
         improvement_html = (
             f'<div class="metric-card status-good">'
@@ -2585,7 +2585,7 @@ def render_run_evaluation_page():
     # Show authenticated status
     st.markdown(f"""
     <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
-        <span style="color: {COLORS['good']};">✓</span>
+        <span style="color: {COLORS['good']};">âœ“</span>
         <span style="color: {COLORS['medium_gray']}; font-size: 0.85rem;">Authenticated</span>
     </div>
     """, unsafe_allow_html=True)
@@ -2652,7 +2652,7 @@ def render_run_evaluation_page():
         st.markdown(f"""
         <div class="metric-card status-good" style="padding: 1rem;">
             <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <span style="color: {COLORS['good']}; font-size: 1.2rem;">✓</span>
+                <span style="color: {COLORS['good']}; font-size: 1.2rem;">âœ“</span>
                 <span style="color: {COLORS['charcoal']};">OpenAI API Key configured</span>
             </div>
             <div style="font-family: monospace; font-size: 0.8rem; color: {COLORS['medium_gray']}; margin-top: 0.5rem;">
@@ -2664,11 +2664,11 @@ def render_run_evaluation_page():
         st.markdown(f"""
         <div class="metric-card status-poor" style="padding: 1rem;">
             <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <span style="color: {COLORS['poor']}; font-size: 1.2rem;">✗</span>
+                <span style="color: {COLORS['poor']}; font-size: 1.2rem;">âœ—</span>
                 <span style="color: {COLORS['charcoal']};">OpenAI API Key missing</span>
             </div>
             <div style="font-size: 0.85rem; color: {COLORS['medium_gray']}; margin-top: 0.5rem;">
-                Add OPENAI_API_KEY to Streamlit secrets (Settings → Secrets)
+                Add OPENAI_API_KEY to Streamlit secrets (Settings â†’ Secrets)
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -2724,7 +2724,7 @@ def render_run_evaluation_page():
         dry_run = st.checkbox("Dry Run", help="Preview what would run without executing")
 
     with col2:
-        run_button = st.button("▶ Run Evaluation", type="primary", use_container_width=True)
+        run_button = st.button("â–¶ Run Evaluation", type="primary", width="stretch")
 
     # Results area
     if run_button:
@@ -2871,18 +2871,18 @@ def render_run_evaluation_page():
                         for alert in summary.alerts:
                             st.markdown(f"""
                             <div class="metric-card status-warning" style="margin-bottom: 0.5rem;">
-                                <span style="color: {COLORS['amber']};">⚠️ {alert}</span>
+                                <span style="color: {COLORS['amber']};">âš ï¸ {alert}</span>
                             </div>
                             """, unsafe_allow_html=True)
 
-                    st.success("✓ Results saved to database!")
+                    st.success("âœ“ Results saved to database!")
                     st.markdown(f"""
                     <div class="metric-card" style="margin-top: 1rem; padding: 1rem;">
                         <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.5rem;">Next Steps</div>
                         <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.8;">
-                            • Go to <strong>Metrics Overview</strong> to see detailed results<br>
-                            • Go to <strong>Run History</strong> to browse all runs<br>
-                            • Go to <strong>Compare Runs</strong> to compare with previous evaluations
+                            â€¢ Go to <strong>Metrics Overview</strong> to see detailed results<br>
+                            â€¢ Go to <strong>Run History</strong> to browse all runs<br>
+                            â€¢ Go to <strong>Compare Runs</strong> to compare with previous evaluations
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
@@ -2904,7 +2904,7 @@ def render_run_evaluation_page():
         if run_ids:
             st.caption(f"Last 5 runs:")
             for run_id in run_ids[:5]:
-                st.markdown(f"• `{run_id}`")
+                st.markdown(f"â€¢ `{run_id}`")
         else:
             st.caption("No runs recorded yet.")
     except Exception:
@@ -2927,7 +2927,7 @@ def render_guide_page():
     <div style="margin-bottom: 1.5rem;">
         <a href="https://github.com/rasiulyte/evaluation-system/blob/main/docs/METRICS.md" target="_blank"
            style="color: {COLORS['teal']}; text-decoration: none; font-size: 0.9rem;">
-            📄 View full documentation on GitHub →
+            ðŸ“„ View full documentation on GitHub â†’
         </a>
     </div>
     """, unsafe_allow_html=True)
@@ -2954,35 +2954,35 @@ def render_guide_page():
     # Classification metrics
     render_section_header("Classification Metrics")
 
-    with st.expander("**Precision** — Trust in Alerts", expanded=True):
+    with st.expander("**Precision** â€” Trust in Alerts", expanded=True):
         st.markdown(f"""
         **Formula:** TP / (TP + FP)
 
         **Question answered:** When the model flags something as a hallucination, how often is it right?
 
         **Intuition:** High precision means your alerts are trustworthy. When users see a warning,
-        they can believe it. Low precision leads to "alert fatigue" — users ignore warnings because
+        they can believe it. Low precision leads to "alert fatigue" â€” users ignore warnings because
         they're often wrong.
 
-        **Target:** ≥ 0.75 for production use
+        **Target:** â‰¥ 0.75 for production use
 
-        **✅ Works well when:**
+        **âœ… Works well when:**
         - **Spam filtering**: If every email marked as spam is actually spam, users trust the filter and don't lose important messages
         - **Content moderation**: When flagging inappropriate content, false alarms frustrate good users
         - **Chatbot warnings**: When showing "I'm not sure about this answer," users need to trust those warnings
 
-        **❌ Doesn't work well when:**
+        **âŒ Doesn't work well when:**
         - **Medical screening alone**: High precision but low recall means you might miss real diseases - dangerous!
         - **Security alerts**: If you only flag the most obvious attacks (high precision), sophisticated ones slip through
         - **Legal document review**: Missing a problematic clause is worse than flagging too many for human review
 
-        **⚠️ Risks:**
+        **âš ï¸ Risks:**
         - Can be artificially high if the model is too conservative (flags almost nothing)
         - A model that only flags the most obvious cases will have high precision but miss subtle hallucinations
-        - Doesn't tell you how many hallucinations you're missing — always pair with Recall
+        - Doesn't tell you how many hallucinations you're missing â€” always pair with Recall
         """)
 
-    with st.expander("**Recall** — Catch Rate", expanded=True):
+    with st.expander("**Recall** â€” Catch Rate", expanded=True):
         st.markdown(f"""
         **Formula:** TP / (TP + FN)
 
@@ -2991,47 +2991,47 @@ def render_guide_page():
         **Intuition:** High recall means few hallucinations slip through. Critical for safety-sensitive
         applications where missing a hallucination could cause real harm (medical, legal, financial).
 
-        **Target:** ≥ 0.75 for most applications, higher for safety-critical
+        **Target:** â‰¥ 0.75 for most applications, higher for safety-critical
 
-        **✅ Works well when:**
+        **âœ… Works well when:**
         - **Medical diagnosis support**: Missing a disease is worse than ordering extra tests - catch everything
         - **Fraud detection**: Missing actual fraud costs money - better to review extra transactions
         - **Safety systems**: In self-driving cars, missing a pedestrian is catastrophic - flag all possibilities
 
-        **❌ Doesn't work well when:**
+        **âŒ Doesn't work well when:**
         - **Email spam filtering alone**: Flagging everything as spam achieves 100% recall but your inbox is empty
         - **News fact-checking**: If every statement gets flagged for review, editors can't keep up
         - **Customer support**: Routing every query to a human (100% recall) defeats the purpose of automation
 
-        **⚠️ Risks:**
+        **âš ï¸ Risks:**
         - Can be gamed by flagging everything as hallucination (100% recall but useless)
-        - High recall with low precision means lots of false alarms — users will ignore warnings
+        - High recall with low precision means lots of false alarms â€” users will ignore warnings
         - Optimizing only for recall can make the system overly aggressive
         """)
 
-    with st.expander("**F1 Score** — Balanced Performance", expanded=True):
+    with st.expander("**F1 Score** â€” Balanced Performance", expanded=True):
         st.markdown(f"""
-        **Formula:** 2 × (Precision × Recall) / (Precision + Recall)
+        **Formula:** 2 Ã— (Precision Ã— Recall) / (Precision + Recall)
 
         **Question answered:** How well does the model balance catching hallucinations vs. avoiding false alarms?
 
         **Intuition:** The harmonic mean punishes extreme imbalances. You can't game F1 by optimizing
         only precision or only recall. It's the primary metric for overall detection quality.
 
-        **Target:** ≥ 0.75 indicates production-ready performance
+        **Target:** â‰¥ 0.75 indicates production-ready performance
 
-        **✅ Works well when:**
+        **âœ… Works well when:**
         - **Comparing model versions**: "Which prompt detects hallucinations best overall?" - F1 gives a fair answer
         - **A/B testing**: Choosing between two approaches where neither error type is much worse than the other
         - **General benchmarking**: Standard way to report detection quality that's hard to game
 
-        **❌ Doesn't work well when:**
+        **âŒ Doesn't work well when:**
         - **Medical AI**: Missing a tumor (FN) is much worse than a false alarm (FP) - prioritize recall instead
         - **Content moderation with legal risk**: Letting harmful content through is worse than over-blocking
         - **Very imbalanced data**: If 99% of content is safe, F1 may look good while missing most real issues
 
-        **⚠️ Risks:**
-        - Assumes precision and recall are equally important — they may not be in your use case
+        **âš ï¸ Risks:**
+        - Assumes precision and recall are equally important â€” they may not be in your use case
         - Doesn't account for class imbalance (if 95% of data is grounded, F1 can be misleading)
         - Two models with same F1 can have very different precision/recall trade-offs
         - For safety-critical apps, you may need to prioritize recall over F1
@@ -3042,13 +3042,13 @@ def render_guide_page():
     # Agreement metrics
     render_section_header("Agreement Metrics")
 
-    with st.expander("**Cohen's Kappa** — Chance-Corrected Agreement", expanded=True):
+    with st.expander("**Cohen's Kappa** â€” Chance-Corrected Agreement", expanded=True):
         st.markdown(f"""
         **Formula:** (Observed Agreement - Chance Agreement) / (1 - Chance Agreement)
 
         **Question answered:** How much better than random guessing is this model?
 
-        **Intuition:** Accuracy can be misleading with imbalanced classes. Kappa corrects for chance —
+        **Intuition:** Accuracy can be misleading with imbalanced classes. Kappa corrects for chance â€”
         a Kappa of 0 means no better than random, while 1 means perfect agreement.
 
         **Interpretation scale:**
@@ -3058,20 +3058,20 @@ def render_guide_page():
         - 0.21-0.40: Fair
         - 0.00-0.20: Slight
 
-        **✅ Works well when:**
+        **âœ… Works well when:**
         - **Imbalanced datasets**: If 90% of your data is "safe," accuracy looks good but Kappa reveals the truth
         - **Comparing human labelers**: "Do two annotators agree beyond what you'd expect by chance?"
         - **Evaluating model improvement**: A Kappa jump from 0.4 to 0.6 is meaningful progress
 
-        **❌ Doesn't work well when:**
+        **âŒ Doesn't work well when:**
         - **Very small test sets**: With only 20 examples, Kappa can swing wildly
         - **Rare events**: If hallucinations are extremely rare, even good detection gives low Kappa
         - **Comparing across different datasets**: Kappa depends on class distribution, so cross-dataset comparison is tricky
 
-        **⚠️ Risks:**
+        **âš ï¸ Risks:**
         - Can be negative if model performs worse than random chance
-        - Sensitive to prevalence — same performance looks different with different class distributions
-        - Low Kappa doesn't always mean bad performance — it depends on baseline difficulty
+        - Sensitive to prevalence â€” same performance looks different with different class distributions
+        - Low Kappa doesn't always mean bad performance â€” it depends on baseline difficulty
         - Can be unstable with small sample sizes
         """)
 
@@ -3085,81 +3085,81 @@ def render_guide_page():
     A well-calibrated model should be more confident when it's right.
     """)
 
-    with st.expander("**Kendall's Tau** — Rank Agreement"):
+    with st.expander("**Kendall's Tau** â€” Rank Agreement"):
         st.markdown(f"""
         **Question answered:** When comparing any two predictions, does higher confidence usually mean higher correctness?
 
         **Intuition:** Counts concordant vs discordant pairs. More robust to ties and outliers than other
         correlation measures. Good for small sample sizes.
 
-        **Target:** ≥ 0.60 (Tau values are inherently smaller than Pearson/Spearman)
+        **Target:** â‰¥ 0.60 (Tau values are inherently smaller than Pearson/Spearman)
 
-        **✅ Works well when:**
+        **âœ… Works well when:**
         - **Small test sets**: With only 30-50 examples, Tau is more reliable than Pearson
         - **Many tied values**: If your model outputs "70%" confidence a lot, Tau handles ties gracefully
         - **Quick ranking check**: "Is the model's ordering of cases roughly correct?"
 
-        **❌ Doesn't work well when:**
+        **âŒ Doesn't work well when:**
         - **Absolute calibration matters**: Tau = 0.8 doesn't mean 80% confidence = 80% accuracy
         - **Comparing to Pearson/Spearman**: Tau values are naturally lower - don't compare directly
         - **Binary confidence**: If model only says "confident" or "not confident", there's no ranking to measure
 
-        **⚠️ Risks:**
-        - Values are inherently lower than Spearman/Pearson — don't compare directly
+        **âš ï¸ Risks:**
+        - Values are inherently lower than Spearman/Pearson â€” don't compare directly
         - Can be misleading if confidence scores cluster at extremes (all 0.9+ or all 0.1-)
-        - Requires variance in both confidence and correctness — fails with constant predictions
+        - Requires variance in both confidence and correctness â€” fails with constant predictions
         - Doesn't tell you if confidence values are calibrated, only if rankings are correct
         """)
 
-    with st.expander("**Pearson Correlation** — Linear Relationship"):
+    with st.expander("**Pearson Correlation** â€” Linear Relationship"):
         st.markdown(f"""
         **Question answered:** Is there a proportional relationship between confidence and correctness?
 
         **Intuition:** If confidence of 0.8 means 80% correct, that's perfect linear calibration.
         Sensitive to outliers.
 
-        **Target:** ≥ 0.70
+        **Target:** â‰¥ 0.70
 
-        **✅ Works well when:**
+        **âœ… Works well when:**
         - **Checking calibration**: "When the model says 80% confident, is it actually right 80% of the time?"
         - **Weather forecasting style**: Predictions that should map directly to probabilities
         - **Betting/ranking systems**: Where confidence should translate proportionally to outcomes
 
-        **❌ Doesn't work well when:**
+        **âŒ Doesn't work well when:**
         - **Outliers exist**: One very wrong high-confidence prediction can tank your Pearson score
         - **Non-linear relationship**: Model might be well-calibrated but in a curved way (use Spearman)
         - **Clustered confidence**: If model only says 30%, 50%, or 90%, there's not enough spread to measure
 
-        **⚠️ Risks:**
-        - Assumes linear relationship — may miss valid non-linear calibration
-        - Very sensitive to outliers — a few extreme values can distort results
+        **âš ï¸ Risks:**
+        - Assumes linear relationship â€” may miss valid non-linear calibration
+        - Very sensitive to outliers â€” a few extreme values can distort results
         - Can be undefined if all predictions have same confidence (zero variance)
-        - High Pearson doesn't mean well-calibrated — could have consistent bias
+        - High Pearson doesn't mean well-calibrated â€” could have consistent bias
         """)
 
-    with st.expander("**Spearman Correlation** — Rank-Order Relationship"):
+    with st.expander("**Spearman Correlation** â€” Rank-Order Relationship"):
         st.markdown(f"""
         **Question answered:** Do higher confidence predictions tend to be more correct?
 
         **Intuition:** Like Pearson but uses ranks instead of raw values. More robust to outliers
         and doesn't assume linearity.
 
-        **Target:** ≥ 0.60
+        **Target:** â‰¥ 0.60
 
-        **✅ Works well when:**
+        **âœ… Works well when:**
         - **Ranking is what matters**: "Show me the cases the model is most sure about" - Spearman validates this
         - **Outliers in your data**: More robust than Pearson when you have extreme values
         - **Non-linear but consistent**: Model's confidence grows with correctness, just not proportionally
 
-        **❌ Doesn't work well when:**
+        **âŒ Doesn't work well when:**
         - **Absolute confidence matters**: Spearman = 0.9 doesn't mean confidence values are accurate
         - **You need exact calibration**: For "80% confident = 80% correct", use Pearson
         - **Many tied ranks**: If half your predictions have the same confidence, ranking breaks down
 
-        **⚠️ Risks:**
-        - Only measures monotonic relationships — doesn't require linear calibration
+        **âš ï¸ Risks:**
+        - Only measures monotonic relationships â€” doesn't require linear calibration
         - Can be high even if absolute confidence values are wrong (just needs correct ordering)
-        - Sensitive to ties — many identical confidence values reduce reliability
+        - Sensitive to ties â€” many identical confidence values reduce reliability
         - Doesn't tell you if 80% confidence actually means 80% correct
         """)
 
@@ -3168,7 +3168,7 @@ def render_guide_page():
     # Additional Classification Metrics
     render_section_header("Additional Classification Metrics")
 
-    with st.expander("**TNR (True Negative Rate / Specificity)** — Protecting Good Content"):
+    with st.expander("**TNR (True Negative Rate / Specificity)** â€” Protecting Good Content"):
         st.markdown(f"""
         **Formula:** TN / (TN + FP)
 
@@ -3177,26 +3177,26 @@ def render_guide_page():
         **Intuition:** High TNR means good content flows through freely. Low TNR means you're
         blocking legitimate content, frustrating users.
 
-        **Target:** ≥ 0.65
+        **Target:** â‰¥ 0.65
 
-        **✅ Works well when:**
+        **âœ… Works well when:**
         - **User experience matters**: Low TNR means good AI responses get flagged, annoying users
         - **Content publishing**: False alarms delay legitimate articles - you need high TNR
         - **Customer support bots**: Flagging correct answers makes the bot seem unreliable
 
-        **❌ Doesn't work well when:**
+        **âŒ Doesn't work well when:**
         - **Safety is primary concern**: TNR = 100% by never flagging anything - but you miss all hallucinations
         - **Rare hallucinations**: If only 5% of content has issues, TNR naturally looks good
         - **Used alone**: Always pair with Recall to see the full picture
 
-        **⚠️ Risks:**
+        **âš ï¸ Risks:**
         - Can be artificially high if the system rarely flags anything
         - Doesn't tell you how many hallucinations you're catching
-        - Easy to achieve high TNR by being permissive — always pair with Recall
+        - Easy to achieve high TNR by being permissive â€” always pair with Recall
         - In imbalanced datasets, TNR can be misleading about overall performance
         """)
 
-    with st.expander("**Accuracy** — Overall Correctness"):
+    with st.expander("**Accuracy** â€” Overall Correctness"):
         st.markdown(f"""
         **Formula:** (TP + TN) / (TP + TN + FP + FN)
 
@@ -3204,23 +3204,23 @@ def render_guide_page():
 
         **Intuition:** Simple and intuitive, but can be deeply misleading.
 
-        **Target:** ≥ 0.75
+        **Target:** â‰¥ 0.75
 
-        **✅ Works well when:**
+        **âœ… Works well when:**
         - **Balanced datasets**: 50% hallucinations, 50% grounded - accuracy gives a fair picture
         - **Quick sanity check**: "Is this model doing something useful?" - accuracy below 50% is a red flag
         - **Explaining to non-technical stakeholders**: "The model is right 80% of the time" is easy to understand
 
-        **❌ Doesn't work well when:**
+        **âŒ Doesn't work well when:**
         - **Imbalanced data (the classic trap!)**: If 95% of content is safe, predicting "safe" always gives 95% accuracy while catching zero hallucinations!
         - **Rare event detection**: Fraud detection, disease screening, hallucination detection - accuracy hides failures
         - **Comparing models**: Two models with same accuracy can have wildly different precision/recall
 
-        **⚠️ Risks:**
+        **âš ï¸ Risks:**
         - **MAJOR RISK:** Extremely misleading with imbalanced data
         - If 95% of content is grounded, predicting "grounded" always gives 95% accuracy!
         - Hides poor performance on the minority class (usually hallucinations)
-        - Should almost never be your primary metric — use F1 or Kappa instead
+        - Should almost never be your primary metric â€” use F1 or Kappa instead
         - Only meaningful when classes are roughly balanced
         """)
 
@@ -3233,7 +3233,7 @@ def render_guide_page():
     These metrics measure how **accurate** the confidence scores are, not just their ranking.
     """)
 
-    with st.expander("**Bias** — Systematic Over/Under-Prediction"):
+    with st.expander("**Bias** â€” Systematic Over/Under-Prediction"):
         st.markdown(f"""
         **Formula:** Mean(Predicted) - Mean(Actual)
 
@@ -3241,26 +3241,26 @@ def render_guide_page():
 
         **Intuition:** Positive bias = too aggressive (flags too much). Negative bias = too lenient (misses too much).
 
-        **Target:** |bias| ≤ 0.15
+        **Target:** |bias| â‰¤ 0.15
 
-        **✅ Works well when:**
+        **âœ… Works well when:**
         - **Detecting systematic issues**: "This model flags 30% of content but only 15% is actually wrong" - clear bias problem
         - **Prompt tuning**: Bias helps you see if a new prompt made the model too aggressive or too lenient
         - **Monitoring drift**: If bias increases over time, something in your data or model has changed
 
-        **❌ Doesn't work well when:**
+        **âŒ Doesn't work well when:**
         - **Errors cancel out**: Model misses some hallucinations AND falsely flags some good content - bias = 0 but model is wrong!
         - **Small samples**: Bias swings a lot with few examples
         - **Mixed difficulty**: Model might be biased differently on easy vs hard cases (need slice analysis)
 
-        **⚠️ Risks:**
-        - Zero bias doesn't mean good predictions — errors could cancel out
+        **âš ï¸ Risks:**
+        - Zero bias doesn't mean good predictions â€” errors could cancel out
         - Can hide large errors if they're symmetric around zero
-        - Sensitive to class distribution — recalculate when data changes
+        - Sensitive to class distribution â€” recalculate when data changes
         - Doesn't tell you about individual prediction quality
         """)
 
-    with st.expander("**MAE (Mean Absolute Error)** — Average Confidence Error"):
+    with st.expander("**MAE (Mean Absolute Error)** â€” Average Confidence Error"):
         st.markdown(f"""
         **Formula:** Mean(|Confidence - Actual|)
 
@@ -3270,26 +3270,26 @@ def render_guide_page():
 
         **Target:** < 0.20
 
-        **✅ Works well when:**
+        **âœ… Works well when:**
         - **Typical error matters**: "On average, how wrong is the model?" - useful for everyday performance
         - **Comparing calibration methods**: Which approach gives more accurate confidence scores overall?
         - **Budget planning**: MAE tells you how much manual review to expect on average
 
-        **❌ Doesn't work well when:**
+        **âŒ Doesn't work well when:**
         - **Big mistakes are catastrophic**: A model with mostly small errors but one 90% confidence wrong answer still has low MAE
         - **You need worst-case analysis**: MAE hides outliers - use RMSE to catch them
         - **Decision thresholds**: Low MAE doesn't mean confidence threshold decisions work well
 
-        **⚠️ Risks:**
-        - Treats all errors equally — a 0.1 error and a 0.9 error average to 0.5
+        **âš ï¸ Risks:**
+        - Treats all errors equally â€” a 0.1 error and a 0.9 error average to 0.5
         - Doesn't penalize large errors more than small ones
         - Can be low even with a few catastrophically wrong predictions
         - Sensitive to confidence score distribution
         """)
 
-    with st.expander("**RMSE (Root Mean Squared Error)** — Penalizes Large Errors"):
+    with st.expander("**RMSE (Root Mean Squared Error)** â€” Penalizes Large Errors"):
         st.markdown(f"""
-        **Formula:** √(Mean((Confidence - Actual)²))
+        **Formula:** âˆš(Mean((Confidence - Actual)Â²))
 
         **Question answered:** How bad are the worst confidence errors?
 
@@ -3298,21 +3298,21 @@ def render_guide_page():
 
         **Target:** < 0.25
 
-        **✅ Works well when:**
+        **âœ… Works well when:**
         - **Big mistakes are costly**: In finance, one confident wrong prediction can be worse than many small errors
         - **Catching overconfident failures**: Model says 95% confident but is wrong - RMSE catches this
         - **Comparing with MAE**: If RMSE >> MAE, you have an outlier problem to fix
 
-        **❌ Doesn't work well when:**
+        **âŒ Doesn't work well when:**
         - **Outliers are expected**: One genuinely weird case can tank RMSE even if model is otherwise good
         - **You want average performance**: RMSE overweights rare large errors - use MAE instead
         - **Comparing models with different data**: A model tested on harder cases will have higher RMSE even if better
 
-        **⚠️ Risks:**
-        - More sensitive to outliers than MAE — one bad prediction can dominate
+        **âš ï¸ Risks:**
+        - More sensitive to outliers than MAE â€” one bad prediction can dominate
         - Harder to interpret than MAE (squared then rooted)
         - Can improve by removing outliers rather than fixing them
-        - Should be compared alongside MAE — large gap suggests outlier issues
+        - Should be compared alongside MAE â€” large gap suggests outlier issues
         """)
 
     st.markdown("---")
@@ -3364,7 +3364,7 @@ def render_home_page():
         <div class="metric-card" style="height: 100%;">
             <div style="font-weight: 500; color: {COLORS['teal']}; margin-bottom: 0.5rem;">In This System</div>
             <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
-                We use <strong>GPT-4o-mini</strong> as the judge to detect <strong>hallucinations</strong> —
+                We use <strong>GPT-4o-mini</strong> as the judge to detect <strong>hallucinations</strong> â€”
                 cases where an AI makes up information or contradicts the source material.
                 The judge reads a context + response pair and decides: is this grounded or hallucinated?
             </div>
@@ -3463,15 +3463,15 @@ def render_home_page():
         <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 1rem;">Data Flow Summary</div>
         <div style="font-family: monospace; font-size: 0.85rem; color: {COLORS['charcoal']}; line-height: 2;">
             <span style="background: {COLORS['light_gray']}; padding: 0.25rem 0.5rem; border-radius: 4px;">Test Cases</span>
-            <span style="color: {COLORS['teal']}; margin: 0 0.5rem;">→</span>
+            <span style="color: {COLORS['teal']}; margin: 0 0.5rem;">â†’</span>
             <span style="background: {COLORS['light_gray']}; padding: 0.25rem 0.5rem; border-radius: 4px;">+ Prompt</span>
-            <span style="color: {COLORS['teal']}; margin: 0 0.5rem;">→</span>
+            <span style="color: {COLORS['teal']}; margin: 0 0.5rem;">â†’</span>
             <span style="background: {COLORS['teal']}20; padding: 0.25rem 0.5rem; border-radius: 4px; border: 1px solid {COLORS['teal']};">LLM</span>
-            <span style="color: {COLORS['teal']}; margin: 0 0.5rem;">→</span>
+            <span style="color: {COLORS['teal']}; margin: 0 0.5rem;">â†’</span>
             <span style="background: {COLORS['light_gray']}; padding: 0.25rem 0.5rem; border-radius: 4px;">Predictions</span>
-            <span style="color: {COLORS['teal']}; margin: 0 0.5rem;">→</span>
+            <span style="color: {COLORS['teal']}; margin: 0 0.5rem;">â†’</span>
             <span style="background: {COLORS['light_gray']}; padding: 0.25rem 0.5rem; border-radius: 4px;">vs Ground Truth</span>
-            <span style="color: {COLORS['teal']}; margin: 0 0.5rem;">→</span>
+            <span style="color: {COLORS['teal']}; margin: 0 0.5rem;">â†’</span>
             <span style="background: {COLORS['good']}20; padding: 0.25rem 0.5rem; border-radius: 4px; border: 1px solid {COLORS['good']};">Metrics</span>
         </div>
     </div>
@@ -3506,7 +3506,7 @@ def render_home_page():
         <div class="metric-card" style="height: 100%;">
             <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">3. Browse Test Cases</div>
             <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
-                Visit <strong>Test Cases</strong> to see all test data — context, response, and expected labels.
+                Visit <strong>Test Cases</strong> to see all test data â€” context, response, and expected labels.
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -3560,7 +3560,7 @@ def render_home_page():
         <div class="metric-card">
             <div style="font-weight: 500; color: {COLORS['teal']}; margin-bottom: 0.5rem;">Classification</div>
             <div style="color: {COLORS['charcoal']}; font-size: 0.85rem;">
-                F1, Precision, Recall — How well does the system identify hallucinations vs grounded content?
+                F1, Precision, Recall â€” How well does the system identify hallucinations vs grounded content?
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -3570,7 +3570,7 @@ def render_home_page():
         <div class="metric-card">
             <div style="font-weight: 500; color: {COLORS['teal']}; margin-bottom: 0.5rem;">Correlation</div>
             <div style="color: {COLORS['charcoal']}; font-size: 0.85rem;">
-                Spearman, Kendall's Tau — Does the model's confidence actually predict correctness?
+                Spearman, Kendall's Tau â€” Does the model's confidence actually predict correctness?
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -3580,7 +3580,7 @@ def render_home_page():
         <div class="metric-card">
             <div style="font-weight: 500; color: {COLORS['teal']}; margin-bottom: 0.5rem;">Calibration</div>
             <div style="color: {COLORS['charcoal']}; font-size: 0.85rem;">
-                Bias, MAE, RMSE — Are the confidence scores well-calibrated and unbiased?
+                Bias, MAE, RMSE â€” Are the confidence scores well-calibrated and unbiased?
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -3621,7 +3621,7 @@ def render_home_page():
             </div>
             """, unsafe_allow_html=True)
         with col2:
-            if st.button("Go →", key=f"checklist_{item['step']}", use_container_width=True):
+            if st.button("Go â†’", key=f"checklist_{item['step']}", width="stretch"):
                 st.session_state.current_page = item['page']
                 st.rerun()
 
@@ -3706,7 +3706,7 @@ def render_test_cases_page():
     # Display test cases
     for case in filtered_cases:
         case_id = case.get('id', 'unknown')
-        label = case.get('label', '—')
+        label = case.get('label', 'â€”')
         failure_mode = case.get('failure_mode', '')
 
         # Color based on label
@@ -3720,7 +3720,7 @@ def render_test_cases_page():
             label_color = COLORS['medium_gray']
             status_class = ""
 
-        with st.expander(f"**{case_id}** — {label}" + (f" — {failure_mode}" if failure_mode else "")):
+        with st.expander(f"**{case_id}** â€” {label}" + (f" â€” {failure_mode}" if failure_mode else "")):
             # Metadata row
             col1, col2, col3 = st.columns(3)
             with col1:
@@ -3729,18 +3729,18 @@ def render_test_cases_page():
                 if failure_mode:
                     st.markdown(f"**Failure Mode:** `{failure_mode}`")
             with col3:
-                st.markdown(f"**Source:** `{case.get('_source_file', '—')}`")
+                st.markdown(f"**Source:** `{case.get('_source_file', 'â€”')}`")
 
             st.markdown("---")
 
             # Context
             st.markdown("**Context** (source material):")
-            context = case.get('context', '—')
+            context = case.get('context', 'â€”')
             st.markdown(f"""<div style="background: {COLORS['light_gray']}; padding: 1rem; border-radius: 6px; font-size: 0.9rem; margin-bottom: 1rem; white-space: pre-wrap;">{context}</div>""", unsafe_allow_html=True)
 
             # Response
             st.markdown("**Response** (text to evaluate for hallucinations):")
-            response = case.get('response', '—')
+            response = case.get('response', 'â€”')
             st.markdown(f"""<div style="background: {COLORS['light_gray']}; padding: 1rem; border-radius: 6px; font-size: 0.9rem; border-left: 4px solid {label_color}; white-space: pre-wrap;">{response}</div>""", unsafe_allow_html=True)
 
             # Explanation if available
@@ -3784,7 +3784,7 @@ def render_limitations_page():
         st.markdown(f"""
         <div class="metric-card status-good" style="padding: 1.25rem; height: 100%;">
             <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">
-                ✓ Focuses on Hallucination Detection
+                âœ“ Focuses on Hallucination Detection
             </div>
             <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
                 This system specifically evaluates whether an AI response is <strong>grounded</strong>
@@ -3797,11 +3797,11 @@ def render_limitations_page():
         st.markdown(f"""
         <div class="metric-card status-good" style="padding: 1.25rem; height: 100%;">
             <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">
-                ✓ Uses LLM-as-Judge Approach
+                âœ“ Uses LLM-as-Judge Approach
             </div>
             <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
                 We use one LLM (the "judge") to evaluate the outputs of another LLM.
-                This is just <strong>one of many evaluation methods</strong> — not the only or best approach.
+                This is just <strong>one of many evaluation methods</strong> â€” not the only or best approach.
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -3825,42 +3825,42 @@ def render_limitations_page():
         {
             "title": "Helpfulness & Relevance",
             "desc": "Does the response actually answer the user's question? Is it useful and on-topic?",
-            "icon": "💡"
+            "icon": "ðŸ’¡"
         },
         {
             "title": "Harmlessness & Safety",
             "desc": "Does the response avoid harmful content? Does it refuse inappropriate requests?",
-            "icon": "🛡️"
+            "icon": "ðŸ›¡ï¸"
         },
         {
             "title": "Honesty & Transparency",
             "desc": "Does the model express uncertainty appropriately? Does it admit when it doesn't know?",
-            "icon": "🎯"
+            "icon": "ðŸŽ¯"
         },
         {
             "title": "Coherence & Fluency",
             "desc": "Is the text well-written? Is it grammatically correct and easy to understand?",
-            "icon": "✍️"
+            "icon": "âœï¸"
         },
         {
             "title": "Reasoning & Logic",
             "desc": "Does the model follow logical steps? Are its conclusions sound?",
-            "icon": "🧠"
+            "icon": "ðŸ§ "
         },
         {
             "title": "Instruction Following",
             "desc": "Does the model follow the format, length, and style requested by the user?",
-            "icon": "📋"
+            "icon": "ðŸ“‹"
         },
         {
             "title": "Creativity & Originality",
             "desc": "For creative tasks, is the output novel and interesting?",
-            "icon": "🎨"
+            "icon": "ðŸŽ¨"
         },
         {
             "title": "Factual Accuracy (External)",
             "desc": "Is information correct based on world knowledge (not just the given context)?",
-            "icon": "📚"
+            "icon": "ðŸ“š"
         },
     ]
 
@@ -3901,15 +3901,15 @@ def render_limitations_page():
     methods = [
         {
             "title": "Human Evaluation",
-            "desc": "Real humans rate responses — the gold standard but expensive and slow.",
+            "desc": "Real humans rate responses â€” the gold standard but expensive and slow.",
         },
         {
             "title": "Automated Metrics",
-            "desc": "BLEU, ROUGE, BERTScore — compare outputs to reference answers programmatically.",
+            "desc": "BLEU, ROUGE, BERTScore â€” compare outputs to reference answers programmatically.",
         },
         {
             "title": "Benchmark Suites",
-            "desc": "MMLU, HellaSwag, TruthfulQA — standardized tests with known correct answers.",
+            "desc": "MMLU, HellaSwag, TruthfulQA â€” standardized tests with known correct answers.",
         },
         {
             "title": "Red Teaming",
@@ -3980,7 +3980,7 @@ def render_failure_modes_page():
     <div style="margin-bottom: 1rem;">
         <a href="https://github.com/rasiulyte/evaluation-system/blob/main/docs/FAILURE_MODES.md" target="_blank"
            style="color: {COLORS['teal']}; text-decoration: none; font-size: 0.9rem;">
-            📄 View full documentation on GitHub →
+            ðŸ“„ View full documentation on GitHub â†’
         </a>
     </div>
     """, unsafe_allow_html=True)
@@ -4017,7 +4017,7 @@ def render_failure_modes_page():
     st.markdown("### Detailed Explanations")
 
     # FM2: Fabrication
-    with st.expander("**Fabrication** — Making Things Up", expanded=True):
+    with st.expander("**Fabrication** â€” Making Things Up", expanded=True):
         st.markdown(f"""
         **What it is:**
         The AI invents information that has no basis in reality or directly contradicts the source material.
@@ -4044,7 +4044,7 @@ def render_failure_modes_page():
         """, unsafe_allow_html=True)
 
     # FM3: Subtle Distortion
-    with st.expander("**Subtle Distortion** — Small Changes, Big Impact", expanded=False):
+    with st.expander("**Subtle Distortion** â€” Small Changes, Big Impact", expanded=False):
         st.markdown(f"""
         **What it is:**
         The AI makes small modifications to information that completely change its meaning.
@@ -4076,7 +4076,7 @@ def render_failure_modes_page():
         """, unsafe_allow_html=True)
 
     # FM6: Fluent Hallucination
-    with st.expander("**Fluent Hallucination** — Confident Lies", expanded=False):
+    with st.expander("**Fluent Hallucination** â€” Confident Lies", expanded=False):
         st.markdown(f"""
         **What it is:**
         The AI produces well-written, authoritative-sounding text that is completely false.
@@ -4087,7 +4087,7 @@ def render_failure_modes_page():
         - **Hallucinated Response:** "Machine learning, pioneered by Alan Turing in the 1940s
           with his groundbreaking work on computational intelligence, revolutionized how we process information."
 
-        (This sounds scholarly but is historically inaccurate — Turing worked on theory, not ML as we know it.)
+        (This sounds scholarly but is historically inaccurate â€” Turing worked on theory, not ML as we know it.)
 
         **Why it's the most dangerous:**
         - The writing quality creates false confidence
@@ -4107,7 +4107,7 @@ def render_failure_modes_page():
         """, unsafe_allow_html=True)
 
     # FM7: Partial Grounding
-    with st.expander("**Partial Grounding** — Mixing Truth with Fiction", expanded=False):
+    with st.expander("**Partial Grounding** â€” Mixing Truth with Fiction", expanded=False):
         st.markdown(f"""
         **What it is:**
         The response starts with accurate information from the source, then smoothly
@@ -4138,7 +4138,7 @@ def render_failure_modes_page():
         """, unsafe_allow_html=True)
 
     # FM1: Factual Addition
-    with st.expander("**Factual Addition** — Adding Extra (But True) Information", expanded=False):
+    with st.expander("**Factual Addition** â€” Adding Extra (But True) Information", expanded=False):
         st.markdown(f"""
         **What it is:**
         The AI adds information that wasn't in the source material, BUT the added
@@ -4149,7 +4149,7 @@ def render_failure_modes_page():
         - **Response:** "Python is a programming language used for data science,
           particularly with libraries like NumPy and Pandas."
 
-        NumPy and Pandas ARE real Python libraries — but they weren't mentioned in the context.
+        NumPy and Pandas ARE real Python libraries â€” but they weren't mentioned in the context.
 
         **Is this a problem?**
         It depends on your use case:
@@ -4172,7 +4172,7 @@ def render_failure_modes_page():
         """, unsafe_allow_html=True)
 
     # FM4: Valid Inference
-    with st.expander("**Valid Inference** — Logical Conclusions (Usually OK)", expanded=False):
+    with st.expander("**Valid Inference** â€” Logical Conclusions (Usually OK)", expanded=False):
         st.markdown(f"""
         **What it is:**
         The AI draws a logical conclusion from the given information. The conclusion
@@ -4182,7 +4182,7 @@ def render_failure_modes_page():
         - **Context:** "All mammals are vertebrates. Dogs are mammals."
         - **Response:** "Dogs are vertebrates."
 
-        This conclusion isn't hallucination — it's basic logic (a syllogism).
+        This conclusion isn't hallucination â€” it's basic logic (a syllogism).
 
         **Why this is different from hallucination:**
         - The conclusion is NECESSARILY TRUE given the premises
@@ -4192,7 +4192,7 @@ def render_failure_modes_page():
         **When it's acceptable:**
         - Basic logical deductions (if A then B, A is true, therefore B)
         - Mathematical calculations from given numbers
-        - Obvious implications ("it's raining" → "the ground is probably wet")
+        - Obvious implications ("it's raining" â†’ "the ground is probably wet")
 
         **When to be careful:**
         - Inferences that require assumptions not stated
@@ -4206,18 +4206,18 @@ def render_failure_modes_page():
         """, unsafe_allow_html=True)
 
     # FM5: Verbatim Grounded
-    with st.expander("**Verbatim Grounded** — Exact Repetition (Baseline)", expanded=False):
+    with st.expander("**Verbatim Grounded** â€” Exact Repetition (Baseline)", expanded=False):
         st.markdown(f"""
         **What it is:**
         The AI repeats or closely paraphrases exactly what was in the source material.
-        This is the "gold standard" for faithfulness — no hallucination at all.
+        This is the "gold standard" for faithfulness â€” no hallucination at all.
 
         **Simple Examples:**
         - **Context:** "Water boils at 100 degrees Celsius."
-        - **Response:** "Water boils at 100 degrees Celsius." ✓
+        - **Response:** "Water boils at 100 degrees Celsius." âœ“
 
         - **Context:** "The Earth orbits the Sun approximately every 365 days."
-        - **Response:** "The Earth takes about 365 days to orbit the Sun." ✓
+        - **Response:** "The Earth takes about 365 days to orbit the Sun." âœ“
 
         **Why we test for this:**
         - Establishes that the model CAN be faithful when it wants to
@@ -4225,8 +4225,8 @@ def render_failure_modes_page():
         - Some use cases require strict verbatim accuracy
 
         **Variations that are still grounded:**
-        - Word reordering ("A is B" → "B describes A")
-        - Synonym substitution ("approximately" → "about")
+        - Word reordering ("A is B" â†’ "B describes A")
+        - Synonym substitution ("approximately" â†’ "about")
         - Passive/active voice changes
 
         **Risk Level:** <span style="color: {COLORS['good']}; font-weight: bold;">NONE</span>
@@ -4374,7 +4374,7 @@ def render_prompt_lab_page(df: pd.DataFrame):
     <div style="margin-bottom: 1rem;">
         <a href="https://github.com/rasiulyte/evaluation-system/blob/main/docs/PROMPTING_STRATEGIES.md" target="_blank"
            style="color: {COLORS['teal']}; text-decoration: none; font-size: 0.9rem;">
-            📄 View full documentation on GitHub →
+            ðŸ“„ View full documentation on GitHub â†’
         </a>
     </div>
     """, unsafe_allow_html=True)
@@ -4387,7 +4387,7 @@ def render_prompt_lab_page(df: pd.DataFrame):
         </div>
         <div style="color: {COLORS['charcoal']}; line-height: 1.7;">
             <strong>Hillclimbing</strong> is an iterative optimization technique where you make small changes to a prompt
-            and measure if the results improve. Like climbing a hill in fog — you take a step, check if you went up,
+            and measure if the results improve. Like climbing a hill in fog â€” you take a step, check if you went up,
             and keep going in the direction that improves your metrics.
         </div>
     </div>
@@ -4444,18 +4444,18 @@ def render_prompt_lab_page(df: pd.DataFrame):
     prompts = load_all_prompts()
 
     # v1 Zero Shot
-    with st.expander("**v1_zero_shot** — Basic approach, no examples"):
+    with st.expander("**v1_zero_shot** â€” Basic approach, no examples"):
         col1, col2 = st.columns([2, 1])
         with col1:
             st.markdown(f"""
             **Approach:** Simply ask the model to classify without examples or detailed instructions.
 
-            **✓ Use when:**
+            **âœ“ Use when:**
             - Quick baseline testing
             - Evaluating model's inherent capability
             - Token budget is very limited
 
-            **✗ Don't use when:**
+            **âœ— Don't use when:**
             - You need consistent output format
             - You need confidence scores
             - High accuracy is required
@@ -4476,18 +4476,18 @@ def render_prompt_lab_page(df: pd.DataFrame):
             st.code(prompts["v1_zero_shot"], language=None)
 
     # v2 Few Shot
-    with st.expander("**v2_few_shot** — Learning from examples"):
+    with st.expander("**v2_few_shot** â€” Learning from examples"):
         col1, col2 = st.columns([2, 1])
         with col1:
             st.markdown(f"""
             **Approach:** Provide examples of correct classifications to guide the model.
 
-            **✓ Use when:**
+            **âœ“ Use when:**
             - Model struggles with zero-shot
             - You have good representative examples
             - Consistency matters more than token cost
 
-            **✗ Don't use when:**
+            **âœ— Don't use when:**
             - Token budget is tight (examples add tokens)
             - Your examples might bias edge cases
             - You need structured output
@@ -4508,18 +4508,18 @@ def render_prompt_lab_page(df: pd.DataFrame):
             st.code(prompts["v2_few_shot"], language=None)
 
     # v3 Chain of Thought
-    with st.expander("**v3_chain_of_thought** — Step-by-step reasoning"):
+    with st.expander("**v3_chain_of_thought** â€” Step-by-step reasoning"):
         col1, col2 = st.columns([2, 1])
         with col1:
             st.markdown(f"""
             **Approach:** Ask the model to reason through the problem step by step before concluding.
 
-            **✓ Use when:**
+            **âœ“ Use when:**
             - Complex cases requiring nuanced judgment
             - You want to understand the reasoning
             - Debugging why classifications fail
 
-            **✗ Don't use when:**
+            **âœ— Don't use when:**
             - Speed/latency is critical
             - Token budget is limited
             - You only need the final answer
@@ -4540,18 +4540,18 @@ def render_prompt_lab_page(df: pd.DataFrame):
             st.code(prompts["v3_chain_of_thought"], language=None)
 
     # v4 Rubric Based
-    with st.expander("**v4_rubric_based** — Multi-dimensional scoring"):
+    with st.expander("**v4_rubric_based** â€” Multi-dimensional scoring"):
         col1, col2 = st.columns([2, 1])
         with col1:
             st.markdown(f"""
             **Approach:** Score across 4 dimensions (grounding, factual, inference, numeric) with a 100-point scale.
 
-            **✓ Use when:**
+            **âœ“ Use when:**
             - You need detailed breakdown of WHY something is hallucinated
             - Analyzing failure patterns
             - Training human reviewers
 
-            **✗ Don't use when:**
+            **âœ— Don't use when:**
             - You need automated metric calculation
             - Simple pass/fail is sufficient
             - Parsing reliability matters
@@ -4572,18 +4572,18 @@ def render_prompt_lab_page(df: pd.DataFrame):
             st.code(prompts["v4_rubric_based"], language=None)
 
     # v5 Structured Output
-    with st.expander("**v5_structured_output** — JSON format for automation"):
+    with st.expander("**v5_structured_output** â€” JSON format for automation"):
         col1, col2 = st.columns([2, 1])
         with col1:
             st.markdown(f"""
             **Approach:** Request JSON output with classification, confidence, and reasoning fields.
 
-            **✓ Use when:**
+            **âœ“ Use when:**
             - Building automated pipelines
             - You need parseable output
             - Integrating with other systems
 
-            **✗ Don't use when:**
+            **âœ— Don't use when:**
             - You need meaningful confidence scores (use v6)
             - Correlation metrics matter (Spearman ~0.26)
 
@@ -4597,26 +4597,26 @@ def render_prompt_lab_page(df: pd.DataFrame):
             <div class="metric-card status-warning">
                 <div style="font-size: 0.8rem; color: {COLORS['medium_gray']};">Best for</div>
                 <div style="font-weight: 500; color: {COLORS['navy']};">Automation</div>
-                <div style="font-size: 0.75rem; color: {COLORS['amber']}; margin-top: 0.25rem;">⚠ Poor calibration</div>
+                <div style="font-size: 0.75rem; color: {COLORS['amber']}; margin-top: 0.25rem;">âš  Poor calibration</div>
             </div>
             """, unsafe_allow_html=True)
         if "v5_structured_output" in prompts:
             st.code(prompts["v5_structured_output"], language=None)
 
     # v6 Calibrated Confidence
-    with st.expander("**v6_calibrated_confidence** — JSON with meaningful confidence ⭐ Recommended"):
+    with st.expander("**v6_calibrated_confidence** â€” JSON with meaningful confidence â­ Recommended"):
         col1, col2 = st.columns([2, 1])
         with col1:
             st.markdown(f"""
             **Approach:** JSON output with explicit calibration guidelines for confidence values.
 
-            **✓ Use when:**
+            **âœ“ Use when:**
             - Production systems
             - You need trustworthy confidence scores
             - Correlation metrics matter
             - You want to threshold by confidence
 
-            **✗ Don't use when:**
+            **âœ— Don't use when:**
             - You need detailed dimensional breakdown (use v4)
             - Explainability is the primary goal (use v3)
 
@@ -4630,7 +4630,7 @@ def render_prompt_lab_page(df: pd.DataFrame):
             <div class="metric-card status-good">
                 <div style="font-size: 0.8rem; color: {COLORS['medium_gray']};">Best for</div>
                 <div style="font-weight: 500; color: {COLORS['navy']};">Production</div>
-                <div style="font-size: 0.75rem; color: {COLORS['good']}; margin-top: 0.25rem;">⭐ Recommended</div>
+                <div style="font-size: 0.75rem; color: {COLORS['good']}; margin-top: 0.25rem;">â­ Recommended</div>
             </div>
             """, unsafe_allow_html=True)
         if "v6_calibrated_confidence" in prompts:
@@ -4654,43 +4654,43 @@ def render_prompt_lab_page(df: pd.DataFrame):
             <tr style="border-bottom: 1px solid {COLORS['light_gray']};">
                 <td style="padding: 0.5rem;"><code>v1</code></td>
                 <td style="padding: 0.5rem;">Text</td>
-                <td style="padding: 0.5rem;">❌</td>
-                <td style="padding: 0.5rem;">❌</td>
+                <td style="padding: 0.5rem;">âŒ</td>
+                <td style="padding: 0.5rem;">âŒ</td>
                 <td style="padding: 0.5rem;">Baselines</td>
             </tr>
             <tr style="border-bottom: 1px solid {COLORS['light_gray']};">
                 <td style="padding: 0.5rem;"><code>v2</code></td>
                 <td style="padding: 0.5rem;">Text</td>
-                <td style="padding: 0.5rem;">❌</td>
-                <td style="padding: 0.5rem;">❌</td>
+                <td style="padding: 0.5rem;">âŒ</td>
+                <td style="padding: 0.5rem;">âŒ</td>
                 <td style="padding: 0.5rem;">Consistency</td>
             </tr>
             <tr style="border-bottom: 1px solid {COLORS['light_gray']};">
                 <td style="padding: 0.5rem;"><code>v3</code></td>
                 <td style="padding: 0.5rem;">Text + reasoning</td>
-                <td style="padding: 0.5rem;">❌</td>
-                <td style="padding: 0.5rem;">❌</td>
+                <td style="padding: 0.5rem;">âŒ</td>
+                <td style="padding: 0.5rem;">âŒ</td>
                 <td style="padding: 0.5rem;">Explainability</td>
             </tr>
             <tr style="border-bottom: 1px solid {COLORS['light_gray']};">
                 <td style="padding: 0.5rem;"><code>v4</code></td>
                 <td style="padding: 0.5rem;">Rubric scores</td>
-                <td style="padding: 0.5rem;">⚠️</td>
-                <td style="padding: 0.5rem;">⚠️ (derived)</td>
+                <td style="padding: 0.5rem;">âš ï¸</td>
+                <td style="padding: 0.5rem;">âš ï¸ (derived)</td>
                 <td style="padding: 0.5rem;">Deep analysis</td>
             </tr>
             <tr style="border-bottom: 1px solid {COLORS['light_gray']};">
                 <td style="padding: 0.5rem;"><code>v5</code></td>
                 <td style="padding: 0.5rem;">JSON</td>
-                <td style="padding: 0.5rem;">✅</td>
-                <td style="padding: 0.5rem;">⚠️ (uncalibrated)</td>
+                <td style="padding: 0.5rem;">âœ…</td>
+                <td style="padding: 0.5rem;">âš ï¸ (uncalibrated)</td>
                 <td style="padding: 0.5rem;">Automation</td>
             </tr>
             <tr>
-                <td style="padding: 0.5rem;"><code>v6</code> ⭐</td>
+                <td style="padding: 0.5rem;"><code>v6</code> â­</td>
                 <td style="padding: 0.5rem;">JSON</td>
-                <td style="padding: 0.5rem;">✅</td>
-                <td style="padding: 0.5rem;">✅ (calibrated)</td>
+                <td style="padding: 0.5rem;">âœ…</td>
+                <td style="padding: 0.5rem;">âœ… (calibrated)</td>
                 <td style="padding: 0.5rem;">Production</td>
             </tr>
         </table>
@@ -4712,19 +4712,19 @@ def render_prompt_lab_page(df: pd.DataFrame):
                     <td style="padding: 0.5rem 0;"><strong>What Improvement Means</strong></td>
                 </tr>
                 <tr style="border-top: 1px solid {COLORS['light_gray']};">
-                    <td style="padding: 0.5rem 0;">F1 Score ↑</td>
+                    <td style="padding: 0.5rem 0;">F1 Score â†‘</td>
                     <td style="padding: 0.5rem 0;">Better balance of catching hallucinations without false alarms</td>
                 </tr>
                 <tr style="border-top: 1px solid {COLORS['light_gray']};">
-                    <td style="padding: 0.5rem 0;">Spearman ↑</td>
+                    <td style="padding: 0.5rem 0;">Spearman â†‘</td>
                     <td style="padding: 0.5rem 0;">Confidence scores are more meaningful/trustworthy</td>
                 </tr>
                 <tr style="border-top: 1px solid {COLORS['light_gray']};">
-                    <td style="padding: 0.5rem 0;">Bias → 0</td>
+                    <td style="padding: 0.5rem 0;">Bias â†’ 0</td>
                     <td style="padding: 0.5rem 0;">System is more balanced (not too aggressive or lenient)</td>
                 </tr>
                 <tr style="border-top: 1px solid {COLORS['light_gray']};">
-                    <td style="padding: 0.5rem 0;">MAE ↓</td>
+                    <td style="padding: 0.5rem 0;">MAE â†“</td>
                     <td style="padding: 0.5rem 0;">Confidence values are better calibrated to actual correctness</td>
                 </tr>
             </table>
@@ -4742,7 +4742,7 @@ def render_prompt_lab_page(df: pd.DataFrame):
     with col1:
         st.markdown(f"""
         <div class="metric-card">
-            <div style="font-weight: 500; color: {COLORS['good']}; margin-bottom: 0.5rem;">✓ Do</div>
+            <div style="font-weight: 500; color: {COLORS['good']}; margin-bottom: 0.5rem;">âœ“ Do</div>
             <ul style="color: {COLORS['charcoal']}; font-size: 0.9rem; margin: 0; padding-left: 1.25rem;">
                 <li>Change one thing at a time</li>
                 <li>Run on the same test cases</li>
@@ -4756,7 +4756,7 @@ def render_prompt_lab_page(df: pd.DataFrame):
     with col2:
         st.markdown(f"""
         <div class="metric-card">
-            <div style="font-weight: 500; color: {COLORS['poor']}; margin-bottom: 0.5rem;">✗ Don't</div>
+            <div style="font-weight: 500; color: {COLORS['poor']}; margin-bottom: 0.5rem;">âœ— Don't</div>
             <ul style="color: {COLORS['charcoal']}; font-size: 0.9rem; margin: 0; padding-left: 1.25rem;">
                 <li>Change multiple things at once</li>
                 <li>Use different test cases</li>
@@ -4774,8 +4774,8 @@ def render_prompt_lab_page(df: pd.DataFrame):
 
 def main():
     st.set_page_config(
-        page_title="Eval Lab · rasar.ai",
-        page_icon="◈",
+        page_title="Eval Lab Â· rasar.ai",
+        page_icon="â—ˆ",
         layout="wide",
         initial_sidebar_state="expanded"
     )
@@ -4793,7 +4793,7 @@ def main():
     # Sidebar
     with st.sidebar:
         # Logo - clickable, styled via CSS
-        if st.button("◈ Eval Lab", key="logo_btn", use_container_width=True):
+        if st.button("â—ˆ Eval Lab", key="logo_btn", width="stretch"):
             st.session_state.current_page = "Getting Started"
             st.rerun()
 
@@ -4813,17 +4813,17 @@ def main():
         # Grouped Navigation with colorful icons
         nav_groups = {
             "LEARN": {
-                "icon": "◇",
+                "icon": "â—‡",
                 "color": "#8b5cf6",  # Purple
                 "pages": ["Getting Started", "Failure Modes", "Prompt Lab", "Understanding Metrics", "Limitations"]
             },
             "ANALYZE": {
-                "icon": "◈",
+                "icon": "â—ˆ",
                 "color": "#f59e0b",  # Amber
                 "pages": ["Metrics Overview", "Slice Analysis", "Trends", "Compare Runs", "Run History", "Test Cases"]
             },
             "RUN": {
-                "icon": "▷",
+                "icon": "â–·",
                 "color": "#10b981",  # Green
                 "pages": ["Run Evaluation"]
             }
@@ -4847,14 +4847,14 @@ def main():
 
             for page_name in group_data["pages"]:
                 is_active = st.session_state.current_page == page_name
-                indicator = "●" if is_active else "○"
+                indicator = "â—" if is_active else "â—‹"
 
                 # Use primary type for active to enable CSS styling
                 btn_type = "primary" if is_active else "secondary"
                 if st.button(
                     f"{indicator} {page_name}",
                     key=f"nav_{page_name}",
-                    use_container_width=True,
+                    width="stretch",
                     type=btn_type,
                 ):
                     st.session_state.current_page = page_name
