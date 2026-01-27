@@ -2590,6 +2590,39 @@ def render_run_evaluation_page():
     </div>
     """, unsafe_allow_html=True)
 
+    # Database Management Section
+    with st.expander("Database Management", expanded=False):
+        st.warning("This will permanently delete all evaluation data.")
+
+        col1, col2 = st.columns([1, 3])
+        with col1:
+            if st.button("Clear All Data", type="secondary"):
+                try:
+                    import sqlite3
+                    # Clear via direct SQL to ensure it works
+                    conn = db._get_connection()
+                    c = conn.cursor()
+                    if db.use_postgres:
+                        c.execute("DELETE FROM daily_runs")
+                        c.execute("DELETE FROM metrics")
+                        c.execute("DELETE FROM test_results")
+                    else:
+                        c.execute("DELETE FROM daily_runs")
+                        c.execute("DELETE FROM metrics")
+                        c.execute("DELETE FROM test_results")
+                    conn.commit()
+                    conn.close()
+                    st.success("All data cleared successfully!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error clearing data: {e}")
+
+        with col2:
+            info = db.debug_info()
+            st.caption(f"Current data: {info.get('daily_runs_count', 0)} runs, {info.get('metrics_count', 0)} metrics, {info.get('test_results_count', 0)} test results")
+
+    st.markdown("---")
+
     # Load config
     config = load_config()
 
