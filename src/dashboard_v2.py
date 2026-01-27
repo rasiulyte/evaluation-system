@@ -3627,7 +3627,9 @@ def render_home_page():
 
     video_path = Path(__file__).parent.parent / "assets" / "How_to_Grade_an_AI.mp4"
     if video_path.exists():
-        st.video(str(video_path))
+        col1, col2 = st.columns(2)
+        with col1:
+            st.video(str(video_path))
     else:
         st.info("Video tutorial not available.")
 
