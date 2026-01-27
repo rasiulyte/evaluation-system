@@ -2,8 +2,6 @@
 
 A **learning sandbox** for exploring LLM-as-Judge (autograder) evaluation techniques. This project is designed for **learning and experimentation**, not as a production framework.
 
-**Dashboard**: https://evaluation-system-v3.streamlit.app/ 
-
 ## What is LLM-as-Judge?
 
 **LLM-as-Judge** is a technique where one LLM evaluates the output of another LLM. Instead of humans manually reviewing every AI response, we use a "judge" LLM to automatically classify responses as correct or incorrect.
@@ -354,7 +352,7 @@ alerts = monitor.get_alerts(drift)
 should_rollback = monitor.should_rollback(drift)
 ```
 ### Dashboard
-https://evaluation-system.streamlit.app/
+https://evaluation-system-v3.streamlit.app/
 
 ### Regression Testing
 
