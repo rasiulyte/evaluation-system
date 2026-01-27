@@ -3759,6 +3759,221 @@ def render_test_cases_page():
 
 
 # ============================================
+# PAGE: LIMITATIONS
+# ============================================
+
+def render_limitations_page():
+    """Page explaining what this evaluation system does NOT cover."""
+
+    render_page_header(
+        "Limitations",
+        "What this evaluation system is and isn't"
+    )
+
+    # Main disclaimer
+    st.markdown(f"""
+    <div class="metric-card status-warning" style="padding: 1.5rem; margin-bottom: 2rem;">
+        <div style="font-size: 1.1rem; color: {COLORS['navy']}; margin-bottom: 0.75rem; font-weight: 500;">
+            This is a Learning Sandbox
+        </div>
+        <div style="color: {COLORS['charcoal']}; line-height: 1.7;">
+            This project is designed to help you <strong>learn about LLM evaluation concepts</strong>.
+            It demonstrates one specific approach to one specific problem. Real-world evaluation systems
+            are far more comprehensive.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # What this system IS
+    render_section_header("What This System Does")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown(f"""
+        <div class="metric-card status-good" style="padding: 1.25rem; height: 100%;">
+            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">
+                ✓ Focuses on Hallucination Detection
+            </div>
+            <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
+                This system specifically evaluates whether an AI response is <strong>grounded</strong>
+                (supported by the given context) or <strong>hallucinated</strong> (contains made-up information).
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown(f"""
+        <div class="metric-card status-good" style="padding: 1.25rem; height: 100%;">
+            <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.75rem;">
+                ✓ Uses LLM-as-Judge Approach
+            </div>
+            <div style="color: {COLORS['charcoal']}; font-size: 0.9rem; line-height: 1.6;">
+                We use one LLM (the "judge") to evaluate the outputs of another LLM.
+                This is just <strong>one of many evaluation methods</strong> — not the only or best approach.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("<div style='margin-top: 2rem;'></div>", unsafe_allow_html=True)
+
+    # What this system is NOT
+    render_section_header("What This System Does NOT Do")
+
+    st.markdown(f"""
+    <div style="background: {COLORS['light_gray']}; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+        <div style="color: {COLORS['charcoal']}; font-size: 0.95rem;">
+            LLM evaluation is multidimensional. This sandbox only scratches the surface.
+            Here are important dimensions we <strong>do not</strong> evaluate:
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Dimensions not covered
+    dimensions_not_covered = [
+        {
+            "title": "Helpfulness & Relevance",
+            "desc": "Does the response actually answer the user's question? Is it useful and on-topic?",
+            "icon": "💡"
+        },
+        {
+            "title": "Harmlessness & Safety",
+            "desc": "Does the response avoid harmful content? Does it refuse inappropriate requests?",
+            "icon": "🛡️"
+        },
+        {
+            "title": "Honesty & Transparency",
+            "desc": "Does the model express uncertainty appropriately? Does it admit when it doesn't know?",
+            "icon": "🎯"
+        },
+        {
+            "title": "Coherence & Fluency",
+            "desc": "Is the text well-written? Is it grammatically correct and easy to understand?",
+            "icon": "✍️"
+        },
+        {
+            "title": "Reasoning & Logic",
+            "desc": "Does the model follow logical steps? Are its conclusions sound?",
+            "icon": "🧠"
+        },
+        {
+            "title": "Instruction Following",
+            "desc": "Does the model follow the format, length, and style requested by the user?",
+            "icon": "📋"
+        },
+        {
+            "title": "Creativity & Originality",
+            "desc": "For creative tasks, is the output novel and interesting?",
+            "icon": "🎨"
+        },
+        {
+            "title": "Factual Accuracy (External)",
+            "desc": "Is information correct based on world knowledge (not just the given context)?",
+            "icon": "📚"
+        },
+    ]
+
+    # Display in 2 columns
+    col1, col2 = st.columns(2)
+
+    for i, dim in enumerate(dimensions_not_covered):
+        with col1 if i % 2 == 0 else col2:
+            st.markdown(f"""
+            <div class="metric-card" style="padding: 1rem; margin-bottom: 0.75rem;">
+                <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
+                    <span style="font-size: 1.25rem;">{dim['icon']}</span>
+                    <div>
+                        <div style="font-weight: 500; color: {COLORS['navy']}; margin-bottom: 0.25rem;">
+                            {dim['title']}
+                        </div>
+                        <div style="color: {COLORS['charcoal']}; font-size: 0.85rem; line-height: 1.5;">
+                            {dim['desc']}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("<div style='margin-top: 2rem;'></div>", unsafe_allow_html=True)
+
+    # Other evaluation methods
+    render_section_header("Other Evaluation Methods We Don't Use")
+
+    st.markdown(f"""
+    <div style="background: {COLORS['light_gray']}; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+        <div style="color: {COLORS['charcoal']}; font-size: 0.95rem;">
+            LLM-as-Judge is just one approach. Other methods include:
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    methods = [
+        {
+            "title": "Human Evaluation",
+            "desc": "Real humans rate responses — the gold standard but expensive and slow.",
+        },
+        {
+            "title": "Automated Metrics",
+            "desc": "BLEU, ROUGE, BERTScore — compare outputs to reference answers programmatically.",
+        },
+        {
+            "title": "Benchmark Suites",
+            "desc": "MMLU, HellaSwag, TruthfulQA — standardized tests with known correct answers.",
+        },
+        {
+            "title": "Red Teaming",
+            "desc": "Adversarial testing to find failure cases and safety issues.",
+        },
+        {
+            "title": "A/B Testing",
+            "desc": "Compare two models in production with real users.",
+        },
+        {
+            "title": "Constitutional AI",
+            "desc": "Self-critique where the model evaluates and improves its own outputs.",
+        },
+    ]
+
+    col1, col2, col3 = st.columns(3)
+
+    for i, method in enumerate(methods):
+        with [col1, col2, col3][i % 3]:
+            st.markdown(f"""
+            <div class="metric-card" style="padding: 1rem; margin-bottom: 0.75rem; min-height: 120px;">
+                <div style="font-weight: 500; color: {COLORS['teal']}; margin-bottom: 0.5rem; font-size: 0.9rem;">
+                    {method['title']}
+                </div>
+                <div style="color: {COLORS['charcoal']}; font-size: 0.8rem; line-height: 1.5;">
+                    {method['desc']}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("<div style='margin-top: 2rem;'></div>", unsafe_allow_html=True)
+
+    # Key takeaway
+    render_section_header("Key Takeaway")
+
+    st.markdown(f"""
+    <div class="metric-card" style="padding: 1.5rem; border-left: 4px solid {COLORS['teal']};">
+        <div style="color: {COLORS['charcoal']}; font-size: 1rem; line-height: 1.8;">
+            <strong>A complete LLM evaluation strategy combines multiple methods and dimensions.</strong>
+            <br><br>
+            This sandbox teaches you the fundamentals of:
+            <ul style="margin: 0.5rem 0 0 1.5rem; padding: 0;">
+                <li>How to structure evaluation test cases</li>
+                <li>How LLM-as-Judge works in practice</li>
+                <li>How to interpret classification metrics</li>
+                <li>How to iterate on prompts (hillclimbing)</li>
+            </ul>
+            <br>
+            Use these concepts as building blocks for more comprehensive evaluation systems.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+# ============================================
 # PAGE: FAILURE MODES (Educational Guide)
 # ============================================
 
@@ -4611,7 +4826,7 @@ def main():
             "LEARN": {
                 "icon": "◇",
                 "color": "#8b5cf6",  # Purple
-                "pages": ["Getting Started", "Failure Modes", "Prompt Lab", "Understanding Metrics"]
+                "pages": ["Getting Started", "Limitations", "Failure Modes", "Prompt Lab", "Understanding Metrics"]
             },
             "ANALYZE": {
                 "icon": "◈",
@@ -4700,6 +4915,8 @@ def main():
         render_test_cases_page()
     elif page == "Failure Modes":
         render_failure_modes_page()
+    elif page == "Limitations":
+        render_limitations_page()
     elif page == "Prompt Lab":
         render_prompt_lab_page(df)
     elif page == "Run Evaluation":
