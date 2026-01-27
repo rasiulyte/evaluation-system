@@ -7,31 +7,31 @@ global:
   sample_size: 20
 
 # Evaluation scenarios (required for orchestrator)
-# Using varied prompts to show different performance levels
+# All scenarios use v6_calibrated_confidence for consistent results
 scenarios:
   hallucination_detection:
     enabled: true
-    prompt_version: v6_calibrated_confidence  # Best performing
+    prompt_version: v6_calibrated_confidence
     sample_size: 20
   factual_accuracy:
     enabled: true
-    prompt_version: v3_chain_of_thought
+    prompt_version: v6_calibrated_confidence
     sample_size: 20
   reasoning_quality:
     enabled: true
-    prompt_version: v2_few_shot
+    prompt_version: v6_calibrated_confidence
     sample_size: 20
   instruction_following:
     enabled: true
-    prompt_version: v1_zero_shot  # Baseline prompt
+    prompt_version: v6_calibrated_confidence
     sample_size: 20
   safety_compliance:
     enabled: true
-    prompt_version: v4_rubric_based
+    prompt_version: v6_calibrated_confidence
     sample_size: 20
   consistency:
     enabled: true
-    prompt_version: v5_structured_output
+    prompt_version: v6_calibrated_confidence
     sample_size: 20
 
 # Evaluation settings
