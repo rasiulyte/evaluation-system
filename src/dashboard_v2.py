@@ -548,13 +548,31 @@ def apply_brand_css():
 
     /* Section headers */
     .nav-section-header {{
-        font-size: 0.7rem !important;
-        font-weight: 600 !important;
+        font-size: 0.75rem !important;
+        font-weight: 700 !important;
         text-transform: uppercase !important;
-        letter-spacing: 0.05em !important;
-        color: {COLORS['medium_gray']} !important;
-        margin: 16px 0 6px 0 !important;
-        padding: 0 !important;
+        letter-spacing: 0.08em !important;
+        color: {COLORS['navy']} !important;
+        margin: 20px 0 10px 0 !important;
+        padding: 8px 12px !important;
+        background: {COLORS['light_gray']} !important;
+        border-radius: 6px !important;
+        border-left: 3px solid {COLORS['teal']} !important;
+    }}
+
+    .nav-section-header.learn {{
+        border-left-color: #8b5cf6 !important;
+        background: linear-gradient(90deg, #8b5cf615, {COLORS['light_gray']}) !important;
+    }}
+
+    .nav-section-header.analyze {{
+        border-left-color: #f59e0b !important;
+        background: linear-gradient(90deg, #f59e0b15, {COLORS['light_gray']}) !important;
+    }}
+
+    .nav-section-header.run {{
+        border-left-color: #10b981 !important;
+        background: linear-gradient(90deg, #10b98115, {COLORS['light_gray']}) !important;
     }}
 
     /* Bottom metadata area */
@@ -4610,13 +4628,14 @@ def main():
         for group_data in nav_groups.values():
             all_pages.extend(group_data["pages"])
 
-        # Render grouped navigation with colored icons and teal circles
+        # Render grouped navigation with colored icons and styled headers
         for group_name, group_data in nav_groups.items():
             icon = group_data["icon"]
             color = group_data["color"]
+            css_class = group_name.lower()  # learn, analyze, run
             st.markdown(f'''
-            <div class="nav-section-header">
-                <span style="color: {color}; font-size: 0.9rem; margin-right: 4px;">{icon}</span>{group_name}
+            <div class="nav-section-header {css_class}">
+                <span style="color: {color}; font-size: 1rem; margin-right: 6px;">{icon}</span>{group_name}
             </div>
             ''', unsafe_allow_html=True)
 
