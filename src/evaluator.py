@@ -155,6 +155,9 @@ class Evaluator:
             output_tokens = usage.completion_tokens if usage else 0
             total_tokens = usage.total_tokens if usage else 0
 
+            # Debug: print token info
+            print(f"    [TOKEN DEBUG] {test_case_id}: {input_tokens} in, {output_tokens} out, {total_tokens} total")
+
             # Calculate cost
             cost = self._calculate_cost(input_tokens, output_tokens)
 
