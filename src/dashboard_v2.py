@@ -1490,8 +1490,8 @@ def render_run_history_page(df: pd.DataFrame):
 
     st.markdown("---")
 
-    # Display each run as an expandable card
-    for _, row in runs_df.iterrows():
+    # Helper function to render a single run
+    def render_run_card(row):
         status_raw = row['status_raw']
         if status_raw == "passing":
             status_color = COLORS['good']
@@ -1561,11 +1561,11 @@ def render_run_history_page(df: pd.DataFrame):
                             })
 
                         if table_data:
-                            results_df = pd.DataFrame(table_data)
-                            st.dataframe(results_df, use_container_width=True, hide_index=True)
+                            table_df = pd.DataFrame(table_data)
+                            st.dataframe(table_df, use_container_width=True, hide_index=True)
 
-                            # Add test case viewer
-                            test_case_ids = [r.get('test_case_id', '') for r in results if r.get('test_case_id')]
+                            # Allow viewing individual test cases
+                            test_case_ids = [r.get('test_case_id') for r in results if r.get('test_case_id')]
                             if test_case_ids:
                                 selected_case = st.selectbox(
                                     "View test case details:",
@@ -1592,14 +1592,14 @@ def render_run_history_page(df: pd.DataFrame):
                                             st.markdown(f"**Expected Label:** <span style='color: {label_color};'>`{expected_label}`</span>", unsafe_allow_html=True)
                                         with col2:
                                             if llm_result:
-                                                prediction = llm_result.get('prediction', '—')
-                                                pred_color = COLORS['good'] if prediction == 'grounded' else COLORS['poor']
-                                                st.markdown(f"**LLM Prediction:** <span style='color: {pred_color};'>`{prediction}`</span>", unsafe_allow_html=True)
+                                                pred = llm_result.get('prediction', '—')
+                                                pred_color = COLORS['good'] if pred == 'grounded' else COLORS['poor']
+                                                st.markdown(f"**LLM Prediction:** <span style='color: {pred_color};'>`{pred}`</span>", unsafe_allow_html=True)
                                         with col3:
                                             if llm_result:
-                                                correct = llm_result.get('correct', False)
-                                                result_text = "✓ Correct" if correct else "✗ Wrong"
-                                                result_color = COLORS['good'] if correct else COLORS['poor']
+                                                is_correct = llm_result.get('correct', False)
+                                                result_text = "✓ Correct" if is_correct else "✗ Wrong"
+                                                result_color = COLORS['good'] if is_correct else COLORS['poor']
                                                 st.markdown(f"**Result:** <span style='color: {result_color};'>{result_text}</span>", unsafe_allow_html=True)
 
                                         if test_case_data.get('failure_mode'):
@@ -1607,56 +1607,50 @@ def render_run_history_page(df: pd.DataFrame):
 
                                         st.markdown("---")
 
-                                        # Two columns: Golden test case vs LLM response
-                                        col1, col2 = st.columns(2)
+                                        # Context and Response
+                                        st.markdown("**Context:**")
+                                        context_text = test_case_data.get('context', '—')
+                                        st.markdown(f"""<div style="background: {COLORS['light_gray']}; padding: 1rem; border-radius: 6px; font-size: 0.85rem;">{context_text}</div>""", unsafe_allow_html=True)
 
-                                        with col1:
-                                            st.markdown(f"**📋 Golden Test Case**")
+                                        st.markdown("**Response:**")
+                                        response_text = test_case_data.get('response', '—')
+                                        st.markdown(f"""<div style="background: {COLORS['light_gray']}; padding: 1rem; border-radius: 6px; font-size: 0.85rem;">{response_text}</div>""", unsafe_allow_html=True)
 
-                                            st.markdown("**Context:**")
-                                            st.markdown(f"""<div style="background: {COLORS['light_gray']}; padding: 1rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1rem;">{test_case_data.get('context', '—')}</div>""", unsafe_allow_html=True)
+                                        # LLM's analysis
+                                        if llm_result:
+                                            st.markdown("---")
+                                            st.markdown("**LLM Analysis:**")
 
-                                            st.markdown("**Response to Evaluate:**")
-                                            st.markdown(f"""<div style="background: {COLORS['light_gray']}; padding: 1rem; border-radius: 6px; font-size: 0.85rem;">{test_case_data.get('response', '—')}</div>""", unsafe_allow_html=True)
+                                            # Confidence
+                                            conf = llm_result.get('confidence', 0)
+                                            conf_pct = conf * 100 if conf else 0
+                                            st.markdown(f"**Confidence:** `{conf_pct:.0f}%`")
 
-                                            if test_case_data.get('reasoning'):
-                                                st.markdown("**Ground Truth Reasoning:**")
-                                                st.markdown(f"_{test_case_data.get('reasoning')}_")
+                                            # Parse and display LLM output
+                                            llm_output = llm_result.get('llm_output', '')
 
-                                        with col2:
-                                            st.markdown(f"**🤖 LLM Response**")
+                                            # Try to parse JSON for nicer display
+                                            try:
+                                                import json
+                                                llm_json = json.loads(llm_output)
 
-                                            if llm_result:
-                                                # Confidence
-                                                confidence = llm_result.get('confidence', 0)
-                                                conf_pct = confidence * 100 if confidence else 0
-                                                st.markdown(f"**Confidence:** `{conf_pct:.0f}%`")
+                                                st.markdown("**Classification:**")
+                                                classification = llm_json.get('classification', '—')
+                                                class_color = COLORS['good'] if classification == 'grounded' else COLORS['poor']
+                                                st.markdown(f"<span style='color: {class_color}; font-weight: bold;'>{classification}</span>", unsafe_allow_html=True)
 
-                                                # Parse and display LLM output
-                                                llm_output = llm_result.get('llm_output', '')
+                                                st.markdown("**LLM Reasoning:**")
+                                                reasoning = llm_json.get('reasoning', '—')
+                                                st.markdown(f"""<div style="background: {COLORS['light_gray']}; padding: 1rem; border-radius: 6px; font-size: 0.85rem; border-left: 4px solid {COLORS['teal']};">{reasoning}</div>""", unsafe_allow_html=True)
+                                            except:
+                                                # Show raw output if not JSON
+                                                st.markdown("**Raw LLM Output:**")
+                                                st.markdown(f"""<div style="background: {COLORS['light_gray']}; padding: 1rem; border-radius: 6px; font-size: 0.85rem; border-left: 4px solid {COLORS['teal']}; white-space: pre-wrap;">{llm_output}</div>""", unsafe_allow_html=True)
 
-                                                # Try to parse JSON for nicer display
-                                                try:
-                                                    import json
-                                                    llm_json = json.loads(llm_output)
-
-                                                    st.markdown("**Classification:**")
-                                                    classification = llm_json.get('classification', '—')
-                                                    class_color = COLORS['good'] if classification == 'grounded' else COLORS['poor']
-                                                    st.markdown(f"<span style='color: {class_color}; font-weight: bold;'>{classification}</span>", unsafe_allow_html=True)
-
-                                                    st.markdown("**LLM Reasoning:**")
-                                                    reasoning = llm_json.get('reasoning', '—')
-                                                    st.markdown(f"""<div style="background: {COLORS['light_gray']}; padding: 1rem; border-radius: 6px; font-size: 0.85rem; border-left: 4px solid {COLORS['teal']};">{reasoning}</div>""", unsafe_allow_html=True)
-                                                except:
-                                                    # Show raw output if not JSON
-                                                    st.markdown("**Raw LLM Output:**")
-                                                    st.markdown(f"""<div style="background: {COLORS['light_gray']}; padding: 1rem; border-radius: 6px; font-size: 0.85rem; border-left: 4px solid {COLORS['teal']}; white-space: pre-wrap;">{llm_output}</div>""", unsafe_allow_html=True)
-
-                                                # Additional metadata
-                                                st.markdown(f"<small style='color: {COLORS['medium_gray']};'>Model: {llm_result.get('model', '—')} | Duration: {llm_result.get('duration_ms', 0):.0f}ms</small>", unsafe_allow_html=True)
-                                            else:
-                                                st.info("No LLM response found for this test case.")
+                                            # Additional metadata
+                                            st.markdown(f"<small style='color: {COLORS['medium_gray']};'>Model: {llm_result.get('model', '—')} | Duration: {llm_result.get('duration_ms', 0):.0f}ms</small>", unsafe_allow_html=True)
+                                        else:
+                                            st.info("No LLM response found for this test case.")
                                     else:
                                         st.warning(f"Could not load test case: {selected_case}")
 
@@ -1665,6 +1659,18 @@ def render_run_history_page(df: pd.DataFrame):
                     st.info("No detailed test results available for this run.")
             except Exception as e:
                 st.warning(f"Could not load test results: {e}")
+
+    # Display first 10 runs
+    st.markdown(f"### Recent Runs")
+    for idx, row in runs_df.head(10).iterrows():
+        render_run_card(row)
+
+    # Show older runs in expander if there are more than 10
+    if len(runs_df) > 10:
+        older_runs = runs_df.iloc[10:]
+        with st.expander(f"Show {len(older_runs)} older runs"):
+            for idx, row in older_runs.iterrows():
+                render_run_card(row)
 
 
 # ============================================
