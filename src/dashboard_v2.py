@@ -6,6 +6,9 @@ Design Philosophy: Intellectual, understated, quietly confident.
 Technical depth without pretension. Quality over flash.
 """
 
+# Version for debugging - update this when making changes
+DASHBOARD_VERSION = "1.1.0-cost-tracking"
+
 import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
@@ -828,6 +831,7 @@ def render_footer():
     <div class="footer">
         <p>A sandbox for learning AI evaluation</p>
         <p style="margin-top: 0.5rem;">&copy; 2025 <a href="https://rasar.ai" target="_blank">rasar.ai</a>. All rights reserved.</p>
+        <p style="margin-top: 0.25rem; font-size: 0.7rem; color: {COLORS['medium_gray']};">v{DASHBOARD_VERSION}</p>
     </div>
     """, unsafe_allow_html=True)
 
