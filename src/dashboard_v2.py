@@ -1384,6 +1384,9 @@ def render_run_history_page(df: pd.DataFrame):
         st.info("No runs recorded yet.")
         return
 
+    # Fetch daily runs for cost info
+    daily_runs = {r['run_id']: r for r in db.get_daily_runs()}
+
     # Build runs summary
     runs_data = []
     for run_id in df["run_id"].unique():
@@ -1399,6 +1402,11 @@ def render_run_history_page(df: pd.DataFrame):
 
         recall_val = run_df[run_df["metric_name"] == "recall"]["metric_value"].values
         recall = recall_val[0] if len(recall_val) > 0 else None
+
+        # Get cost info from daily_runs
+        daily_run = daily_runs.get(run_id, {})
+        total_tokens = daily_run.get('total_tokens', 0) or 0
+        cost_usd = daily_run.get('total_cost_usd', 0.0) or 0.0
 
         # Determine overall status
         if f1 and f1 >= 0.75:
@@ -1419,7 +1427,9 @@ def render_run_history_page(df: pd.DataFrame):
             "Precision": precision,
             "Recall": recall,
             "Status": status,
-            "status_raw": status_raw
+            "status_raw": status_raw,
+            "tokens": total_tokens,
+            "cost": cost_usd
         })
 
     runs_df = pd.DataFrame(runs_data).sort_values("Date", ascending=False)
@@ -1427,8 +1437,10 @@ def render_run_history_page(df: pd.DataFrame):
     # Summary cards with red/green
     passing_runs = len(runs_df[runs_df["status_raw"] == "passing"])
     failing_runs = len(runs_df[runs_df["status_raw"] == "failing"])
+    total_cost = runs_df["cost"].sum() if "cost" in runs_df.columns else 0.0
+    total_tokens = runs_df["tokens"].sum() if "tokens" in runs_df.columns else 0
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
         render_simple_metric("Total Runs", str(len(runs_df)))
     with col2:
@@ -1446,16 +1458,19 @@ def render_run_history_page(df: pd.DataFrame):
         </div>
         """, unsafe_allow_html=True)
     with col4:
-        if not runs_df.empty:
-            latest = runs_df.iloc[0]
-            latest_status = latest["status_raw"]
-            color = COLORS['good'] if latest_status == "passing" else (COLORS['poor'] if latest_status == "failing" else COLORS['amber'])
-            st.markdown(f"""
-            <div class="metric-card">
-                <span class="metric-label">Latest</span>
-                <div class="metric-value" style="color: {color}; font-size: 1.25rem;">{latest["Status"]}</div>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class="metric-card">
+            <span class="metric-label">Total Cost</span>
+            <div class="metric-value" style="color: {COLORS['teal']}; font-size: 1.25rem;">${total_cost:.4f}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with col5:
+        st.markdown(f"""
+        <div class="metric-card">
+            <span class="metric-label">Total Tokens</span>
+            <div class="metric-value" style="font-size: 1.1rem;">{total_tokens:,}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
     st.markdown("---")
 
@@ -1475,11 +1490,13 @@ def render_run_history_page(df: pd.DataFrame):
         f1_str = f"{row['F1']:.3f}" if row['F1'] is not None else "—"
         prec_str = f"{row['Precision']:.3f}" if row['Precision'] is not None else "—"
         rec_str = f"{row['Recall']:.3f}" if row['Recall'] is not None else "—"
+        cost_str = f"${row['cost']:.4f}" if row['cost'] > 0 else "—"
+        tokens_str = f"{row['tokens']:,}" if row['tokens'] > 0 else "—"
 
         # Create expander for each run
-        with st.expander(f"**{row['Run ID']}** — {row['Date']} {row['Time']} — F1: {f1_str}"):
+        with st.expander(f"**{row['Run ID']}** — {row['Date']} {row['Time']} — F1: {f1_str} — Cost: {cost_str}"):
             # Summary row
-            col1, col2, col3, col4 = st.columns(4)
+            col1, col2, col3, col4, col5 = st.columns(5)
             with col1:
                 st.markdown(f"**Status:** <span style='color: {status_color};'>{status_text}</span>", unsafe_allow_html=True)
             with col2:
@@ -1488,6 +1505,8 @@ def render_run_history_page(df: pd.DataFrame):
                 st.markdown(f"**Precision:** {prec_str}")
             with col4:
                 st.markdown(f"**Recall:** {rec_str}")
+            with col5:
+                st.markdown(f"**Tokens:** {tokens_str}")
 
             st.markdown("---")
 

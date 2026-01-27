@@ -370,6 +370,42 @@ class Database:
         conn.close()
         return count
 
+    def get_daily_runs(self):
+        """Get all daily run summaries."""
+        conn = self._get_connection()
+
+        if self.use_postgres:
+            c = conn.cursor(cursor_factory=RealDictCursor)
+            c.execute("SELECT * FROM daily_runs ORDER BY timestamp DESC")
+            results = [dict(row) for row in c.fetchall()]
+        else:
+            conn.row_factory = sqlite3.Row
+            c = conn.cursor()
+            c.execute("SELECT * FROM daily_runs ORDER BY timestamp DESC")
+            results = [dict(row) for row in c.fetchall()]
+
+        conn.close()
+        return results
+
+    def get_daily_run(self, run_id):
+        """Get a single daily run by ID."""
+        conn = self._get_connection()
+
+        if self.use_postgres:
+            c = conn.cursor(cursor_factory=RealDictCursor)
+            c.execute("SELECT * FROM daily_runs WHERE run_id = %s", (run_id,))
+            row = c.fetchone()
+            result = dict(row) if row else None
+        else:
+            conn.row_factory = sqlite3.Row
+            c = conn.cursor()
+            c.execute("SELECT * FROM daily_runs WHERE run_id = ?", (run_id,))
+            row = c.fetchone()
+            result = dict(row) if row else None
+
+        conn.close()
+        return result
+
     def debug_info(self):
         """Get debug information about database state."""
         conn = self._get_connection()
