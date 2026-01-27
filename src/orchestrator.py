@@ -336,12 +336,21 @@ class EvaluationOrchestrator:
                     print(f"  Filtered {filtered_count} invalid predictions (unknown/empty)")
 
                 # Extract confidence scores if available
+                # Note: v6 prompt outputs "confidence in being grounded" but MAE/RMSE
+                # expects "probability of hallucination". We need to transform the scores.
+                # For v6 prompts: prob_hallucination = 1 - confidence_in_grounded
                 y_conf = []
                 for r in valid_results:
                     conf = r.get("confidence")
                     if conf is not None:
                         try:
-                            y_conf.append(float(conf))
+                            conf_val = float(conf)
+                            # Transform confidence based on prompt version
+                            # v5 and v6 output confidence in "grounded" so we need to invert
+                            # for MAE/RMSE which expect probability of hallucination
+                            if prompt_version.startswith("v5_") or prompt_version.startswith("v6_"):
+                                conf_val = 1.0 - conf_val
+                            y_conf.append(conf_val)
                         except (ValueError, TypeError):
                             y_conf.append(None)
                     else:
