@@ -17,11 +17,23 @@ USE_POSTGRES = DATABASE_URL is not None
 POSTGRES_ERROR = None
 PG_PARAMS = None
 
+PG_MODULE = None  # Will be 'psycopg2' or 'pg8000'
+
 if USE_POSTGRES:
+    # Try psycopg2 first (Streamlit Cloud), fall back to pg8000 (local/pure Python)
     try:
         import psycopg2
         from psycopg2.extras import RealDictCursor
+        PG_MODULE = 'psycopg2'
+    except ImportError:
+        try:
+            import pg8000
+            PG_MODULE = 'pg8000'
+        except ImportError:
+            USE_POSTGRES = False
+            POSTGRES_ERROR = "Neither psycopg2 nor pg8000 installed"
 
+    if USE_POSTGRES:
         # Parse DATABASE_URL into components
         parsed = urlparse(DATABASE_URL)
         PG_PARAMS = {
@@ -33,9 +45,6 @@ if USE_POSTGRES:
             'sslmode': 'require',
             'connect_timeout': 10
         }
-    except ImportError:
-        USE_POSTGRES = False
-        POSTGRES_ERROR = "psycopg2 not installed"
 
 
 class Database:
@@ -46,10 +55,12 @@ class Database:
         self.connection_error = None
         self.pg_params = PG_PARAMS
 
+        self.pg_module = PG_MODULE
+
         # Test PostgreSQL connection, fall back to SQLite if it fails
         if self.use_postgres:
             try:
-                conn = psycopg2.connect(**PG_PARAMS)
+                conn = self._pg_connect()
                 conn.close()
             except Exception as e:
                 self.connection_error = str(e)
@@ -60,12 +71,63 @@ class Database:
 
         self._init_db()
 
+    def _pg_connect(self):
+        """Connect to PostgreSQL using whichever driver is available."""
+        if self.pg_module == 'psycopg2':
+            return psycopg2.connect(**PG_PARAMS)
+        else:
+            # pg8000
+            import ssl
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            return pg8000.connect(
+                host=PG_PARAMS['host'],
+                port=int(PG_PARAMS['port']),
+                database=PG_PARAMS['database'],
+                user=PG_PARAMS['user'],
+                password=PG_PARAMS['password'],
+                ssl_context=ssl_context,
+                timeout=10
+            )
+
     def _get_connection(self):
         if self.use_postgres:
-            return psycopg2.connect(**PG_PARAMS)
+            return self._pg_connect()
         else:
             os.makedirs("data", exist_ok=True)
             return sqlite3.connect("data/metrics.db")
+
+    def _dict_cursor(self, conn):
+        """Get a cursor that returns dicts."""
+        if self.use_postgres and self.pg_module == 'psycopg2':
+            return conn.cursor(cursor_factory=RealDictCursor)
+        elif self.use_postgres and self.pg_module == 'pg8000':
+            # pg8000 doesn't have dict cursors - we handle this in _fetchall_dicts
+            return conn.cursor()
+        else:
+            conn.row_factory = sqlite3.Row
+            return conn.cursor()
+
+    def _fetchall_dicts(self, cursor):
+        """Fetch all rows as list of dicts (handles pg8000 which lacks dict cursor)."""
+        rows = cursor.fetchall()
+        if self.use_postgres and self.pg_module == 'pg8000':
+            columns = [desc[0] for desc in cursor.description]
+            return [dict(zip(columns, row)) for row in rows]
+        else:
+            return [dict(row) for row in rows]
+
+    def _fetchone_dict(self, cursor):
+        """Fetch one row as dict."""
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        if self.use_postgres and self.pg_module == 'pg8000':
+            columns = [desc[0] for desc in cursor.description]
+            return dict(zip(columns, row))
+        else:
+            return dict(row)
     
     def _init_db(self):
         """Initialize database tables."""
@@ -73,6 +135,7 @@ class Database:
         c = conn.cursor()
         
         if self.use_postgres:
+            # Create tables
             c.execute("""
                 CREATE TABLE IF NOT EXISTS daily_runs (
                     run_id TEXT PRIMARY KEY,
@@ -88,17 +151,6 @@ class Database:
                     total_cost_usd REAL DEFAULT 0.0
                 )
             """)
-            # Migration: Add columns if they don't exist (for tables created before cost tracking)
-            # Using IF NOT EXISTS to safely add columns
-            try:
-                c.execute("ALTER TABLE daily_runs ADD COLUMN IF NOT EXISTS total_tokens INTEGER DEFAULT 0")
-                c.execute("ALTER TABLE daily_runs ADD COLUMN IF NOT EXISTS total_cost_usd REAL DEFAULT 0.0")
-                conn.commit()
-            except Exception:
-                try:
-                    conn.rollback()
-                except Exception:
-                    pass  # Ignore rollback errors
             c.execute("""
                 CREATE TABLE IF NOT EXISTS metrics (
                     id SERIAL PRIMARY KEY,
@@ -128,14 +180,9 @@ class Database:
                     timestamp TEXT
                 )
             """)
-            try:
-                c.execute("CREATE INDEX idx_metrics_scenario ON metrics(scenario)")
-            except:
-                pass
-            try:
-                c.execute("CREATE INDEX idx_metrics_timestamp ON metrics(timestamp)")
-            except:
-                pass
+            c.execute("CREATE INDEX IF NOT EXISTS idx_metrics_scenario ON metrics(scenario)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON metrics(timestamp)")
+            conn.commit()
         else:
             c.executescript("""
                 CREATE TABLE IF NOT EXISTS daily_runs (
@@ -190,19 +237,10 @@ class Database:
 
     def _migrate_db(self):
         """Add new columns to existing databases."""
-        conn = self._get_connection()
-        c = conn.cursor()
-
-        # Add cost tracking columns if they don't exist
-        if self.use_postgres:
-            # PostgreSQL: Check and add columns
-            try:
-                c.execute("ALTER TABLE daily_runs ADD COLUMN IF NOT EXISTS total_tokens INTEGER DEFAULT 0")
-                c.execute("ALTER TABLE daily_runs ADD COLUMN IF NOT EXISTS total_cost_usd REAL DEFAULT 0.0")
-            except Exception:
-                pass
-        else:
-            # SQLite: Try to add columns (will fail silently if they exist)
+        if not self.use_postgres:
+            # SQLite only - PostgreSQL handled via IF NOT EXISTS in CREATE TABLE
+            conn = self._get_connection()
+            c = conn.cursor()
             try:
                 c.execute("ALTER TABLE daily_runs ADD COLUMN total_tokens INTEGER DEFAULT 0")
             except Exception:
@@ -211,9 +249,8 @@ class Database:
                 c.execute("ALTER TABLE daily_runs ADD COLUMN total_cost_usd REAL DEFAULT 0.0")
             except Exception:
                 pass
-
-        conn.commit()
-        conn.close()
+            conn.commit()
+            conn.close()
 
     def save_daily_run(self, run_id, run_date, timestamp, scenarios_run, scenarios_passed,
                        scenarios_failed, overall_status, alerts, hillclimb_suggestions,
@@ -282,14 +319,14 @@ class Database:
         conn = self._get_connection()
         
         if self.use_postgres:
-            c = conn.cursor(cursor_factory=RealDictCursor)
+            c = self._dict_cursor(conn)
             c.execute("SELECT * FROM metrics ORDER BY timestamp")
-            results = [dict(row) for row in c.fetchall()]
+            results = self._fetchall_dicts(c)
         else:
             conn.row_factory = sqlite3.Row
             c = conn.cursor()
             c.execute("SELECT * FROM metrics ORDER BY timestamp")
-            results = [dict(row) for row in c.fetchall()]
+            results = self._fetchall_dicts(c)
         
         conn.close()
         return results
@@ -387,14 +424,14 @@ class Database:
         query += " ORDER BY timestamp"
 
         if self.use_postgres:
-            c = conn.cursor(cursor_factory=RealDictCursor)
+            c = self._dict_cursor(conn)
             c.execute(query, params)
-            results = [dict(row) for row in c.fetchall()]
+            results = self._fetchall_dicts(c)
         else:
             conn.row_factory = sqlite3.Row
             c = conn.cursor()
             c.execute(query, params)
-            results = [dict(row) for row in c.fetchall()]
+            results = self._fetchall_dicts(c)
 
         conn.close()
         return results
@@ -416,14 +453,14 @@ class Database:
         conn = self._get_connection()
 
         if self.use_postgres:
-            c = conn.cursor(cursor_factory=RealDictCursor)
+            c = self._dict_cursor(conn)
             c.execute("SELECT * FROM daily_runs ORDER BY timestamp DESC")
-            results = [dict(row) for row in c.fetchall()]
+            results = self._fetchall_dicts(c)
         else:
             conn.row_factory = sqlite3.Row
             c = conn.cursor()
             c.execute("SELECT * FROM daily_runs ORDER BY timestamp DESC")
-            results = [dict(row) for row in c.fetchall()]
+            results = self._fetchall_dicts(c)
 
         conn.close()
         return results
@@ -433,16 +470,21 @@ class Database:
         conn = self._get_connection()
 
         if self.use_postgres:
-            c = conn.cursor(cursor_factory=RealDictCursor)
+            c = self._dict_cursor(conn)
             c.execute("SELECT * FROM daily_runs WHERE run_id = %s", (run_id,))
-            row = c.fetchone()
-            result = dict(row) if row else None
         else:
             conn.row_factory = sqlite3.Row
             c = conn.cursor()
             c.execute("SELECT * FROM daily_runs WHERE run_id = ?", (run_id,))
-            row = c.fetchone()
-            result = dict(row) if row else None
+
+        row = c.fetchone()
+        result = None
+        if row:
+            if self.use_postgres and self.pg_module == 'pg8000':
+                columns = [desc[0] for desc in c.description]
+                result = dict(zip(columns, row))
+            else:
+                result = dict(row)
 
         conn.close()
         return result
