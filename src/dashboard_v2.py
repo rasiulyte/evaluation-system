@@ -2792,6 +2792,16 @@ def render_guide_page():
 
         **Target:** ≥ 0.75 for production use
 
+        **✅ Works well when:**
+        - **Spam filtering**: If every email marked as spam is actually spam, users trust the filter and don't lose important messages
+        - **Content moderation**: When flagging inappropriate content, false alarms frustrate good users
+        - **Chatbot warnings**: When showing "I'm not sure about this answer," users need to trust those warnings
+
+        **❌ Doesn't work well when:**
+        - **Medical screening alone**: High precision but low recall means you might miss real diseases - dangerous!
+        - **Security alerts**: If you only flag the most obvious attacks (high precision), sophisticated ones slip through
+        - **Legal document review**: Missing a problematic clause is worse than flagging too many for human review
+
         **⚠️ Risks:**
         - Can be artificially high if the model is too conservative (flags almost nothing)
         - A model that only flags the most obvious cases will have high precision but miss subtle hallucinations
@@ -2809,6 +2819,16 @@ def render_guide_page():
 
         **Target:** ≥ 0.75 for most applications, higher for safety-critical
 
+        **✅ Works well when:**
+        - **Medical diagnosis support**: Missing a disease is worse than ordering extra tests - catch everything
+        - **Fraud detection**: Missing actual fraud costs money - better to review extra transactions
+        - **Safety systems**: In self-driving cars, missing a pedestrian is catastrophic - flag all possibilities
+
+        **❌ Doesn't work well when:**
+        - **Email spam filtering alone**: Flagging everything as spam achieves 100% recall but your inbox is empty
+        - **News fact-checking**: If every statement gets flagged for review, editors can't keep up
+        - **Customer support**: Routing every query to a human (100% recall) defeats the purpose of automation
+
         **⚠️ Risks:**
         - Can be gamed by flagging everything as hallucination (100% recall but useless)
         - High recall with low precision means lots of false alarms — users will ignore warnings
@@ -2825,6 +2845,16 @@ def render_guide_page():
         only precision or only recall. It's the primary metric for overall detection quality.
 
         **Target:** ≥ 0.75 indicates production-ready performance
+
+        **✅ Works well when:**
+        - **Comparing model versions**: "Which prompt detects hallucinations best overall?" - F1 gives a fair answer
+        - **A/B testing**: Choosing between two approaches where neither error type is much worse than the other
+        - **General benchmarking**: Standard way to report detection quality that's hard to game
+
+        **❌ Doesn't work well when:**
+        - **Medical AI**: Missing a tumor (FN) is much worse than a false alarm (FP) - prioritize recall instead
+        - **Content moderation with legal risk**: Letting harmful content through is worse than over-blocking
+        - **Very imbalanced data**: If 99% of content is safe, F1 may look good while missing most real issues
 
         **⚠️ Risks:**
         - Assumes precision and recall are equally important — they may not be in your use case
@@ -2854,6 +2884,16 @@ def render_guide_page():
         - 0.21-0.40: Fair
         - 0.00-0.20: Slight
 
+        **✅ Works well when:**
+        - **Imbalanced datasets**: If 90% of your data is "safe," accuracy looks good but Kappa reveals the truth
+        - **Comparing human labelers**: "Do two annotators agree beyond what you'd expect by chance?"
+        - **Evaluating model improvement**: A Kappa jump from 0.4 to 0.6 is meaningful progress
+
+        **❌ Doesn't work well when:**
+        - **Very small test sets**: With only 20 examples, Kappa can swing wildly
+        - **Rare events**: If hallucinations are extremely rare, even good detection gives low Kappa
+        - **Comparing across different datasets**: Kappa depends on class distribution, so cross-dataset comparison is tricky
+
         **⚠️ Risks:**
         - Can be negative if model performs worse than random chance
         - Sensitive to prevalence — same performance looks different with different class distributions
@@ -2880,6 +2920,16 @@ def render_guide_page():
 
         **Target:** ≥ 0.60 (Tau values are inherently smaller than Pearson/Spearman)
 
+        **✅ Works well when:**
+        - **Small test sets**: With only 30-50 examples, Tau is more reliable than Pearson
+        - **Many tied values**: If your model outputs "70%" confidence a lot, Tau handles ties gracefully
+        - **Quick ranking check**: "Is the model's ordering of cases roughly correct?"
+
+        **❌ Doesn't work well when:**
+        - **Absolute calibration matters**: Tau = 0.8 doesn't mean 80% confidence = 80% accuracy
+        - **Comparing to Pearson/Spearman**: Tau values are naturally lower - don't compare directly
+        - **Binary confidence**: If model only says "confident" or "not confident", there's no ranking to measure
+
         **⚠️ Risks:**
         - Values are inherently lower than Spearman/Pearson — don't compare directly
         - Can be misleading if confidence scores cluster at extremes (all 0.9+ or all 0.1-)
@@ -2896,6 +2946,16 @@ def render_guide_page():
 
         **Target:** ≥ 0.70
 
+        **✅ Works well when:**
+        - **Checking calibration**: "When the model says 80% confident, is it actually right 80% of the time?"
+        - **Weather forecasting style**: Predictions that should map directly to probabilities
+        - **Betting/ranking systems**: Where confidence should translate proportionally to outcomes
+
+        **❌ Doesn't work well when:**
+        - **Outliers exist**: One very wrong high-confidence prediction can tank your Pearson score
+        - **Non-linear relationship**: Model might be well-calibrated but in a curved way (use Spearman)
+        - **Clustered confidence**: If model only says 30%, 50%, or 90%, there's not enough spread to measure
+
         **⚠️ Risks:**
         - Assumes linear relationship — may miss valid non-linear calibration
         - Very sensitive to outliers — a few extreme values can distort results
@@ -2911,6 +2971,16 @@ def render_guide_page():
         and doesn't assume linearity.
 
         **Target:** ≥ 0.60
+
+        **✅ Works well when:**
+        - **Ranking is what matters**: "Show me the cases the model is most sure about" - Spearman validates this
+        - **Outliers in your data**: More robust than Pearson when you have extreme values
+        - **Non-linear but consistent**: Model's confidence grows with correctness, just not proportionally
+
+        **❌ Doesn't work well when:**
+        - **Absolute confidence matters**: Spearman = 0.9 doesn't mean confidence values are accurate
+        - **You need exact calibration**: For "80% confident = 80% correct", use Pearson
+        - **Many tied ranks**: If half your predictions have the same confidence, ranking breaks down
 
         **⚠️ Risks:**
         - Only measures monotonic relationships — doesn't require linear calibration
@@ -2935,6 +3005,16 @@ def render_guide_page():
 
         **Target:** ≥ 0.65
 
+        **✅ Works well when:**
+        - **User experience matters**: Low TNR means good AI responses get flagged, annoying users
+        - **Content publishing**: False alarms delay legitimate articles - you need high TNR
+        - **Customer support bots**: Flagging correct answers makes the bot seem unreliable
+
+        **❌ Doesn't work well when:**
+        - **Safety is primary concern**: TNR = 100% by never flagging anything - but you miss all hallucinations
+        - **Rare hallucinations**: If only 5% of content has issues, TNR naturally looks good
+        - **Used alone**: Always pair with Recall to see the full picture
+
         **⚠️ Risks:**
         - Can be artificially high if the system rarely flags anything
         - Doesn't tell you how many hallucinations you're catching
@@ -2951,6 +3031,16 @@ def render_guide_page():
         **Intuition:** Simple and intuitive, but can be deeply misleading.
 
         **Target:** ≥ 0.75
+
+        **✅ Works well when:**
+        - **Balanced datasets**: 50% hallucinations, 50% grounded - accuracy gives a fair picture
+        - **Quick sanity check**: "Is this model doing something useful?" - accuracy below 50% is a red flag
+        - **Explaining to non-technical stakeholders**: "The model is right 80% of the time" is easy to understand
+
+        **❌ Doesn't work well when:**
+        - **Imbalanced data (the classic trap!)**: If 95% of content is safe, predicting "safe" always gives 95% accuracy while catching zero hallucinations!
+        - **Rare event detection**: Fraud detection, disease screening, hallucination detection - accuracy hides failures
+        - **Comparing models**: Two models with same accuracy can have wildly different precision/recall
 
         **⚠️ Risks:**
         - **MAJOR RISK:** Extremely misleading with imbalanced data
@@ -2979,6 +3069,16 @@ def render_guide_page():
 
         **Target:** |bias| ≤ 0.15
 
+        **✅ Works well when:**
+        - **Detecting systematic issues**: "This model flags 30% of content but only 15% is actually wrong" - clear bias problem
+        - **Prompt tuning**: Bias helps you see if a new prompt made the model too aggressive or too lenient
+        - **Monitoring drift**: If bias increases over time, something in your data or model has changed
+
+        **❌ Doesn't work well when:**
+        - **Errors cancel out**: Model misses some hallucinations AND falsely flags some good content - bias = 0 but model is wrong!
+        - **Small samples**: Bias swings a lot with few examples
+        - **Mixed difficulty**: Model might be biased differently on easy vs hard cases (need slice analysis)
+
         **⚠️ Risks:**
         - Zero bias doesn't mean good predictions — errors could cancel out
         - Can hide large errors if they're symmetric around zero
@@ -2995,6 +3095,16 @@ def render_guide_page():
         **Intuition:** Lower is better. MAE of 0.2 means confidence is typically off by 20%.
 
         **Target:** < 0.20
+
+        **✅ Works well when:**
+        - **Typical error matters**: "On average, how wrong is the model?" - useful for everyday performance
+        - **Comparing calibration methods**: Which approach gives more accurate confidence scores overall?
+        - **Budget planning**: MAE tells you how much manual review to expect on average
+
+        **❌ Doesn't work well when:**
+        - **Big mistakes are catastrophic**: A model with mostly small errors but one 90% confidence wrong answer still has low MAE
+        - **You need worst-case analysis**: MAE hides outliers - use RMSE to catch them
+        - **Decision thresholds**: Low MAE doesn't mean confidence threshold decisions work well
 
         **⚠️ Risks:**
         - Treats all errors equally — a 0.1 error and a 0.9 error average to 0.5
@@ -3013,6 +3123,16 @@ def render_guide_page():
         hurt RMSE more than many small ones.
 
         **Target:** < 0.25
+
+        **✅ Works well when:**
+        - **Big mistakes are costly**: In finance, one confident wrong prediction can be worse than many small errors
+        - **Catching overconfident failures**: Model says 95% confident but is wrong - RMSE catches this
+        - **Comparing with MAE**: If RMSE >> MAE, you have an outlier problem to fix
+
+        **❌ Doesn't work well when:**
+        - **Outliers are expected**: One genuinely weird case can tank RMSE even if model is otherwise good
+        - **You want average performance**: RMSE overweights rare large errors - use MAE instead
+        - **Comparing models with different data**: A model tested on harder cases will have higher RMSE even if better
 
         **⚠️ Risks:**
         - More sensitive to outliers than MAE — one bad prediction can dominate
