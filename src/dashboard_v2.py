@@ -7,7 +7,7 @@ Technical depth without pretension. Quality over flash.
 """
 
 # Version for debugging - update this when making changes
-DASHBOARD_VERSION = "1.5.0"
+DASHBOARD_VERSION = "1.3.1"
 
 import pandas as pd
 import streamlit as st
@@ -15,7 +15,6 @@ import plotly.graph_objects as go
 import plotly.express as px
 import json
 from pathlib import Path
-from datetime import datetime, timedelta
 
 # Import database abstraction
 import sys
@@ -46,37 +45,6 @@ COLORS = {
     "warning": "#c89f6f",        # Amber - needs attention
     "poor": "#b54a4a",           # Muted red - failing/critical
 }
-
-
-# ============================================
-# TIMEZONE HELPERS
-# ============================================
-
-def to_pst(timestamp_str: str) -> tuple:
-    """
-    Convert UTC timestamp to PST for display.
-    Streamlit Cloud stores timestamps in UTC, subtract 8 hours for PST.
-
-    Args:
-        timestamp_str: ISO format timestamp in UTC (e.g., "2026-01-27T03:14:37")
-
-    Returns:
-        (date_str, time_str) in PST
-    """
-    if not timestamp_str or len(timestamp_str) < 10:
-        return ("—", "—")
-
-    try:
-        # Parse the timestamp
-        dt = datetime.fromisoformat(timestamp_str.split('.')[0])  # Remove microseconds
-
-        # Convert UTC to PST (subtract 8 hours)
-        pst_dt = dt - timedelta(hours=8)
-
-        return (pst_dt.strftime("%Y-%m-%d"), pst_dt.strftime("%H:%M"))
-    except Exception:
-        # Fallback to raw string parsing
-        return (timestamp_str[:10], timestamp_str[11:16] if len(timestamp_str) > 16 else "—")
 
 
 # ============================================
@@ -1200,8 +1168,7 @@ def render_metrics_overview_page(df: pd.DataFrame):
     scenario_df = df[df["scenario"] == selected_scenario]
     latest_run = scenario_df.sort_values("timestamp", ascending=False).iloc[0]
 
-    run_date, run_time = to_pst(latest_run['timestamp'])
-    st.caption(f"Latest run: {latest_run['run_id']} · {run_date} {run_time}")
+    st.caption(f"Latest run: {latest_run['run_id']} · {latest_run['timestamp'][:16]}")
 
     # Show available metrics (debug info)
     available_metrics = list(metrics.keys())
@@ -1532,13 +1499,10 @@ def render_run_history_page(df: pd.DataFrame):
             status = "✗ Failing"
             status_raw = "failing"
 
-        # Format timestamp for display
-        date_str, time_str = to_pst(timestamp)
-
         runs_data.append({
             "Run ID": run_id,
-            "Date": date_str,
-            "Time": time_str,
+            "Date": timestamp[:10],
+            "Time": timestamp[11:16] if len(timestamp) > 11 else "",
             "F1": f1,
             "Precision": precision,
             "Recall": recall,
@@ -1603,8 +1567,8 @@ def render_run_history_page(df: pd.DataFrame):
         f1_str = f"{row['F1']:.3f}" if row['F1'] is not None else "—"
         prec_str = f"{row['Precision']:.3f}" if row['Precision'] is not None else "—"
         rec_str = f"{row['Recall']:.3f}" if row['Recall'] is not None else "—"
-        cost_str = f"${row['cost']:.4f}"  # Always show cost, even if $0.0000
-        tokens_str = f"{row['tokens']:,}" if row['tokens'] > 0 else "0"
+        cost_str = f"${row['cost']:.4f}" if row['cost'] > 0 else "—"
+        tokens_str = f"{row['tokens']:,}" if row['tokens'] > 0 else "—"
 
         # Create expander for each run
         with st.expander(f"**{row['Run ID']}** — {row['Date']} {row['Time']} — F1: {f1_str} — Cost: {cost_str}"):
@@ -1620,10 +1584,6 @@ def render_run_history_page(df: pd.DataFrame):
                 st.markdown(f"**Recall:** {rec_str}")
             with col5:
                 st.markdown(f"**Tokens:** {tokens_str}")
-
-            # Show note if cost is zero
-            if row['cost'] == 0:
-                st.caption("💡 Cost is $0 because this run was recorded before cost tracking was added.")
 
             st.markdown("---")
 
@@ -4919,11 +4879,10 @@ def main():
         if not df.empty:
             total_runs = df["run_id"].nunique()
             latest_run = df.sort_values("timestamp", ascending=False).iloc[0]
-            latest_date, _ = to_pst(latest_run['timestamp'])
             st.markdown(f"""
             <div style="font-size: 13px; color: #6b7280; line-height: 1.6;">
                 <div><strong>{total_runs}</strong> evaluation runs</div>
-                <div style="margin-top: 4px;">Latest: {latest_date}</div>
+                <div style="margin-top: 4px;">Latest: {latest_run['timestamp'][:10]}</div>
             </div>
             """, unsafe_allow_html=True)
 
