@@ -4826,7 +4826,7 @@ def main():
             "LEARN": {
                 "icon": "◇",
                 "color": "#8b5cf6",  # Purple
-                "pages": ["Getting Started", "Limitations", "Failure Modes", "Prompt Lab", "Understanding Metrics"]
+                "pages": ["Getting Started", "Failure Modes", "Prompt Lab", "Understanding Metrics", "Limitations"]
             },
             "ANALYZE": {
                 "icon": "◈",
