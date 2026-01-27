@@ -929,7 +929,6 @@ def load_test_case(test_case_id: str) -> dict:
     return None
 
 
-@st.cache_data(ttl=60)  # Cache for 60 seconds
 def load_metrics() -> pd.DataFrame:
     """Load metrics from database."""
     try:
@@ -941,7 +940,6 @@ def load_metrics() -> pd.DataFrame:
         return pd.DataFrame()
 
 
-@st.cache_data(ttl=60)  # Cache for 60 seconds
 def load_daily_runs() -> dict:
     """Load daily runs from database as a dict keyed by run_id."""
     try:
@@ -951,7 +949,6 @@ def load_daily_runs() -> dict:
         return {}
 
 
-@st.cache_data(ttl=60)  # Cache for 60 seconds
 def load_test_results(scenario: str = None, run_id: str = None) -> pd.DataFrame:
     """Load test results from database."""
     try:
@@ -3600,7 +3597,6 @@ def render_home_page():
 # PAGE: TEST CASES
 # ============================================
 
-@st.cache_data(ttl=300)  # Cache for 5 minutes
 def load_all_test_cases() -> list:
     """Load all test cases from the test_cases directory."""
     import json
@@ -4274,7 +4270,6 @@ def render_failure_modes_page():
 # PAGE: PROMPT LAB (Hillclimbing)
 # ============================================
 
-@st.cache_data(ttl=300)  # Cache for 5 minutes
 def load_all_prompts() -> dict:
     """Load all prompt templates from the prompts directory."""
     from pathlib import Path
@@ -4296,7 +4291,6 @@ def load_all_prompts() -> dict:
     return prompts
 
 
-@st.cache_data(ttl=60)  # Cache for 60 seconds
 def get_metrics_by_prompt(df: pd.DataFrame) -> pd.DataFrame:
     """Get aggregated metrics grouped by prompt_id from test results."""
     try:
