@@ -2,7 +2,7 @@
 
 A **learning sandbox** for exploring LLM-as-Judge (autograder) evaluation techniques. This project is designed for **learning and experimentation**, not as a production framework.
 
-> **Note**: This is an educational project. Explore the code, run experiments, and learn how AI evaluation works!
+**Dashboard**: https://evaluation-system-v3.streamlit.app/ 
 
 ## What is LLM-as-Judge?
 
