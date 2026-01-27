@@ -1464,26 +1464,6 @@ def render_run_history_page(df: pd.DataFrame):
     # Fetch daily runs for cost info (cached)
     daily_runs = load_daily_runs()
 
-    # Debug: Show raw database data
-    with st.expander("Debug: Raw Database Data", expanded=False):
-        st.caption("This shows the raw data from the daily_runs table")
-        if daily_runs:
-            debug_data = []
-            for run_id, run_data in list(daily_runs.items())[:5]:  # Show last 5
-                debug_data.append({
-                    "run_id": run_id,
-                    "total_tokens": run_data.get('total_tokens', 'MISSING'),
-                    "total_cost_usd": run_data.get('total_cost_usd', 'MISSING'),
-                    "all_keys": list(run_data.keys())
-                })
-            st.json(debug_data)
-        else:
-            st.warning("No daily_runs data found")
-
-        # Also show db info
-        st.caption("Database connection info:")
-        st.json(db.debug_info())
-
     # Build runs summary
     runs_data = []
     for run_id in df["run_id"].unique():

@@ -89,14 +89,16 @@ class Database:
                 )
             """)
             # Migration: Add columns if they don't exist (for tables created before cost tracking)
+            # Using IF NOT EXISTS to safely add columns
             try:
                 c.execute("ALTER TABLE daily_runs ADD COLUMN IF NOT EXISTS total_tokens INTEGER DEFAULT 0")
-            except Exception:
-                conn.rollback()  # PostgreSQL requires rollback after failed statement
-            try:
                 c.execute("ALTER TABLE daily_runs ADD COLUMN IF NOT EXISTS total_cost_usd REAL DEFAULT 0.0")
+                conn.commit()
             except Exception:
-                conn.rollback()  # PostgreSQL requires rollback after failed statement
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass  # Ignore rollback errors
             c.execute("""
                 CREATE TABLE IF NOT EXISTS metrics (
                     id SERIAL PRIMARY KEY,
