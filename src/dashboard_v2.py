@@ -3595,44 +3595,6 @@ def render_home_page():
                 st.session_state.current_page = item['page']
                 st.rerun()
 
-    # Audio Overview (at bottom)
-    st.markdown("<div style='margin-top: 2rem;'></div>", unsafe_allow_html=True)
-    render_section_header("Audio Overview")
-
-    st.markdown(f"""
-    <div class="metric-card" style="padding: 1.25rem; margin-bottom: 1rem;">
-        <div style="color: {COLORS['charcoal']}; font-size: 0.95rem; line-height: 1.6;">
-            🎧 Prefer listening? Here's a quick audio introduction to how AI judges catch hallucinations.
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    audio_path = Path(__file__).parent.parent / "assets" / "How_AI_Judges_Catch_Hallucinations.m4a"
-    if audio_path.exists():
-        st.audio(str(audio_path), format="audio/m4a")
-    else:
-        st.info("Audio overview not available.")
-
-    # Video Tutorial
-    st.markdown("<div style='margin-top: 2rem;'></div>", unsafe_allow_html=True)
-    render_section_header("Video Tutorial")
-
-    st.markdown(f"""
-    <div class="metric-card" style="padding: 1.25rem; margin-bottom: 1rem;">
-        <div style="color: {COLORS['charcoal']}; font-size: 0.95rem; line-height: 1.6;">
-            🎬 Watch a walkthrough explaining how to grade an AI using this evaluation system.
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    video_path = Path(__file__).parent.parent / "assets" / "How_to_Grade_an_AI.mp4"
-    if video_path.exists():
-        col1, col2 = st.columns(2)
-        with col1:
-            st.video(str(video_path))
-    else:
-        st.info("Video tutorial not available.")
-
 
 # ============================================
 # PAGE: TEST CASES
