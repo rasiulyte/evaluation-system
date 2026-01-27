@@ -173,7 +173,37 @@ class Database:
         
         conn.commit()
         conn.close()
-    
+
+        # Migrate existing databases to add new columns
+        self._migrate_db()
+
+    def _migrate_db(self):
+        """Add new columns to existing databases."""
+        conn = self._get_connection()
+        c = conn.cursor()
+
+        # Add cost tracking columns if they don't exist
+        if self.use_postgres:
+            # PostgreSQL: Check and add columns
+            try:
+                c.execute("ALTER TABLE daily_runs ADD COLUMN IF NOT EXISTS total_tokens INTEGER DEFAULT 0")
+                c.execute("ALTER TABLE daily_runs ADD COLUMN IF NOT EXISTS total_cost_usd REAL DEFAULT 0.0")
+            except Exception:
+                pass
+        else:
+            # SQLite: Try to add columns (will fail silently if they exist)
+            try:
+                c.execute("ALTER TABLE daily_runs ADD COLUMN total_tokens INTEGER DEFAULT 0")
+            except Exception:
+                pass
+            try:
+                c.execute("ALTER TABLE daily_runs ADD COLUMN total_cost_usd REAL DEFAULT 0.0")
+            except Exception:
+                pass
+
+        conn.commit()
+        conn.close()
+
     def save_daily_run(self, run_id, run_date, timestamp, scenarios_run, scenarios_passed,
                        scenarios_failed, overall_status, alerts, hillclimb_suggestions,
                        total_tokens=0, total_cost_usd=0.0):
