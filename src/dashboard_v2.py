@@ -1644,6 +1644,15 @@ def render_slice_analysis_page(df: pd.DataFrame):
         "See how performance varies across different subsets of test cases"
     )
 
+    st.markdown(f"""
+    <div style="margin-bottom: 1rem;">
+        <a href="https://github.com/rasiulyte/evaluation-system/blob/main/docs/SLICE_ANALYSIS.md" target="_blank"
+           style="color: {COLORS['teal']}; text-decoration: none; font-size: 0.9rem;">
+            📄 View full documentation on GitHub →
+        </a>
+    </div>
+    """, unsafe_allow_html=True)
+
     # Explanation
     st.markdown(f"""
     <div class="metric-card" style="padding: 1.25rem; margin-bottom: 1.5rem;">
@@ -2758,6 +2767,15 @@ def render_guide_page():
         "A practical guide to AI evaluation metrics"
     )
 
+    st.markdown(f"""
+    <div style="margin-bottom: 1.5rem;">
+        <a href="https://github.com/rasiulyte/evaluation-system/blob/main/docs/METRICS.md" target="_blank"
+           style="color: {COLORS['teal']}; text-decoration: none; font-size: 0.9rem;">
+            📄 View full documentation on GitHub →
+        </a>
+    </div>
+    """, unsafe_allow_html=True)
+
     # Confusion Matrix primer
     render_section_header("The Foundation: Confusion Matrix")
 
@@ -3575,6 +3593,15 @@ def render_failure_modes_page():
     )
 
     st.markdown(f"""
+    <div style="margin-bottom: 1rem;">
+        <a href="https://github.com/rasiulyte/evaluation-system/blob/main/docs/FAILURE_MODES.md" target="_blank"
+           style="color: {COLORS['teal']}; text-decoration: none; font-size: 0.9rem;">
+            📄 View full documentation on GitHub →
+        </a>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown(f"""
     <div style="background: linear-gradient(135deg, {COLORS['navy']}08, {COLORS['teal']}08);
                 padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
         <p style="margin: 0; color: {COLORS['charcoal']}; line-height: 1.7;">
@@ -3958,6 +3985,15 @@ def render_prompt_lab_page(df: pd.DataFrame):
         "Prompt Lab",
         "Understand how prompt engineering affects evaluation quality"
     )
+
+    st.markdown(f"""
+    <div style="margin-bottom: 1rem;">
+        <a href="https://github.com/rasiulyte/evaluation-system/blob/main/docs/PROMPTING_STRATEGIES.md" target="_blank"
+           style="color: {COLORS['teal']}; text-decoration: none; font-size: 0.9rem;">
+            📄 View full documentation on GitHub →
+        </a>
+    </div>
+    """, unsafe_allow_html=True)
 
     # Educational intro
     st.markdown(f"""
