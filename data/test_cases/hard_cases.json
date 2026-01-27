@@ -1,0 +1,142 @@
+[
+  {
+    "id": "HARD_001",
+    "label": "hallucination",
+    "failure_mode": "subtle_error",
+    "context": "The company reported revenue of $4.2 billion in Q3 2024, representing a 12% increase year-over-year. Operating expenses were $3.1 billion.",
+    "response": "The company reported revenue of $4.2 billion in Q3 2024, a 15% increase year-over-year, with operating expenses of $3.1 billion."
+  },
+  {
+    "id": "HARD_002",
+    "label": "hallucination",
+    "failure_mode": "subtle_error",
+    "context": "The study involved 1,247 participants across 8 countries over a 3-year period.",
+    "response": "The study involved 1,247 participants across 8 countries over a 2-year period."
+  },
+  {
+    "id": "HARD_003",
+    "label": "hallucination",
+    "failure_mode": "plausible_addition",
+    "context": "Einstein developed the theory of special relativity in 1905.",
+    "response": "Einstein developed the theory of special relativity in 1905, which he initially presented at a physics conference in Zurich."
+  },
+  {
+    "id": "HARD_004",
+    "label": "hallucination",
+    "failure_mode": "plausible_addition",
+    "context": "The medication was approved by the FDA in 2019 for treating migraines.",
+    "response": "The medication was approved by the FDA in 2019 for treating migraines, following successful Phase III clinical trials involving over 2,000 patients."
+  },
+  {
+    "id": "HARD_005",
+    "label": "grounded",
+    "failure_mode": "tricky_grounded",
+    "context": "The CEO announced that the company would be laying off approximately 10% of its workforce, affecting around 500 employees.",
+    "response": "The CEO announced workforce reductions of about 10%, impacting roughly 500 workers."
+  },
+  {
+    "id": "HARD_006",
+    "label": "grounded",
+    "failure_mode": "tricky_grounded",
+    "context": "The experiment showed a statistically significant improvement (p < 0.05) in patient outcomes.",
+    "response": "The experiment demonstrated meaningful improvement in patient outcomes that was statistically significant."
+  },
+  {
+    "id": "HARD_007",
+    "label": "hallucination",
+    "failure_mode": "wrong_attribution",
+    "context": "Dr. Smith's research team at MIT discovered the new protein structure. The findings were published in Nature.",
+    "response": "Dr. Smith's research team at Harvard discovered the new protein structure, with findings published in Nature."
+  },
+  {
+    "id": "HARD_008",
+    "label": "hallucination",
+    "failure_mode": "wrong_attribution",
+    "context": "The report was authored by the World Health Organization in collaboration with UNICEF.",
+    "response": "The report was authored by the World Health Organization in collaboration with the Red Cross."
+  },
+  {
+    "id": "HARD_009",
+    "label": "hallucination",
+    "failure_mode": "temporal_error",
+    "context": "The treaty was signed in March 2020 and came into effect in January 2021.",
+    "response": "The treaty was signed in March 2020 and came into effect immediately."
+  },
+  {
+    "id": "HARD_010",
+    "label": "hallucination",
+    "failure_mode": "temporal_error",
+    "context": "Construction began in 2018 and the building was completed in late 2022.",
+    "response": "Construction began in 2018 and the building was completed in early 2022."
+  },
+  {
+    "id": "HARD_011",
+    "label": "grounded",
+    "failure_mode": "tricky_grounded",
+    "context": "The survey found that 67% of respondents preferred option A, while 33% preferred option B.",
+    "response": "According to the survey, about two-thirds of respondents chose option A over option B."
+  },
+  {
+    "id": "HARD_012",
+    "label": "grounded",
+    "failure_mode": "tricky_grounded",
+    "context": "The temperature dropped to -15°C, the coldest recorded in the region since 1985.",
+    "response": "The temperature fell to -15°C, marking a record low for the region in nearly four decades."
+  },
+  {
+    "id": "HARD_013",
+    "label": "hallucination",
+    "failure_mode": "subtle_negation",
+    "context": "The policy does not apply to employees who joined after January 1, 2024.",
+    "response": "The policy applies to employees who joined after January 1, 2024."
+  },
+  {
+    "id": "HARD_014",
+    "label": "hallucination",
+    "failure_mode": "subtle_negation",
+    "context": "The study found no significant correlation between the two variables.",
+    "response": "The study found a significant correlation between the two variables."
+  },
+  {
+    "id": "HARD_015",
+    "label": "hallucination",
+    "failure_mode": "quantity_error",
+    "context": "The grant provides up to $50,000 per project for qualifying research initiatives.",
+    "response": "The grant provides up to $500,000 per project for qualifying research initiatives."
+  },
+  {
+    "id": "HARD_016",
+    "label": "hallucination",
+    "failure_mode": "quantity_error",
+    "context": "The bridge spans 2.4 kilometers across the river.",
+    "response": "The bridge spans 24 kilometers across the river."
+  },
+  {
+    "id": "HARD_017",
+    "label": "grounded",
+    "failure_mode": "tricky_grounded",
+    "context": "Unemployment fell to 3.8% in November, down from 4.1% in October.",
+    "response": "November saw unemployment decrease to 3.8%, a 0.3 percentage point drop from the previous month."
+  },
+  {
+    "id": "HARD_018",
+    "label": "grounded",
+    "failure_mode": "tricky_grounded",
+    "context": "The medication should be taken twice daily with food. Do not exceed 4 tablets in 24 hours.",
+    "response": "Take the medication two times per day with meals, with a maximum of 4 tablets per day."
+  },
+  {
+    "id": "HARD_019",
+    "label": "hallucination",
+    "failure_mode": "causation_error",
+    "context": "Sales increased by 20% following the marketing campaign. Customer satisfaction also improved during this period.",
+    "response": "The marketing campaign caused a 20% increase in sales and improved customer satisfaction."
+  },
+  {
+    "id": "HARD_020",
+    "label": "hallucination",
+    "failure_mode": "causation_error",
+    "context": "Countries with higher education spending tend to have lower crime rates.",
+    "response": "Higher education spending directly reduces crime rates."
+  }
+]
