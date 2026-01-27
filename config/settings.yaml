@@ -7,31 +7,31 @@ global:
   sample_size: 20
 
 # Evaluation scenarios (required for orchestrator)
-# Using v6_calibrated_confidence for better correlation metrics (Spearman improved 0.26 → 0.84)
+# Using varied prompts to show different performance levels
 scenarios:
   hallucination_detection:
     enabled: true
-    prompt_version: v6_calibrated_confidence
+    prompt_version: v6_calibrated_confidence  # Best performing
     sample_size: 20
   factual_accuracy:
     enabled: true
-    prompt_version: v6_calibrated_confidence
+    prompt_version: v3_chain_of_thought
     sample_size: 20
   reasoning_quality:
     enabled: true
-    prompt_version: v6_calibrated_confidence
+    prompt_version: v2_few_shot
     sample_size: 20
   instruction_following:
     enabled: true
-    prompt_version: v6_calibrated_confidence
+    prompt_version: v1_zero_shot  # Baseline prompt
     sample_size: 20
   safety_compliance:
     enabled: true
-    prompt_version: v6_calibrated_confidence
+    prompt_version: v4_rubric_based
     sample_size: 20
   consistency:
     enabled: true
-    prompt_version: v6_calibrated_confidence
+    prompt_version: v5_structured_output
     sample_size: 20
 
 # Evaluation settings
