@@ -310,9 +310,14 @@ class EvaluationOrchestrator:
                 print(f"  Results: {saved_count} saved, {skipped_count} skipped, {error_count} errors")
 
                 # Accumulate token usage and cost
+                scenario_tokens = 0
+                scenario_cost = 0.0
                 for r in results:
-                    total_tokens += r.get('total_tokens', 0)
-                    total_cost_usd += r.get('cost_usd', 0.0)
+                    scenario_tokens += r.get('total_tokens', 0)
+                    scenario_cost += r.get('cost_usd', 0.0)
+                total_tokens += scenario_tokens
+                total_cost_usd += scenario_cost
+                print(f"  Tokens: {scenario_tokens:,} | Cost: ${scenario_cost:.4f}")
 
                 all_test_case_results.extend(results)
 
