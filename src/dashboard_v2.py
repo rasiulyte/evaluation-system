@@ -7,7 +7,7 @@ Technical depth without pretension. Quality over flash.
 """
 
 # Version for debugging - update this when making changes
-DASHBOARD_VERSION = "1.3.0"
+DASHBOARD_VERSION = "1.3.1"
 
 import pandas as pd
 import streamlit as st
