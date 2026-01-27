@@ -2688,20 +2688,34 @@ def render_run_evaluation_page():
                     </div>
                     """, unsafe_allow_html=True)
 
-                    # Summary cards
-                    col1, col2, col3 = st.columns(3)
+                    # Summary cards - top row with cost
+                    cost_usd = getattr(summary, 'total_cost_usd', 0.0)
+                    total_tokens = getattr(summary, 'total_tokens', 0)
 
-                    with col1:
-                        st.markdown(f"""
-                        <div class="metric-card">
-                            <span class="metric-label">Run ID</span>
-                            <div style="font-family: monospace; margin-top: 0.5rem; color: {COLORS['navy']};">
-                                {summary.run_id}
+                    st.markdown(f"""
+                    <div class="metric-card" style="margin-bottom: 1rem; padding: 1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <span style="color: {COLORS['medium_gray']}; font-size: 0.85rem;">Run ID:</span>
+                                <span style="font-family: monospace; color: {COLORS['navy']}; margin-left: 0.5rem;">{summary.run_id}</span>
+                            </div>
+                            <div style="display: flex; gap: 1.5rem;">
+                                <div>
+                                    <span style="color: {COLORS['medium_gray']}; font-size: 0.85rem;">Tokens:</span>
+                                    <span style="color: {COLORS['charcoal']}; font-weight: 500; margin-left: 0.25rem;">{total_tokens:,}</span>
+                                </div>
+                                <div>
+                                    <span style="color: {COLORS['medium_gray']}; font-size: 0.85rem;">Cost:</span>
+                                    <span style="color: {COLORS['teal']}; font-weight: 600; margin-left: 0.25rem;">${cost_usd:.4f}</span>
+                                </div>
                             </div>
                         </div>
-                        """, unsafe_allow_html=True)
+                    </div>
+                    """, unsafe_allow_html=True)
 
-                    with col2:
+                    col1, col2 = st.columns(2)
+
+                    with col1:
                         st.markdown(f"""
                         <div class="metric-card status-good">
                             <span class="metric-label">Passed</span>
@@ -2709,7 +2723,7 @@ def render_run_evaluation_page():
                         </div>
                         """, unsafe_allow_html=True)
 
-                    with col3:
+                    with col2:
                         fail_class = "status-poor" if summary.scenarios_failed > 0 else ""
                         fail_color = COLORS['poor'] if summary.scenarios_failed > 0 else COLORS['charcoal']
                         st.markdown(f"""

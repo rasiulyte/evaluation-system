@@ -21,6 +21,16 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 
+# Pricing per 1M tokens (as of January 2025)
+MODEL_PRICING = {
+    "gpt-4o-mini": {"input": 0.15, "output": 0.60},
+    "gpt-4o": {"input": 2.50, "output": 10.00},
+    "gpt-4-turbo": {"input": 10.00, "output": 30.00},
+    "gpt-4": {"input": 30.00, "output": 60.00},
+    "gpt-3.5-turbo": {"input": 0.50, "output": 1.50},
+}
+
+
 class Evaluator:
     """
     Core evaluation engine that runs test cases through prompts and evaluates responses.
@@ -138,10 +148,19 @@ class Evaluator:
             end_time = datetime.now()
             
             llm_output = response.choices[0].message.content.strip()
-            
+
+            # Extract token usage
+            usage = response.usage
+            input_tokens = usage.prompt_tokens if usage else 0
+            output_tokens = usage.completion_tokens if usage else 0
+            total_tokens = usage.total_tokens if usage else 0
+
+            # Calculate cost
+            cost = self._calculate_cost(input_tokens, output_tokens)
+
             # Parse response
             prediction, confidence = self._parse_response(llm_output, prompt_id)
-            
+
             result = {
                 "test_case_id": test_case_id,
                 "prompt_id": prompt_id,
@@ -152,9 +171,13 @@ class Evaluator:
                 "correct": prediction == test_case["label"],
                 "duration_ms": (end_time - start_time).total_seconds() * 1000,
                 "timestamp": start_time.isoformat(),
-                "model": self.model
+                "model": self.model,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "total_tokens": total_tokens,
+                "cost_usd": cost
             }
-            
+
             return result
             
         except Exception as e:
@@ -167,8 +190,33 @@ class Evaluator:
                 "llm_output": "",
                 "correct": False,
                 "error": str(e),
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
+                "model": self.model,
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "total_tokens": 0,
+                "cost_usd": 0.0
             }
+
+    def _calculate_cost(self, input_tokens: int, output_tokens: int) -> float:
+        """
+        Calculate cost in USD based on token usage and model pricing.
+
+        Args:
+            input_tokens: Number of input/prompt tokens
+            output_tokens: Number of output/completion tokens
+
+        Returns:
+            Cost in USD
+        """
+        # Get pricing for current model, default to gpt-4o-mini pricing
+        pricing = MODEL_PRICING.get(self.model, MODEL_PRICING.get("gpt-4o-mini"))
+
+        # Calculate cost (pricing is per 1M tokens)
+        input_cost = (input_tokens / 1_000_000) * pricing["input"]
+        output_cost = (output_tokens / 1_000_000) * pricing["output"]
+
+        return input_cost + output_cost
 
     def _parse_response(self, llm_output: str, prompt_id: str) -> Tuple[str, float]:
         """

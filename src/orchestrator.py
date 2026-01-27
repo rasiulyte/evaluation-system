@@ -93,6 +93,8 @@ class DailyRunSummary:
     overall_status: HealthStatus
     alerts: List[str] = field(default_factory=list)
     hillclimb_suggestions: List[str] = field(default_factory=list)
+    total_tokens: int = 0
+    total_cost_usd: float = 0.0
 
 class MetricsDatabase:
     """SQLite storage for metrics history"""
@@ -218,6 +220,8 @@ class EvaluationOrchestrator:
         alerts = []
         hillclimb_suggestions = []
         all_test_case_results = []
+        total_tokens = 0
+        total_cost_usd = 0.0
 
         # Initialize evaluator (will use API key from .env)
         use_model = model or self.config.get('model') or self.config['global']['default_model']
@@ -304,6 +308,12 @@ class EvaluationOrchestrator:
                         skipped_count += 1
                         print(f"  Skipped {r.get('test_case_id')}: prediction='{pred}'")
                 print(f"  Results: {saved_count} saved, {skipped_count} skipped, {error_count} errors")
+
+                # Accumulate token usage and cost
+                for r in results:
+                    total_tokens += r.get('total_tokens', 0)
+                    total_cost_usd += r.get('cost_usd', 0.0)
+
                 all_test_case_results.extend(results)
 
                 # Calculate metrics - filter to only valid predictions
@@ -471,7 +481,9 @@ class EvaluationOrchestrator:
             scenarios_failed=scenarios_failed,
             overall_status=overall_status,
             alerts=alerts,
-            hillclimb_suggestions=hillclimb_suggestions
+            hillclimb_suggestions=hillclimb_suggestions,
+            total_tokens=total_tokens,
+            total_cost_usd=total_cost_usd
         )
 
         db.save_daily_run(
@@ -483,7 +495,9 @@ class EvaluationOrchestrator:
             scenarios_failed=summary.scenarios_failed,
             overall_status=summary.overall_status.value,
             alerts=summary.alerts,
-            hillclimb_suggestions=summary.hillclimb_suggestions
+            hillclimb_suggestions=summary.hillclimb_suggestions,
+            total_tokens=summary.total_tokens,
+            total_cost_usd=summary.total_cost_usd
         )
 
         # Export to JSON
@@ -504,6 +518,7 @@ class EvaluationOrchestrator:
         print(f"Run ID: {run_id}")
         print(f"Status: {overall_status.value.upper()}")
         print(f"Scenarios: {scenarios_passed}/{len(enabled_scenarios)} passed")
+        print(f"Tokens: {total_tokens:,} | Cost: ${total_cost_usd:.4f}")
         if alerts:
             print(f"Alerts: {len(alerts)}")
             for alert in alerts:

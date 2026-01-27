@@ -83,7 +83,9 @@ class Database:
                     scenarios_failed INTEGER,
                     overall_status TEXT,
                     alerts TEXT,
-                    hillclimb_suggestions TEXT
+                    hillclimb_suggestions TEXT,
+                    total_tokens INTEGER DEFAULT 0,
+                    total_cost_usd REAL DEFAULT 0.0
                 )
             """)
             c.execute("""
@@ -134,7 +136,9 @@ class Database:
                     scenarios_failed INTEGER,
                     overall_status TEXT,
                     alerts TEXT,
-                    hillclimb_suggestions TEXT
+                    hillclimb_suggestions TEXT,
+                    total_tokens INTEGER DEFAULT 0,
+                    total_cost_usd REAL DEFAULT 0.0
                 );
                 CREATE TABLE IF NOT EXISTS metrics (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -170,34 +174,41 @@ class Database:
         conn.commit()
         conn.close()
     
-    def save_daily_run(self, run_id, run_date, timestamp, scenarios_run, scenarios_passed, 
-                       scenarios_failed, overall_status, alerts, hillclimb_suggestions):
+    def save_daily_run(self, run_id, run_date, timestamp, scenarios_run, scenarios_passed,
+                       scenarios_failed, overall_status, alerts, hillclimb_suggestions,
+                       total_tokens=0, total_cost_usd=0.0):
         """Save a daily run summary."""
         conn = self._get_connection()
         c = conn.cursor()
-        
+
         if self.use_postgres:
             c.execute("""
-                INSERT INTO daily_runs (run_id, run_date, timestamp, scenarios_run, 
-                    scenarios_passed, scenarios_failed, overall_status, alerts, hillclimb_suggestions)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO daily_runs (run_id, run_date, timestamp, scenarios_run,
+                    scenarios_passed, scenarios_failed, overall_status, alerts, hillclimb_suggestions,
+                    total_tokens, total_cost_usd)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (run_id) DO UPDATE SET
                     scenarios_run = EXCLUDED.scenarios_run,
                     scenarios_passed = EXCLUDED.scenarios_passed,
                     scenarios_failed = EXCLUDED.scenarios_failed,
                     overall_status = EXCLUDED.overall_status,
                     alerts = EXCLUDED.alerts,
-                    hillclimb_suggestions = EXCLUDED.hillclimb_suggestions
+                    hillclimb_suggestions = EXCLUDED.hillclimb_suggestions,
+                    total_tokens = EXCLUDED.total_tokens,
+                    total_cost_usd = EXCLUDED.total_cost_usd
             """, (run_id, run_date, timestamp, scenarios_run, scenarios_passed,
-                  scenarios_failed, overall_status, json.dumps(alerts), json.dumps(hillclimb_suggestions)))
+                  scenarios_failed, overall_status, json.dumps(alerts), json.dumps(hillclimb_suggestions),
+                  total_tokens, total_cost_usd))
         else:
             c.execute("""
                 INSERT OR REPLACE INTO daily_runs (run_id, run_date, timestamp, scenarios_run,
-                    scenarios_passed, scenarios_failed, overall_status, alerts, hillclimb_suggestions)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    scenarios_passed, scenarios_failed, overall_status, alerts, hillclimb_suggestions,
+                    total_tokens, total_cost_usd)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (run_id, run_date, timestamp, scenarios_run, scenarios_passed,
-                  scenarios_failed, overall_status, json.dumps(alerts), json.dumps(hillclimb_suggestions)))
-        
+                  scenarios_failed, overall_status, json.dumps(alerts), json.dumps(hillclimb_suggestions),
+                  total_tokens, total_cost_usd))
+
         conn.commit()
         conn.close()
     
