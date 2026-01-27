@@ -396,36 +396,31 @@ class EvaluationOrchestrator:
             total_cost_usd=total_cost_usd
         )
 
-        # ====== BATCH SAVE ALL RESULTS AT END ======
-        # Only save after ALL scenarios complete successfully
-        print(f"\n  Saving {len(all_test_results_to_save)} test results to database...")
-        for tr in all_test_results_to_save:
-            try:
-                db.save_test_result(**tr)
-            except Exception as e:
-                print(f"    Error saving test result: {e}")
-
-        print(f"  Saving {len(all_metrics_to_save)} metrics to database...")
-        for m in all_metrics_to_save:
-            try:
-                db.save_metric(**m)
-            except Exception as e:
-                print(f"    Error saving metric: {e}")
-
-        print(f"  Saving daily run summary...")
-        db.save_daily_run(
-            run_id=summary.run_id,
-            run_date=summary.run_date,
-            timestamp=summary.timestamp,
-            scenarios_run=summary.scenarios_run,
-            scenarios_passed=summary.scenarios_passed,
-            scenarios_failed=summary.scenarios_failed,
-            overall_status=summary.overall_status.value,
-            alerts=summary.alerts,
-            hillclimb_suggestions=summary.hillclimb_suggestions,
-            total_tokens=summary.total_tokens,
-            total_cost_usd=summary.total_cost_usd
-        )
+        # ====== ATOMIC BATCH SAVE ======
+        # Save everything in a single database transaction
+        print(f"\n  Saving to database: {len(all_test_results_to_save)} test results, {len(all_metrics_to_save)} metrics...")
+        try:
+            run_data = {
+                'run_id': summary.run_id,
+                'run_date': summary.run_date,
+                'timestamp': summary.timestamp,
+                'scenarios_run': summary.scenarios_run,
+                'scenarios_passed': summary.scenarios_passed,
+                'scenarios_failed': summary.scenarios_failed,
+                'overall_status': summary.overall_status.value,
+                'alerts': summary.alerts,
+                'hillclimb_suggestions': summary.hillclimb_suggestions,
+                'total_tokens': summary.total_tokens,
+                'total_cost_usd': summary.total_cost_usd
+            }
+            db.save_complete_run(run_data, all_metrics_to_save, all_test_results_to_save)
+            print(f"  Database save complete.")
+        except Exception as e:
+            print(f"  ERROR saving to database: {e}")
+            import traceback
+            traceback.print_exc()
+            logger.error(f"Database save failed: {e}")
+            logger.error(traceback.format_exc())
 
         # Export to JSON
         out_dir = Path("data/daily_runs")

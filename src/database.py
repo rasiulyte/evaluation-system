@@ -447,6 +447,99 @@ class Database:
         conn.close()
         return result
 
+    def save_complete_run(self, run_data, metrics_list, test_results_list):
+        """Save an entire run atomically using a single connection.
+
+        Args:
+            run_data: dict with daily_run fields
+            metrics_list: list of dicts with metric fields
+            test_results_list: list of dicts with test result fields
+        """
+        conn = self._get_connection()
+        c = conn.cursor()
+
+        try:
+            # 1. Save all test results
+            for tr in test_results_list:
+                if self.use_postgres:
+                    c.execute("""
+                        INSERT INTO test_results (run_id, scenario, test_case_id, prompt_id, ground_truth,
+                            prediction, confidence, correct, llm_output, timestamp)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (tr['run_id'], tr['scenario'], tr['test_case_id'], tr['prompt_id'],
+                          tr['ground_truth'], tr['prediction'], tr['confidence'], tr['correct'],
+                          tr['llm_output'], tr['timestamp']))
+                else:
+                    c.execute("""
+                        INSERT INTO test_results (run_id, scenario, test_case_id, prompt_id, ground_truth,
+                            prediction, confidence, correct, llm_output, timestamp)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (tr['run_id'], tr['scenario'], tr['test_case_id'], tr['prompt_id'],
+                          tr['ground_truth'], tr['prediction'], tr['confidence'], tr['correct'],
+                          tr['llm_output'], tr['timestamp']))
+
+            # 2. Save all metrics
+            for m in metrics_list:
+                if self.use_postgres:
+                    c.execute("""
+                        INSERT INTO metrics (run_id, scenario, timestamp, metric_name, metric_value,
+                            threshold_min, threshold_max, unit, status)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (m['run_id'], m['scenario'], m['timestamp'], m['metric_name'],
+                          m['metric_value'], m['threshold_min'], m['threshold_max'],
+                          m['unit'], m['status']))
+                else:
+                    c.execute("""
+                        INSERT INTO metrics (run_id, scenario, timestamp, metric_name, metric_value,
+                            threshold_min, threshold_max, unit, status)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (m['run_id'], m['scenario'], m['timestamp'], m['metric_name'],
+                          m['metric_value'], m['threshold_min'], m['threshold_max'],
+                          m['unit'], m['status']))
+
+            # 3. Save daily run summary
+            if self.use_postgres:
+                c.execute("""
+                    INSERT INTO daily_runs (run_id, run_date, timestamp, scenarios_run,
+                        scenarios_passed, scenarios_failed, overall_status, alerts, hillclimb_suggestions,
+                        total_tokens, total_cost_usd)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (run_id) DO UPDATE SET
+                        scenarios_run = EXCLUDED.scenarios_run,
+                        scenarios_passed = EXCLUDED.scenarios_passed,
+                        scenarios_failed = EXCLUDED.scenarios_failed,
+                        overall_status = EXCLUDED.overall_status,
+                        alerts = EXCLUDED.alerts,
+                        hillclimb_suggestions = EXCLUDED.hillclimb_suggestions,
+                        total_tokens = EXCLUDED.total_tokens,
+                        total_cost_usd = EXCLUDED.total_cost_usd
+                """, (run_data['run_id'], run_data['run_date'], run_data['timestamp'],
+                      run_data['scenarios_run'], run_data['scenarios_passed'],
+                      run_data['scenarios_failed'], run_data['overall_status'],
+                      json.dumps(run_data['alerts']), json.dumps(run_data['hillclimb_suggestions']),
+                      run_data['total_tokens'], run_data['total_cost_usd']))
+            else:
+                c.execute("""
+                    INSERT OR REPLACE INTO daily_runs (run_id, run_date, timestamp, scenarios_run,
+                        scenarios_passed, scenarios_failed, overall_status, alerts, hillclimb_suggestions,
+                        total_tokens, total_cost_usd)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (run_data['run_id'], run_data['run_date'], run_data['timestamp'],
+                      run_data['scenarios_run'], run_data['scenarios_passed'],
+                      run_data['scenarios_failed'], run_data['overall_status'],
+                      json.dumps(run_data['alerts']), json.dumps(run_data['hillclimb_suggestions']),
+                      run_data['total_tokens'], run_data['total_cost_usd']))
+
+            # Commit everything at once
+            conn.commit()
+            return True
+
+        except Exception as e:
+            conn.rollback()
+            raise e
+        finally:
+            conn.close()
+
     def debug_info(self):
         """Get debug information about database state."""
         conn = self._get_connection()
