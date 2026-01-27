@@ -1,23 +1,37 @@
 #!/usr/bin/env python3
 """
-Database Verification and Fix Script
-
-Run this to:
-1. Check if the database has the correct schema (including cost columns)
-2. Fix any missing columns
-3. Optionally reset the database to start fresh
+Database verification and fix script for the evaluation system.
+Run this after pulling updates to ensure your database schema is current.
 
 Usage:
-    python fix_database.py          # Check and fix
+    python fix_database.py          # Check and fix schema
     python fix_database.py --reset  # Delete and recreate database
 """
 
 import sqlite3
-import os
 import sys
 from pathlib import Path
 
+# Database path (same as used by the app)
 DB_PATH = Path("data/metrics.db")
+
+# All required columns with their types and defaults
+# This covers the full schema from database.py
+COLUMN_DEFAULTS = {
+    'total_tokens': ('INTEGER', '0'),
+    'total_cost_usd': ('REAL', '0.0'),
+    'run_id': ('TEXT', "''"),
+    'run_date': ('TEXT', "''"),
+    'timestamp': ('TEXT', "''"),
+    'scenarios_run': ('INTEGER', '0'),
+    'scenarios_passed': ('INTEGER', '0'),
+    'scenarios_failed': ('INTEGER', '0'),
+    'overall_status': ('TEXT', "'unknown'"),
+    'alerts': ('TEXT', "'[]'"),
+    'hillclimb_suggestions': ('TEXT', "'[]'"),
+}
+
+REQUIRED_COLUMNS = list(COLUMN_DEFAULTS.keys())
 
 
 def check_schema():
@@ -29,49 +43,58 @@ def check_schema():
     conn = sqlite3.connect(str(DB_PATH))
     c = conn.cursor()
     
-    # Get column info for daily_runs table
+    # Check if daily_runs table exists
+    c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='daily_runs'")
+    if not c.fetchone():
+        print("❌ Table 'daily_runs' does not exist")
+        conn.close()
+        return False, ["table_missing"]
+    
+    # Get existing columns
     c.execute("PRAGMA table_info(daily_runs)")
-    columns = {row[1] for row in c.fetchall()}
+    existing_columns = {row[1] for row in c.fetchall()}
     
-    required_columns = {
-        'run_id', 'run_date', 'timestamp', 'scenarios_run',
-        'scenarios_passed', 'scenarios_failed', 'overall_status',
-        'alerts', 'hillclimb_suggestions', 'total_tokens', 'total_cost_usd'
-    }
-    
-    missing = required_columns - columns
-    
-    conn.close()
+    # Check for missing columns
+    missing = [col for col in REQUIRED_COLUMNS if col not in existing_columns]
     
     if missing:
-        print(f"⚠️  Missing columns in daily_runs: {missing}")
-        return False, list(missing)
+        print(f"❌ Missing columns: {', '.join(missing)}")
     else:
-        print("✓ Schema looks correct - all columns present")
-        return True, []
+        print("✓ All required columns present")
+    
+    conn.close()
+    return len(missing) == 0, missing
 
 
 def add_missing_columns(missing_columns):
-    """Add missing columns to the database."""
+    """Add missing columns to the daily_runs table."""
+    if not DB_PATH.exists():
+        print("Cannot fix - database doesn't exist")
+        return
+    
     conn = sqlite3.connect(str(DB_PATH))
     c = conn.cursor()
     
-    column_defaults = {
-        'total_tokens': 'INTEGER DEFAULT 0',
-        'total_cost_usd': 'REAL DEFAULT 0.0'
-    }
-    
     for col in missing_columns:
-        if col in column_defaults:
+        if col == "table_missing":
+            print("⚠️  Table 'daily_runs' is missing. Run an evaluation first to create it,")
+            print("   or use --reset to start fresh.")
+            continue
+            
+        if col in COLUMN_DEFAULTS:
+            col_type, default_val = COLUMN_DEFAULTS[col]
             try:
-                sql = f"ALTER TABLE daily_runs ADD COLUMN {col} {column_defaults[col]}"
-                c.execute(sql)
-                print(f"  ✓ Added column: {col}")
+                c.execute(f"ALTER TABLE daily_runs ADD COLUMN {col} {col_type} DEFAULT {default_val}")
+                print(f"  ✓ Added column: {col} ({col_type})")
             except sqlite3.OperationalError as e:
                 if "duplicate column" in str(e).lower():
-                    print(f"  - Column {col} already exists")
+                    print(f"  ⓘ Column {col} already exists")
                 else:
                     print(f"  ❌ Error adding {col}: {e}")
+        else:
+            # This shouldn't happen if COLUMN_DEFAULTS is complete, but warn if it does
+            print(f"  ⚠️  Unknown column '{col}' - cannot add automatically.")
+            print(f"      Manual intervention may be needed, or use --reset to start fresh.")
     
     conn.commit()
     conn.close()
@@ -86,38 +109,52 @@ def show_data_summary():
     conn = sqlite3.connect(str(DB_PATH))
     c = conn.cursor()
     
-    print("\n📊 Database Summary:")
+    # First check what tables exist
+    c.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    tables = [row[0] for row in c.fetchall()]
+    
+    if not tables:
+        print("\n📊 Database exists but has no tables yet.")
+        print("   Run an evaluation first to initialize the schema.")
+        conn.close()
+        return
+    
+    print(f"\n📊 Database Summary:")
+    print(f"   Tables found: {', '.join(tables)}")
     
     # Daily runs
-    try:
-        c.execute("SELECT COUNT(*) FROM daily_runs")
-        count = c.fetchone()[0]
-        print(f"  daily_runs: {count} records")
-        
-        if count > 0:
-            c.execute("SELECT run_id, total_tokens, total_cost_usd FROM daily_runs ORDER BY timestamp DESC LIMIT 3")
-            recent = c.fetchall()
-            print("  Recent runs:")
-            for run_id, tokens, cost in recent:
-                print(f"    - {run_id}: {tokens or 0} tokens, ${cost or 0:.4f}")
-    except Exception as e:
-        print(f"  daily_runs: Error - {e}")
+    if 'daily_runs' in tables:
+        try:
+            c.execute("SELECT COUNT(*) FROM daily_runs")
+            count = c.fetchone()[0]
+            print(f"   daily_runs: {count} records")
+            
+            if count > 0:
+                c.execute("SELECT run_id, total_tokens, total_cost_usd FROM daily_runs ORDER BY timestamp DESC LIMIT 3")
+                recent = c.fetchall()
+                print("   Recent runs:")
+                for run_id, tokens, cost in recent:
+                    print(f"     - {run_id}: {tokens or 0} tokens, ${cost or 0:.4f}")
+        except Exception as e:
+            print(f"   daily_runs: Error reading - {e}")
     
     # Metrics
-    try:
-        c.execute("SELECT COUNT(*) FROM metrics")
-        count = c.fetchone()[0]
-        print(f"  metrics: {count} records")
-    except Exception as e:
-        print(f"  metrics: Error - {e}")
+    if 'metrics' in tables:
+        try:
+            c.execute("SELECT COUNT(*) FROM metrics")
+            count = c.fetchone()[0]
+            print(f"   metrics: {count} records")
+        except Exception as e:
+            print(f"   metrics: Error reading - {e}")
     
     # Test results
-    try:
-        c.execute("SELECT COUNT(*) FROM test_results")
-        count = c.fetchone()[0]
-        print(f"  test_results: {count} records")
-    except Exception as e:
-        print(f"  test_results: Error - {e}")
+    if 'test_results' in tables:
+        try:
+            c.execute("SELECT COUNT(*) FROM test_results")
+            count = c.fetchone()[0]
+            print(f"   test_results: {count} records")
+        except Exception as e:
+            print(f"   test_results: Error reading - {e}")
     
     conn.close()
 
