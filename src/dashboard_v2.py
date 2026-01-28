@@ -2195,18 +2195,19 @@ def get_runs_with_metrics(df: pd.DataFrame) -> list:
 
 
 def get_metrics_comparison(df: pd.DataFrame, run_id_1: str, run_id_2: str) -> pd.DataFrame:
-    """Compare metrics between two runs."""
+    """Compare metrics between two runs. Uses outer merge so all metrics appear."""
     if df.empty:
         return pd.DataFrame()
 
     m1 = df[df['run_id'] == run_id_1][['scenario', 'metric_name', 'metric_value']].copy()
     m2 = df[df['run_id'] == run_id_2][['scenario', 'metric_name', 'metric_value']].copy()
 
-    merged = m1.merge(m2, on=['scenario', 'metric_name'], suffixes=('_baseline', '_compare'))
+    merged = m1.merge(m2, on=['scenario', 'metric_name'], suffixes=('_baseline', '_compare'), how='outer')
     merged['delta'] = merged['metric_value_compare'] - merged['metric_value_baseline']
     merged['delta_pct'] = merged.apply(
         lambda r: ((r['metric_value_compare'] - r['metric_value_baseline']) / r['metric_value_baseline'] * 100)
-        if r['metric_value_baseline'] != 0 else 0,
+        if pd.notna(r['metric_value_baseline']) and r['metric_value_baseline'] != 0
+        and pd.notna(r['metric_value_compare']) else 0,
         axis=1
     )
     return merged
@@ -2277,6 +2278,8 @@ def render_compare_runs_page(df: pd.DataFrame):
     unchanged = 0
 
     for _, row in comparison_df.iterrows():
+        if pd.isna(row["metric_value_baseline"]) or pd.isna(row["metric_value_compare"]):
+            continue  # Skip metrics only in one run for summary counts
         delta = row["delta"]
         metric_name = row["metric_name"].lower()
         is_lower_better = metric_name in lower_is_better_metrics
@@ -2386,16 +2389,22 @@ def render_compare_runs_page(df: pd.DataFrame):
         if category != current_category:
             current_category = category
             st.markdown(f'<div style="margin-top: 0.75rem; margin-bottom: 0.5rem; font-size: 0.8rem; font-weight: 500; color: {COLORS["medium_gray"]}; text-transform: uppercase; letter-spacing: 0.05em;">{category}</div>', unsafe_allow_html=True)
-        delta = row["delta"]
-        pct = row["delta_pct"]
         baseline = row["metric_value_baseline"]
         compare = row["metric_value_compare"]
+        has_baseline = pd.notna(baseline)
+        has_compare = pd.notna(compare)
+        delta = row["delta"] if (has_baseline and has_compare) else 0
+        pct = row["delta_pct"] if (has_baseline and has_compare) else 0
 
         # Check if this metric is "lower is better"
         is_lower_better = metric_name_lower in lower_is_better
 
-        # Determine if this change is good or bad
-        if abs(delta) <= 0.001:
+        # Handle missing values
+        if not has_baseline or not has_compare:
+            change_color = COLORS['medium_gray']
+            change_text = "N/A (only in one run)"
+            border_class = ""
+        elif abs(delta) <= 0.001:
             # No significant change
             change_color = COLORS['medium_gray']
             change_text = "— No change"
@@ -2431,8 +2440,8 @@ def render_compare_runs_page(df: pd.DataFrame):
             f'<span style="color: {change_color}; font-weight: 500; font-size: 0.9rem;">{change_text}</span>'
             f'</div>'
             f'<div style="display: flex; gap: 2rem; margin-top: 0.5rem; font-size: 0.85rem;">'
-            f'<span style="color: {COLORS["medium_gray"]};">Baseline: <strong style="color: {COLORS["charcoal"]}; font-family: monospace;">{baseline:.3f}</strong></span>'
-            f'<span style="color: {COLORS["medium_gray"]};">Compare: <strong style="color: {COLORS["charcoal"]}; font-family: monospace;">{compare:.3f}</strong></span>'
+            f'<span style="color: {COLORS["medium_gray"]};">Baseline: <strong style="color: {COLORS["charcoal"]}; font-family: monospace;">{baseline:.3f if has_baseline else "N/A"}</strong></span>'
+            f'<span style="color: {COLORS["medium_gray"]};">Compare: <strong style="color: {COLORS["charcoal"]}; font-family: monospace;">{compare:.3f if has_compare else "N/A"}</strong></span>'
             f'</div>'
             f'</div>'
         )
