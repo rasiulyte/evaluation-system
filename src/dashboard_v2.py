@@ -1894,7 +1894,7 @@ def render_slice_analysis_page(df: pd.DataFrame):
     failure_mode_stats = []
 
     # Failure modes that test "grounded" cases (no hallucinations to detect)
-    grounded_failure_modes = {'factual_addition', 'valid_inference', 'verbatim_grounded'}
+    grounded_failure_modes = {'factual_addition', 'valid_inference', 'verbatim_grounded', 'tricky_grounded'}
 
     for fm in sorted(failure_modes):
         if fm == 'unknown':
