@@ -1572,18 +1572,53 @@ def render_run_history_page(df: pd.DataFrame):
         # Create expander for each run
         prompt_label = f" — Prompt: {row['prompt']}" if row['prompt'] else ""
         with st.expander(f"**{row['Run ID']}** — {row['Date']} {row['Time']} — F1: {f1_str} — Cost: {cost_str}{prompt_label}"):
-            # Summary row
-            col1, col2, col3, col4, col5 = st.columns(5)
+            # Status and cost summary
+            col1, col2, col3 = st.columns(3)
             with col1:
                 st.markdown(f"**Status:** <span style='color: {status_color};'>{status_text}</span>", unsafe_allow_html=True)
             with col2:
-                st.markdown(f"**F1:** {f1_str}")
+                st.markdown(f"**Cost:** {cost_str}")
             with col3:
-                st.markdown(f"**Precision:** {prec_str}")
-            with col4:
-                st.markdown(f"**Recall:** {rec_str}")
-            with col5:
                 st.markdown(f"**Tokens:** {tokens_str}")
+
+            # All metrics for this run
+            run_metrics = df[df["run_id"] == row["Run ID"]][["scenario", "metric_name", "metric_value"]]
+            if not run_metrics.empty:
+                metric_categories = {
+                    "f1": "Classification", "precision": "Classification", "recall": "Classification",
+                    "tnr": "Classification", "accuracy": "Classification",
+                    "cohens_kappa": "Agreement",
+                    "spearman": "Correlation", "pearson": "Correlation", "kendalls_tau": "Correlation",
+                    "bias": "Calibration", "mae": "Calibration", "rmse": "Calibration"
+                }
+                metric_order = {
+                    "f1": 1, "precision": 2, "recall": 3, "tnr": 4, "accuracy": 5,
+                    "cohens_kappa": 6, "spearman": 7, "pearson": 8, "kendalls_tau": 9,
+                    "bias": 10, "mae": 11, "rmse": 12
+                }
+
+                for scenario in sorted(run_metrics["scenario"].unique()):
+                    sc_metrics = run_metrics[run_metrics["scenario"] == scenario].copy()
+                    sc_metrics["_order"] = sc_metrics["metric_name"].map(lambda x: metric_order.get(x, 99))
+                    sc_metrics = sc_metrics.sort_values("_order")
+
+                    st.markdown(f'<div style="margin-top: 0.75rem; margin-bottom: 0.25rem; font-weight: 600; color: {COLORS["navy"]};">{scenario}</div>', unsafe_allow_html=True)
+
+                    current_cat = None
+                    for _, m in sc_metrics.iterrows():
+                        cat = metric_categories.get(m["metric_name"], "Other")
+                        if cat != current_cat:
+                            current_cat = cat
+                            st.markdown(f'<div style="font-size: 0.75rem; color: {COLORS["medium_gray"]}; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.5rem;">{cat}</div>', unsafe_allow_html=True)
+                        val = m["metric_value"]
+                        val_str = f"{val:.3f}" if pd.notna(val) else "—"
+                        st.markdown(
+                            f'<div style="display: flex; justify-content: space-between; padding: 0.15rem 0.5rem; font-size: 0.85rem;">'
+                            f'<span style="color: {COLORS["charcoal"]};">{m["metric_name"]}</span>'
+                            f'<span style="font-family: monospace; font-weight: 500; color: {COLORS["navy"]};">{val_str}</span>'
+                            f'</div>',
+                            unsafe_allow_html=True
+                        )
 
             st.markdown("---")
 
