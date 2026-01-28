@@ -1968,13 +1968,33 @@ def render_slice_analysis_page(df: pd.DataFrame):
                 is_grounded = row.get('is_grounded_mode', False)
                 metric_value = row['F1']  # F1 holds TNR for grounded modes
 
-                # Beginner-friendly descriptions
+                # Per-failure-mode descriptions
+                failure_mode_descriptions = {
+                    # Grounded (safe) modes
+                    'Factual Addition': 'Correct facts added beyond the source — not a hallucination',
+                    'Valid Inference': 'Logical conclusions drawn from the source text',
+                    'Verbatim Grounded': 'Closely follows the source — clearly safe',
+                    'Tricky Grounded': 'Looks suspicious but is actually faithful to the source',
+                    # Hallucination modes
+                    'Fabrication': 'Entirely made-up facts with no basis in the source',
+                    'Fluent Hallucination': 'Sounds convincing but contains invented details',
+                    'Subtle Distortion': 'Slightly twists facts from the source',
+                    'Partial Grounding': 'Mixes real source facts with fabricated details',
+                    'Subtle Error': 'Small inaccuracies that are easy to miss',
+                    'Plausible Addition': 'Adds believable but unsupported claims',
+                    'Causation Error': 'Invents cause-effect relationships not in the source',
+                    'Quantity Error': 'Gets numbers, dates, or amounts wrong',
+                    'Temporal Error': 'Distorts timelines or event ordering',
+                    'Subtle Negation': 'Flips or negates meaning from the source',
+                    'Wrong Attribution': 'Attributes statements to the wrong person or source',
+                }
+                fm_name = row['Failure Mode']
                 if is_grounded:
                     metric_label = "Accuracy"
-                    mode_note = "Should say 'safe' for these"
+                    mode_note = failure_mode_descriptions.get(fm_name, "Should say 'safe' for these")
                 else:
                     metric_label = "Catch rate"
-                    mode_note = "Should catch these errors"
+                    mode_note = failure_mode_descriptions.get(fm_name, "Should catch these errors")
 
                 st.markdown(f"""
                 <div class="metric-card {status_class}" style="padding: 1rem; margin-bottom: 0.75rem;">
