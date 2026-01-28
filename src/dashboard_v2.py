@@ -1641,7 +1641,7 @@ def render_run_history_page(df: pd.DataFrame):
                                         val_color = COLORS["poor"]
                         st.markdown(
                             f'<div style="display: flex; justify-content: space-between; padding: 0.15rem 0.5rem; font-size: 0.85rem;">'
-                            f'<span style="color: {COLORS["charcoal"]};">{m["metric_name"]}</span>'
+                            f'<span style="color: {val_color};">{m["metric_name"]}</span>'
                             f'<span style="font-family: monospace; font-weight: 600; color: {val_color};">{val_str}</span>'
                             f'</div>',
                             unsafe_allow_html=True
