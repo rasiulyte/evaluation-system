@@ -2440,8 +2440,8 @@ def render_compare_runs_page(df: pd.DataFrame):
             f'<span style="color: {change_color}; font-weight: 500; font-size: 0.9rem;">{change_text}</span>'
             f'</div>'
             f'<div style="display: flex; gap: 2rem; margin-top: 0.5rem; font-size: 0.85rem;">'
-            f'<span style="color: {COLORS["medium_gray"]};">Baseline: <strong style="color: {COLORS["charcoal"]}; font-family: monospace;">{baseline:.3f if has_baseline else "N/A"}</strong></span>'
-            f'<span style="color: {COLORS["medium_gray"]};">Compare: <strong style="color: {COLORS["charcoal"]}; font-family: monospace;">{compare:.3f if has_compare else "N/A"}</strong></span>'
+            f'<span style="color: {COLORS["medium_gray"]};">Baseline: <strong style="color: {COLORS["charcoal"]}; font-family: monospace;">{f"{baseline:.3f}" if has_baseline else "N/A"}</strong></span>'
+            f'<span style="color: {COLORS["medium_gray"]};">Compare: <strong style="color: {COLORS["charcoal"]}; font-family: monospace;">{f"{compare:.3f}" if has_compare else "N/A"}</strong></span>'
             f'</div>'
             f'</div>'
         )
