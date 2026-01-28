@@ -1612,17 +1612,33 @@ def render_run_history_page(df: pd.DataFrame):
                             st.markdown(f'<div style="font-size: 0.75rem; color: {COLORS["medium_gray"]}; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.5rem;">{cat}</div>', unsafe_allow_html=True)
                         val = m["metric_value"]
                         val_str = f"{val:.3f}" if pd.notna(val) else "—"
-                        # Color based on metric interpretation
-                        val_color = COLORS["navy"]
+                        # Color based on metric thresholds
+                        val_color = COLORS["medium_gray"]
                         if pd.notna(val):
-                            interp = get_metric_interpretation(m["metric_name"], val)
-                            level = interp.get("level", "")
-                            if level in ("Exceptional", "Excellent", "Good", "Strong", "Almost Perfect", "Substantial", "Balanced"):
-                                val_color = COLORS["good"]
-                            elif level in ("Fair", "Moderate", "Weak"):
-                                val_color = COLORS["amber"]
-                            elif level in ("Poor", "Failing", "Very Weak", "None", "Slight", "Negative", "Strong Positive", "Strong Negative", "Moderate Positive", "Moderate Negative"):
-                                val_color = COLORS["poor"]
+                            minfo = METRIC_INFO.get(m["metric_name"], {})
+                            th = minfo.get("thresholds", {})
+                            higher_better = th.get("higher_is_better", True)
+                            if higher_better:
+                                good_min = th.get("good_min")
+                                warn_min = th.get("warning_min")
+                                if good_min is not None:
+                                    if val >= good_min:
+                                        val_color = COLORS["good"]
+                                    elif val >= warn_min:
+                                        val_color = COLORS["amber"]
+                                    else:
+                                        val_color = COLORS["poor"]
+                            else:
+                                good_max = th.get("good_max")
+                                warn_max = th.get("warning_max")
+                                if good_max is not None:
+                                    check_val = abs(val) if m["metric_name"] == "bias" else val
+                                    if check_val <= good_max:
+                                        val_color = COLORS["good"]
+                                    elif check_val <= warn_max:
+                                        val_color = COLORS["amber"]
+                                    else:
+                                        val_color = COLORS["poor"]
                         st.markdown(
                             f'<div style="display: flex; justify-content: space-between; padding: 0.15rem 0.5rem; font-size: 0.85rem;">'
                             f'<span style="color: {COLORS["charcoal"]};">{m["metric_name"]}</span>'
