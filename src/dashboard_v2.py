@@ -1484,6 +1484,7 @@ def render_run_history_page(df: pd.DataFrame):
         daily_run = daily_runs.get(run_id, {})
         total_tokens = daily_run.get('total_tokens', 0) or 0
         cost_usd = daily_run.get('total_cost_usd', 0.0) or 0.0
+        run_prompt = daily_run.get('prompt_version', '') or ''
 
         # Determine overall status
         if f1 and f1 >= 0.75:
@@ -1506,7 +1507,8 @@ def render_run_history_page(df: pd.DataFrame):
             "Status": status,
             "status_raw": status_raw,
             "tokens": total_tokens,
-            "cost": cost_usd
+            "cost": cost_usd,
+            "prompt": run_prompt
         })
 
     runs_df = pd.DataFrame(runs_data).sort_values("Date", ascending=False)
@@ -1568,7 +1570,8 @@ def render_run_history_page(df: pd.DataFrame):
         tokens_str = f"{row['tokens']:,}" if row['tokens'] > 0 else "0"
 
         # Create expander for each run
-        with st.expander(f"**{row['Run ID']}** — {row['Date']} {row['Time']} — F1: {f1_str} — Cost: {cost_str}"):
+        prompt_label = f" — Prompt: {row['prompt']}" if row['prompt'] else ""
+        with st.expander(f"**{row['Run ID']}** — {row['Date']} {row['Time']} — F1: {f1_str} — Cost: {cost_str}{prompt_label}"):
             # Summary row
             col1, col2, col3, col4, col5 = st.columns(5)
             with col1:
@@ -2703,6 +2706,22 @@ def render_run_evaluation_page():
             help="Number of test cases to evaluate"
         )
 
+    # Prompt version selection
+    available_prompts = [
+        "v6_calibrated_confidence",
+        "v5_structured_output",
+        "v4_rubric_based",
+        "v3_chain_of_thought",
+        "v2_few_shot",
+        "v1_zero_shot",
+    ]
+    prompt_version = st.selectbox(
+        "Prompt Version",
+        available_prompts,
+        index=0,
+        help="Prompt template to use for all scenarios in this run"
+    )
+
     # Scenario selection
     scenarios_config = config.get('scenarios', {})
     available_scenarios = list(scenarios_config.keys())
@@ -2793,7 +2812,8 @@ def render_run_evaluation_page():
                         scenarios=selected_scenarios,
                         model=model,
                         sample_size=sample_size,
-                        dry_run=False
+                        dry_run=False,
+                        prompt_version=prompt_version
                     )
 
                     # Debug: Show what we got back

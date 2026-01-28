@@ -115,7 +115,7 @@ class EvaluationOrchestrator:
             raise FileNotFoundError(f"Config file not found: {config_path}")
         with open(config_path, "r") as f:
             return yaml.safe_load(f)
-    def run_daily_evaluation(self, scenarios: List[str] = None, model: str = None, sample_size: int = None, dry_run: bool = False):
+    def run_daily_evaluation(self, scenarios: List[str] = None, model: str = None, sample_size: int = None, dry_run: bool = False, prompt_version: str = None):
         run_id = f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         logger.info(f"=== Starting evaluation run: {run_id} ===")
         run_date = datetime.now().strftime('%Y-%m-%d')
@@ -155,7 +155,8 @@ class EvaluationOrchestrator:
 
             start_time = datetime.now()
             scenario_config = self.config['scenarios'][scenario]
-            prompt_version = scenario_config.get('prompt_version', 'v1_zero_shot')
+            # Use override prompt_version if provided, otherwise use config
+            prompt_version_used = prompt_version or scenario_config.get('prompt_version', 'v6_calibrated_confidence')
             scenario_sample_size = sample_size or scenario_config.get('sample_size', 20)
 
             # Get test cases (exclude regression cases)
@@ -172,7 +173,7 @@ class EvaluationOrchestrator:
                 test_case_ids = all_case_ids.copy()
                 random.shuffle(test_case_ids)  # Shuffle even if not sampling
 
-            print(f"  Prompt: {prompt_version}")
+            print(f"  Prompt: {prompt_version_used}")
             print(f"  Total available cases: {len(all_case_ids)}")
             print(f"  Sample size: {scenario_sample_size}")
             print(f"  Selected {len(test_case_ids)} cases: {test_case_ids[:5]}{'...' if len(test_case_ids) > 5 else ''}")
@@ -180,7 +181,7 @@ class EvaluationOrchestrator:
             # Run evaluation
             try:
                 results = evaluator.evaluate_batch(
-                    prompt_id=prompt_version,
+                    prompt_id=prompt_version_used,
                     test_case_ids=test_case_ids
                 )
 
@@ -249,7 +250,7 @@ class EvaluationOrchestrator:
                             # Transform confidence based on prompt version
                             # v5 and v6 output confidence in "grounded" so we need to invert
                             # for MAE/RMSE which expect probability of hallucination
-                            if prompt_version.startswith("v5_") or prompt_version.startswith("v6_"):
+                            if prompt_version_used.startswith("v5_") or prompt_version_used.startswith("v6_"):
                                 conf_val = 1.0 - conf_val
                             y_conf.append(conf_val)
                         except (ValueError, TypeError):
@@ -364,7 +365,7 @@ class EvaluationOrchestrator:
                 scenario=scenario,
                 run_id=run_id,
                 timestamp=timestamp,
-                prompt_version=prompt_version,
+                prompt_version=prompt_version_used,
                 model=use_model,
                 metrics=metrics,
                 sample_size=len(test_case_ids),
@@ -400,6 +401,9 @@ class EvaluationOrchestrator:
         # Save everything in a single database transaction
         print(f"\n  Saving to database: {len(all_test_results_to_save)} test results, {len(all_metrics_to_save)} metrics...")
         try:
+            # Determine the prompt version used (from override or first scenario's config)
+            used_prompt = prompt_version or self.config['scenarios'].get(
+                enabled_scenarios[0], {}).get('prompt_version', 'v6_calibrated_confidence')
             run_data = {
                 'run_id': summary.run_id,
                 'run_date': summary.run_date,
@@ -411,7 +415,8 @@ class EvaluationOrchestrator:
                 'alerts': summary.alerts,
                 'hillclimb_suggestions': summary.hillclimb_suggestions,
                 'total_tokens': summary.total_tokens,
-                'total_cost_usd': summary.total_cost_usd
+                'total_cost_usd': summary.total_cost_usd,
+                'prompt_version': used_prompt
             }
             db.save_complete_run(run_data, all_metrics_to_save, all_test_results_to_save)
             print(f"  Database save complete.")
